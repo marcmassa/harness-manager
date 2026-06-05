@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { HarnessParser } from './harnessParser.js';
 
 export function activate(context: vscode.ExtensionContext) {
-    const provider = new HarnessDashboardProvider(context.extensionUri);
+    const root = vscode.workspace.workspaceFolders?.[0].uri;
+    if (!root) return;
+
+    const provider = new HarnessDashboardProvider(context.extensionUri, root);
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
@@ -13,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-manager.openDashboard', () => {
-            // Logic to reveal the dashboard if needed, though as a View it handles itself
+            vscode.commands.executeCommand('workbench.view.extension.harness-manager');
         })
     );
 }
@@ -21,8 +25,14 @@ export function activate(context: vscode.ExtensionContext) {
 class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-manager.dashboard';
     private _view?: vscode.WebviewView;
+    private _parser: HarnessParser;
 
-    constructor(private readonly _extensionUri: vscode.Uri) {}
+    constructor(
+        private readonly _extensionUri: vscode.Uri,
+        private readonly _workspaceRoot: vscode.Uri
+    ) {
+        this._parser = new HarnessParser(this._workspaceRoot);
+    }
 
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -38,13 +48,31 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-        webviewView.webview.onDidReceiveMessage(data => {
+        webviewView.webview.onDidReceiveMessage(async data => {
             switch (data.type) {
                 case 'ready':
-                    webviewView.webview.postMessage({ type: 'init', data: 'Hello Harness' });
+                    this._sendData();
+                    break;
+                case 'getData':
+                    this._sendData();
                     break;
             }
         });
+
+        // T7: Setup Watcher
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(this._workspaceRoot, '{.agents/**,feature_list.json}')
+        );
+        watcher.onDidChange(() => this._sendData());
+        watcher.onDidCreate(() => this._sendData());
+        watcher.onDidDelete(() => this._sendData());
+    }
+
+    private async _sendData() {
+        if (this._view) {
+            const result = await this._parser.parse();
+            this._view.webview.postMessage({ type: 'init', data: result.graph });
+        }
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {

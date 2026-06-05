@@ -27,7 +27,7 @@
       "title": "Harness Data Parser",
       "description": "Implement the backend logic to parse .agents/agentic.json and subagent/skill Markdown files into a graph data model.",
       "type": "feat",
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P0",
       "agent": "harness-vscode",
