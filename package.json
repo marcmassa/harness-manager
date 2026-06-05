@@ -1,0 +1,56 @@
+{
+  "name": "harness-manager-vscode",
+  "displayName": "Harness Manager",
+  "description": "Visual dashboard and whiteboard for managing Harness SDD projects.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "harness-manager",
+          "title": "Harness Manager",
+          "icon": "$(gear)"
+        }
+      ]
+    },
+    "views": {
+      "harness-manager": [
+        {
+          "type": "webview",
+          "id": "harness-manager.dashboard",
+          "name": "Dashboard"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "harness-manager.openDashboard",
+        "title": "Harness: Open Dashboard"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "test": "node ./.agents/harness/harness.sh check"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.19.11",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "@vscode/webview-ui-toolkit": "^1.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "project": "Harness Manager VS Code Plugin",
+  "description": "Visual dashboard and whiteboard for managing Harness SDD projects.",
+  "rules": {
+    "maxConcurrent": 1,
+    "requireSpec": true,
+    "requireTests": true,
+    "requireCheck": true,
+    "validStatus": ["pending", "spec_ready", "in_progress", "done", "blocked"]
+  },
+  "features": [
+    {
+      "id": "FEAT-001",
+      "name": "webview-foundation",
+      "title": "Foundation & Webview Communication",
+      "description": "Initialize the VS Code extension architecture, React frontend with esbuild, and two-way messaging between Extension Host and Webview.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "harness-vscode",
+      "sprint": "MVP"
+    },
+    {
+      "id": "FEAT-002",
+      "name": "harness-parser",
+      "title": "Harness Data Parser",
+      "description": "Implement the backend logic to parse .agents/agentic.json and subagent/skill Markdown files into a graph data model.",
+      "type": "feat",
+      "status": "pending",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "harness-vscode",
+      "sprint": "MVP"
+    },
+    {
+      "id": "FEAT-003",
+      "name": "whiteboard-canvas",
+      "title": "Read-Only Whiteboard Visualization",
+      "description": "Integrate React Flow to visualize the Agents, Sub-agents, and Skills as an interactive graph within the Webview.",
+      "type": "feat",
+      "status": "pending",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "harness-vscode",
+      "sprint": "MVP"
+    },
+    {
+      "id": "FEAT-004",
+      "name": "graph-editor",
+      "title": "Visual Graph Editor & Write-back",
+      "description": "Enable visual editing (creation/linking) of agents and skills with persistent updates back to the project files.",
+      "type": "feat",
+      "status": "pending",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "harness-vscode",
+      "sprint": "MVP"
+    },
+    {
+      "id": "FEAT-005",
+      "name": "progress-timeline",
+      "title": "SDD Progress Timeline",
+      "description": "Visualize the SDD state machine and progress history in a git-style graphical timeline.",
+      "type": "feat",
+      "status": "pending",
+      "sdd": true,
+      "priority": "P2",
+      "agent": "harness-vscode",
+      "sprint": "MVP"
+    }
+  ]
+}

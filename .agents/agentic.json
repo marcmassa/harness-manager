@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "kind": "harness-sdd",
+  "description": "Harness SDD for VS Code Plugin development. This manifest drives the agentic workflow for the vscode-plugin project.",
+  "instructions": [
+    "AGENTS.md",
+    ".agents/harness/CONVENTION.md"
+  ],
+  "skills": {
+    "paths": [
+      ".agents/skills"
+    ]
+  },
+  "default_agent": "harness-vscode",
+  "subagents": [
+    {
+      "name": "harness-vscode",
+      "mode": "primary",
+      "description": "Orchestrator for the VS Code plugin development. Manages feature_list.json and routes tasks between specialized agents.",
+      "role_file": ".agents/subagents/harness-vscode/SUBAGENT.md",
+      "default": true,
+      "permission": {
+        "edit": {
+          "specs/**": "deny",
+          "*": "ask"
+        }
+      }
+    },
+    {
+      "name": "spec-author-vscode",
+      "mode": "subagent",
+      "description": "Responsible for defining EARS requirements and design specs for the VS Code plugin. Focuses on VS Code API interactions and user experience.",
+      "role_file": ".agents/subagents/spec-author-vscode/SUBAGENT.md",
+      "permission": {
+        "edit": {
+          "specs/**": "allow",
+          "progress/**": "allow",
+          "feature_list.json": "allow",
+          "*": "deny"
+        }
+      }
+    },
+    {
+      "name": "typescript-implementer",
+      "mode": "subagent",
+      "description": "Writes TypeScript code for the VS Code plugin. Implements the design specs while adhering to VS Code extension guidelines.",
+      "role_file": ".agents/subagents/typescript-implementer/SUBAGENT.md",
+      "applies_when": {
+        "file_glob": [
+          "**/*.ts",
+          "package.json",
+          "tsconfig.json",
+          "src/**"
+        ]
+      },
+      "permission": {
+        "edit": {
+          "specs/**": "deny",
+          "feature_list.json": "ask",
+          "*": "allow"
+        }
+      }
+    },
+    {
+      "name": "reviewer-vscode",
+      "mode": "subagent",
+      "description": "Validates that the implementation matches the specs and passes all automated checks. Ensures R<n> traceability in tests.",
+      "role_file": ".agents/subagents/reviewer-vscode/SUBAGENT.md",
+      "permission": {
+        "edit": {
+          "specs/**": "deny",
+          "progress/**": "allow",
+          "feature_list.json": "allow",
+          "*": "deny"
+        }
+      }
+    }
+  ],
+  "commands": [
+    {
+      "name": "init",
+      "description": "Set up Harness SDD for this project (agent-driven scaffold lifecycle)",
+      "body_file": ".agents/commands/init.md"
+    },
+    {
+      "name": "status",
+      "description": "Show project state (active feature, specs pending, last progress entries)",
+      "body_file": ".agents/commands/status.md"
+    },
+    {
+      "name": "spec",
+      "description": "Create spec (requirements/design/tasks) for a pending feature",
+      "body_file": ".agents/commands/spec.md"
+    },
+    {
+      "name": "approve",
+      "description": "Approve a spec_ready feature and flip it to in_progress",
+      "body_file": ".agents/commands/approve.md"
+    },
+    {
+      "name": "implement",
+      "description": "Run the implementer on the current in_progress feature",
+      "body_file": ".agents/commands/implement.md"
+    },
+    {
+      "name": "done",
+      "description": "Run the reviewer, verify traceability, mark feature as done",
+      "body_file": ".agents/commands/done.md"
+    },
+    {
+      "name": "check",
+      "description": "Shortcut to ./check.sh",
+      "body_file": ".agents/commands/check.md"
+    }
+  ],
+  "project_detect": [
+    {
+      "label": "terraform",
+      "when": {
+        "file_glob": [
+          "**/*.tf"
+        ]
+      },
+      "apply": {
+        "add_skills": [
+          ".agents/skills/terraform-structure"
+        ],
+        "implementer_permission_overrides": {
+          "edit": {
+            "**/*.tf": "ask",
+            "modules/**/*.tf": "ask"
+          }
+        }
+      }
+    },
+    {
+      "label": "python",
+      "when": {
+        "file_exists": [
+          "pyproject.toml",
+          "setup.py",
+          "requirements.txt"
+        ]
+      },
+      "apply": {
+        "implementer_permission_overrides": {
+          "edit": {
+            "src/**/*.py": "ask",
+            "tests/**/*.py": "allow"
+          }
+        }
+      }
+    },
+    {
+      "label": "go",
+      "when": {
+        "file_exists": [
+          "go.mod"
+        ]
+      },
+      "apply": {
+        "implementer_permission_overrides": {
+          "edit": {
+            "**/*.go": "ask"
+          }
+        }
+      }
+    },
+    {
+      "label": "typescript",
+      "when": {
+        "file_exists": [
+          "package.json"
+        ]
+      },
+      "apply": {
+        "implementer_permission_overrides": {
+          "edit": {
+            "src/**": "ask"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+# --- Dependencies ---
+node_modules/
+.vendor/
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# --- Virtual environments ---
+.virtualenvs/
+.venv/
+venv/
+
+# --- IDE / Editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Build ---
+dist/
+build/
+*.pyc
+__pycache__/
+
+# --- Secrets (never commit) ---
+*.pem
+*.key
+*.cert
+.env
+.env.local
+*.env
+credentials.json
+service-account.json
+*.secret
+
+# --- Terraform ---
+*.terraform.lock.hcl
+crash.log
+
+# --- Helm ---
+charts/**/charts/*.tgz
+
+# --- Agents: sync artifacts ---
+.agents/.tmp_skills/
+
+# --- Generated CLI adapters (regenerate with ./.agents/bootstrap.sh) ---
+/opencode.json
+/opencode.jsonc
+/GEMINI.md
+/.gemini/
+/CLAUDE.md
+/.claude/
+/agy.config*
+
+# --- Local progress ---
+progress/archive/*.bak
