@@ -12,7 +12,7 @@ async function main() {
     sourcemap: watch,
     external: ["vscode"],
     platform: "node",
-    outfile: "dist/extension.js",
+    outfile: "dist/extension.cjs",
   });
 
   const webviewCtx = await esbuild.context({
