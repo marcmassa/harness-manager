@@ -13,7 +13,7 @@
   "activationEvents": [
     "onView:harness-manager.dashboard"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
