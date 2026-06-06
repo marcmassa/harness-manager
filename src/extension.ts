@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { HarnessParser } from './harnessParser.js';
+import { HarnessWriter } from './harnessWriter.js';
 
 export function activate(context: vscode.ExtensionContext) {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
@@ -26,12 +27,14 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-manager.dashboard';
     private _view?: vscode.WebviewView;
     private _parser: HarnessParser;
+    private _writer: HarnessWriter;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
         private readonly _workspaceRoot: vscode.Uri
     ) {
         this._parser = new HarnessParser(this._workspaceRoot);
+        this._writer = new HarnessWriter(this._workspaceRoot);
     }
 
     public resolveWebviewView(
@@ -49,13 +52,31 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
         webviewView.webview.onDidReceiveMessage(async data => {
-            switch (data.type) {
-                case 'ready':
-                    this._sendData();
-                    break;
-                case 'getData':
-                    this._sendData();
-                    break;
+            try {
+                switch (data.type) {
+                    case 'ready':
+                    case 'getData':
+                        this._sendData();
+                        break;
+                    case 'createNode':
+                        if (data.nodeType === 'subagent') {
+                            await this._writer.createSubagent(data.name, data.description);
+                        } else {
+                            await this._writer.createSkill(data.name, data.description);
+                        }
+                        break;
+                    case 'deleteNode':
+                        await this._writer.deleteNode(data.id, data.nodeType);
+                        break;
+                    case 'updateMetadata':
+                        await this._writer.updateMetadata(data.id, data.nodeType, data.metadata);
+                        break;
+                    case 'createEdge':
+                        await this._writer.createEdge(data.source, data.target);
+                        break;
+                }
+            } catch (e: any) {
+                vscode.window.showErrorMessage(`Harness Error: ${e.message}`);
             }
         });
 
@@ -77,12 +98,14 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
     private _getHtmlForWebview(webview: vscode.Webview) {
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.js'));
+        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.css'));
 
         return `<!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="${styleUri}" rel="stylesheet">
                 <title>Harness Dashboard</title>
             </head>
             <body>
