@@ -9,6 +9,7 @@
   "categories": [
     "Other"
   ],
+  "type": "module",
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
@@ -49,9 +50,12 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.54",
     "@vscode/webview-ui-toolkit": "^1.2.2",
+    "dagre": "^0.8.5",
     "gray-matter": "^4.0.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "reactflow": "^11.11.4"
   }
 }

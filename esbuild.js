@@ -23,6 +23,7 @@ async function main() {
     sourcemap: watch,
     platform: "browser",
     outfile: "dist/webview.js",
+    loader: { ".css": "css" },
   });
 
   if (watch) {
