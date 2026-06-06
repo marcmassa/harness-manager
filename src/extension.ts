@@ -87,6 +87,10 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         watcher.onDidChange(() => this._sendData());
         watcher.onDidCreate(() => this._sendData());
         watcher.onDidDelete(() => this._sendData());
+
+        webviewView.onDidDispose(() => {
+            watcher.dispose();
+        });
     }
 
     private async _sendData() {

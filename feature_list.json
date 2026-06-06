@@ -63,7 +63,7 @@
       "title": "SDD Progress Timeline",
       "description": "Visualize the SDD state machine and progress history in a git-style graphical timeline.",
       "type": "feat",
-      "status": "pending",
+      "status": "done",
       "sdd": true,
       "priority": "P2",
       "agent": "harness-vscode",

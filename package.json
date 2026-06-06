@@ -10,7 +10,9 @@
     "Other"
   ],
   "type": "module",
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:harness-manager.dashboard"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
