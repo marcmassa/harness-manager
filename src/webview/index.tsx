@@ -2,15 +2,17 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
-import { HarnessGraph } from '../types.js';
+import { TimelineView } from './TimelineView.js';
+import { DashboardData } from '../types.js';
 
 import 'reactflow/dist/style.css';
 
 provideVSCodeDesignSystem().register(allComponents);
 
 const App = () => {
-    const [graph, setGraph] = React.useState<HarnessGraph | null>(null);
+    const [data, setData] = React.useState<DashboardData | null>(null);
     const [selectedNode, setSelectedNode] = React.useState<any>(null);
+    const [activeTab, setActiveTab] = React.useState('whiteboard');
     const [isCreating, setIsCreating] = React.useState(false);
     const [newNodeName, setNewNodeName] = React.useState('');
     const [newNodeType, setNewNodeType] = React.useState<any>('subagent');
@@ -22,7 +24,7 @@ const App = () => {
             const message = event.data;
             switch (message.type) {
                 case 'init':
-                    setGraph(message.data);
+                    setData(message.data);
                     break;
             }
         };
@@ -50,17 +52,22 @@ const App = () => {
         setSelectedNode(null);
     };
 
-    if (!graph) {
+    if (!data) {
         return <vscode-progress-ring></vscode-progress-ring>;
     }
 
     return (
-        <main style={{ padding: '10px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Harness Whiteboard</h1>
-                <div>
+        <main style={{ padding: '10px', display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            <header style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h1>Harness Dashboard</h1>
                     <vscode-button onClick={() => setIsCreating(true)}>Add Agent/Skill</vscode-button>
                 </div>
+                
+                <vscode-panels activeid={activeTab}>
+                    <vscode-panel-tab id="whiteboard" onClick={() => setActiveTab('whiteboard')}>WHITEBOARD</vscode-panel-tab>
+                    <vscode-panel-tab id="timeline" onClick={() => setActiveTab('timeline')}>TIMELINE</vscode-panel-tab>
+                </vscode-panels>
             </header>
 
             {isCreating && (
@@ -75,9 +82,15 @@ const App = () => {
                 </section>
             )}
             
-            <WhiteboardCanvas graph={graph} onNodeSelect={setSelectedNode} />
+            <div style={{ display: activeTab === 'whiteboard' ? 'flex' : 'none', flex: 1, flexDirection: 'column', minHeight: 0 }}>
+                <WhiteboardCanvas graph={data.graph} onNodeSelect={setSelectedNode} />
+            </div>
 
-            {selectedNode && (
+            <div style={{ display: activeTab === 'timeline' ? 'block' : 'none', flex: 1, overflowY: 'auto' }}>
+                <TimelineView milestones={data.milestones} />
+            </div>
+
+            {selectedNode && activeTab === 'whiteboard' && (
                 <section style={{ marginTop: '10px', padding: '10px', background: 'var(--vscode-sideBar-background)', border: '1px solid var(--vscode-panel-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <h3>Details: {selectedNode.data.label}</h3>
@@ -110,5 +123,3 @@ if (container) {
     const root = createRoot(container);
     root.render(<App />);
 }
-
-

@@ -24,7 +24,22 @@ export interface ParserError {
     message: string;
 }
 
+export interface Milestone {
+    date: string;
+    featureId: string;
+    title: string;
+    outcome: string;
+    status: string;
+}
+
+export interface DashboardData {
+    graph: HarnessGraph;
+    milestones: Milestone[];
+    errors: ParserError[];
+}
+
 export interface ParserResult {
     graph: HarnessGraph;
+    milestones: Milestone[];
     errors: ParserError[];
 }

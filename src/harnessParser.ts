@@ -8,6 +8,7 @@ export class HarnessParser {
     public async parse(): Promise<ParserResult> {
         const result: ParserResult = {
             graph: { nodes: [], edges: [] },
+            milestones: [],
             errors: []
         };
 
@@ -17,6 +18,9 @@ export class HarnessParser {
 
             const featureList = await this._safeReadFile('feature_list.json');
             if (featureList) logic.parseFeatureList(featureList, result);
+
+            const progressMd = await this._safeReadFile('progress/progress.md');
+            if (progressMd) logic.parseProgressMd(progressMd, result);
 
             await this._parseSubagents(result);
             await this._parseSkills(result);

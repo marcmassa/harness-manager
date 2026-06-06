@@ -89,3 +89,30 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
         result.errors.push({ file: filePath, message: e.message });
     }
 }
+
+export function parseProgressMd(content: string, result: ParserResult) {
+    const lines = content.split('\n');
+    let currentMilestone: Partial<Milestone> | null = null;
+
+    for (const line of lines) {
+        // Match: ## [2026-06-05] FEAT-001: webview-foundation (COMPLETED)
+        const headerMatch = line.match(/^##\s+\[(.*?)\]\s+(FEAT-\d+):\s+(.*?)(?:\s+\((.*?)\))?$/);
+        if (headerMatch) {
+            if (currentMilestone) result.milestones.push(currentMilestone as Milestone);
+            currentMilestone = {
+                date: headerMatch[1],
+                featureId: headerMatch[2],
+                title: headerMatch[3],
+                status: headerMatch[4] || 'DONE',
+                outcome: ''
+            };
+            continue;
+        }
+
+        if (currentMilestone && line.startsWith('- **Outcome:**')) {
+            currentMilestone.outcome = line.replace('- **Outcome:**', '').trim();
+        }
+    }
+
+    if (currentMilestone) result.milestones.push(currentMilestone as Milestone);
+}

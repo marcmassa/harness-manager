@@ -23,3 +23,17 @@
 - **Outcome:** Implemented `HarnessWriter` with immediate disk persistence. Added visual node creation, edge linking (connecting skills to agents), and an editable detail panel.
 - **Traceability:** R1-R13 verified via interactive testing and file system validation.
 - **Reviewer:** reviewer-vscode (PASSED)
+
+## [2026-06-05] FEAT-005: progress-timeline (COMPLETED)
+- **Objective:** Visualize the project's SDD history in a git-style timeline.
+- **Outcome:** Enhanced `HarnessParser` to read `progress.md`. Implemented a `TimelineView` with chronological milestones and a tabbed navigation system to switch from the Whiteboard.
+- **Traceability:** R1-R9 verified via visual verification and log parsing.
+- **Reviewer:** reviewer-vscode (PASSED)
+
+# MVP Summary
+The Harness Manager Visualizer MVP is now complete. 
+- Integrated VS Code Webview with React + esbuild.
+- Automatic Harness graph parsing (JSON + Markdown).
+- Interactive Whiteboard with hierarchical auto-layout.
+- Visual editing (Create/Link agents and skills) with disk persistence.
+- SDD Progress Timeline.
