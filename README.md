@@ -2,7 +2,7 @@
 
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
-![Whiteboard preview](media/icon-color.svg)
+![Harness Dashboard icon](media/icon.png)
 
 ---
 
