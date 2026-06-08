@@ -1,0 +1,43 @@
+# Files excluded from the .vsix package
+# Keep this file small — only dist/ + static assets are needed at runtime
+
+# ===== SOURCE & CONFIG (not needed at runtime) =====
+src/
+specs/
+docs/
+progress/
+.agents/
+.claude/
+.gemini/
+.vscode/
+
+# ===== AGENT & FRAMEWORK FILES =====
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+DESIGN.md
+SECURITY.md
+opencode.json
+opencode.jsonc
+feature_list.json
+check.sh
+
+# ===== DEV TOOLING =====
+esbuild.js
+tsconfig.json
+vitest.config.ts
+.env
+.gitignore
+
+# ===== NODE MODULES & LOCK FILES =====
+node_modules/
+package-lock.json
+
+# ===== GIT =====
+.git/
+.gitignore
+
+# ===== EXTRAS =====
+media/icon-color.svg
+media/icon.svg
+scripts/

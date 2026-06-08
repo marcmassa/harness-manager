@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <!--
+    Harness Manager — Activity Bar Icon (monochrome, 24×24)
+    Shape: agent node (top) connected by two angled lines to two subagent nodes (bottom).
+    The horizontal crossbar between subagents forms the "harness" silhouette.
+    Uses currentColor so VS Code applies active/inactive theme tones automatically.
+  -->
+
+  <!-- Angled connection lines from agent to subagents -->
+  <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <line x1="12" y1="7.8" x2="6.2"  y2="15.2"/>
+    <line x1="12" y1="7.8" x2="17.8" y2="15.2"/>
+    <!-- Crossbar — the "harness" beam -->
+    <line x1="6.2" y1="17.5" x2="17.8" y2="17.5"/>
+  </g>
+
+  <!-- Agent node — top, primary (larger) -->
+  <circle cx="12" cy="4.2" r="3.6"/>
+
+  <!-- Subagent nodes — bottom (slightly smaller, same fill) -->
+  <circle cx="6.2"  cy="18.8" r="2.8"/>
+  <circle cx="17.8" cy="18.8" r="2.8"/>
+</svg>

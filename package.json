@@ -1,41 +1,70 @@
 {
-  "name": "harness-manager-vscode",
-  "displayName": "Harness Manager",
-  "description": "Visual dashboard and whiteboard for managing Harness SDD projects.",
+  "name": "harness-dashboard-vscode",
+  "displayName": "Harness Dashboard",
+  "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
   "version": "0.1.0",
+  "publisher": "marcmassa",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#12121e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "ai agents",
+    "agent architecture",
+    "harness sdd",
+    "whiteboard",
+    "subagents",
+    "claude code",
+    "gemini",
+    "cursor",
+    "copilot",
+    "visualization",
+    "graph",
+    "spec driven development"
+  ],
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcmassa/harness-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/marcmassa/harness-manager/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": [
-    "Other"
-  ],
   "type": "module",
   "activationEvents": [
-    "onView:harness-manager.dashboard"
+    "onView:harness-dashboard.dashboard"
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "harness-manager",
-          "title": "Harness Manager",
-          "icon": "$(gear)"
+          "id": "harness-dashboard",
+          "title": "Harness Dashboard",
+          "icon": "./media/icon.svg"
         }
       ]
     },
     "views": {
-      "harness-manager": [
+      "harness-dashboard": [
         {
           "type": "webview",
-          "id": "harness-manager.dashboard",
+          "id": "harness-dashboard.dashboard",
           "name": "Dashboard"
         }
       ]
     },
     "commands": [
       {
-        "command": "harness-manager.openDashboard",
+        "command": "harness-dashboard.openDashboard",
         "title": "Harness: Open Dashboard"
       }
     ]
@@ -44,10 +73,15 @@
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
     "test": "vitest run --reporter=verbose",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "package": "npm run build && vsce package --no-dependencies",
+    "publish": "npm run build && vsce publish --no-dependencies",
+    "vscode:prepublish": "npm run build"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.2",
+    "canvas": "^3.2.3",
     "esbuild": "^0.19.11",
     "typescript": "^5.3.3",
     "vitest": "^4.1.8"

@@ -8,8 +8,8 @@ export function activate(context: vscode.ExtensionContext) {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
     if (!root) return;
 
-    // OutputChannel with log:true — visible in Output > Harness Manager, supports severity filtering
-    const log = vscode.window.createOutputChannel('Harness Manager', { log: true });
+    // OutputChannel with log:true — visible in Output > Harness Dashboard, supports severity filtering
+    const log = vscode.window.createOutputChannel('Harness Dashboard', { log: true });
     context.subscriptions.push(log);
 
     // T1 (R1, R4): pass context so provider can access workspaceState
@@ -23,14 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('harness-manager.openDashboard', () => {
-            vscode.commands.executeCommand('workbench.view.extension.harness-manager');
+        vscode.commands.registerCommand('harness-dashboard.openDashboard', () => {
+            vscode.commands.executeCommand('workbench.view.extension.harness-dashboard');
         })
     );
 }
 
 class HarnessDashboardProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'harness-manager.dashboard';
+    public static readonly viewType = 'harness-dashboard.dashboard';
     private _view?: vscode.WebviewView;
     private _parser: HarnessParser;
     private _writer: HarnessWriter;
@@ -138,9 +138,9 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         const skId = data.skillId;
                         if (saId && skId && typeof saId === 'string' && typeof skId === 'string') {
                             const key = `${saId}::${skId}`;
-                            const current = this._context.workspaceState.get<string[]>('harness-manager.dismissedSuggestions', []);
+                            const current = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
                             if (!current.includes(key)) {
-                                await this._context.workspaceState.update('harness-manager.dismissedSuggestions', [...current, key]);
+                                await this._context.workspaceState.update('harness-dashboard.dismissedSuggestions', [...current, key]);
                             }
                         }
                         this._sendData();
@@ -153,14 +153,14 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         const disable = data.disabled;
                         if (src && tgt && typeof src === 'string' && typeof tgt === 'string') {
                             const key = `${src}::${tgt}`;
-                            const current = this._context.workspaceState.get<string[]>('harness-manager.disabledConnections', []);
+                            const current = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
                             let updated: string[];
                             if (disable) {
                                 updated = current.includes(key) ? current : [...current, key];
                             } else {
                                 updated = current.filter(k => k !== key);
                             }
-                            await this._context.workspaceState.update('harness-manager.disabledConnections', updated);
+                            await this._context.workspaceState.update('harness-dashboard.disabledConnections', updated);
                         }
                         this._sendData();
                         break;
@@ -205,8 +205,8 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         if (this._view) {
             this._log.info('Parsing project data…');
             // T2 (R2): Read persisted state and pass to parser
-            const dismissedRaw = this._context.workspaceState.get<string[]>('harness-manager.dismissedSuggestions', []);
-            const disabledRaw = this._context.workspaceState.get<string[]>('harness-manager.disabledConnections', []);
+            const dismissedRaw = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
+            const disabledRaw = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
             const result = await this._parser.parse({
                 dismissedSuggestions: new Set(dismissedRaw),
                 disabledConnections: new Set(disabledRaw),

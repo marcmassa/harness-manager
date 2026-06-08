@@ -1,5 +1,5 @@
 {
-  "project": "Harness Manager VS Code Plugin",
+  "project": "Harness Dashboard VS Code Plugin",
   "description": "Visual dashboard and whiteboard for managing Harness SDD projects.",
   "rules": {
     "maxConcurrent": 1,
