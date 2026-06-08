@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!--
+    Harness Manager — Full-colour icon (128×128)
+    Palette mirrors the whiteboard UI:
+      Agent     → #4a7dff  (blue)
+      Subagents → #6c4cbc  (purple, button-background tone)
+      Lines     → gradient blue→purple
+      Crossbar  → muted indigo
+    Background: dark panel (#1e1e2e) with subtle vignette
+  -->
+  <defs>
+    <!-- Background radial gradient for depth -->
+    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%"   stop-color="#252540"/>
+      <stop offset="100%" stop-color="#12121e"/>
+    </radialGradient>
+
+    <!-- Agent node glow -->
+    <radialGradient id="agentGlow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%"   stop-color="#7ea8ff"/>
+      <stop offset="100%" stop-color="#3a6ae8"/>
+    </radialGradient>
+
+    <!-- Subagent node gradient -->
+    <radialGradient id="subGlow" cx="40%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#9370e0"/>
+      <stop offset="100%" stop-color="#5a3baa"/>
+    </radialGradient>
+
+    <!-- Line gradient top→bottom (blue→purple) -->
+    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4a7dff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#6c4cbc" stop-opacity="0.7"/>
+    </linearGradient>
+
+    <!-- Agent outer ring glow filter -->
+    <filter id="agentShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.6"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="subShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="0" dy="2"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="lineGlow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background panel -->
+  <rect width="128" height="128" rx="22" fill="url(#bg)"/>
+
+  <!-- Subtle border -->
+  <rect width="128" height="128" rx="22" fill="none"
+        stroke="#3a3a5c" stroke-width="1.5"/>
+
+  <!-- ===== CONNECTION LINES (drawn first, behind nodes) ===== -->
+  <g filter="url(#lineGlow)">
+    <!-- Left line: agent bottom → left subagent top -->
+    <line x1="64" y1="46" x2="33" y2="82"
+          stroke="url(#lineGrad)" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Right line: agent bottom → right subagent top -->
+    <line x1="64" y1="46" x2="95" y2="82"
+          stroke="url(#lineGrad)" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Crossbar — the harness beam -->
+    <line x1="33" y1="94" x2="95" y2="94"
+          stroke="#6c4cbc" stroke-width="2.5" stroke-linecap="round"
+          stroke-opacity="0.65"/>
+  </g>
+
+  <!-- ===== AGENT NODE (top centre) ===== -->
+  <!-- Outer ring / halo -->
+  <circle cx="64" cy="31" r="21" fill="none"
+          stroke="#4a7dff" stroke-width="1.5" stroke-opacity="0.3"/>
+  <!-- Main circle -->
+  <circle cx="64" cy="31" r="17" fill="url(#agentGlow)"
+          filter="url(#agentShadow)"/>
+  <!-- Inner highlight -->
+  <circle cx="60" cy="27" r="5" fill="white" fill-opacity="0.14"/>
+
+  <!-- ===== SUBAGENT NODES ===== -->
+  <!-- Left -->
+  <circle cx="33" cy="96" r="14" fill="url(#subGlow)"
+          filter="url(#subShadow)"/>
+  <circle cx="30" cy="93" r="4" fill="white" fill-opacity="0.12"/>
+
+  <!-- Right -->
+  <circle cx="95" cy="96" r="14" fill="url(#subGlow)"
+          filter="url(#subShadow)"/>
+  <circle cx="92" cy="93" r="4" fill="white" fill-opacity="0.12"/>
+
+  <!-- ===== LABEL (optional wordmark) ===== -->
+  <!-- Small "H" letterform centred in agent node for brand recognition -->
+  <text x="64" y="37" text-anchor="middle"
+        font-family="'SF Pro Display', 'Segoe UI', system-ui, sans-serif"
+        font-size="18" font-weight="700" fill="white" fill-opacity="0.92"
+        letter-spacing="-0.5">H</text>
+</svg>
