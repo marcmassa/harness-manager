@@ -61,10 +61,12 @@ export interface DashboardData {
     graph: HarnessGraph;
     milestones: Milestone[];
     errors: ParserError[];
+    detectedFrameworks?: string[];
 }
 
 export interface ParserResult {
     graph: HarnessGraph;
     milestones: Milestone[];
     errors: ParserError[];
+    detectedFrameworks?: string[];
 }

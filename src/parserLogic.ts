@@ -90,6 +90,7 @@ export function enrichWithIdoneity(result: ParserResult): IdoneityMatrix {
         }));
 
     const matrix = computeIdoneityMatrix(subagents, skills);
+    const nodeTypeById = new Map(result.graph.nodes.map(node => [node.id, node.type]));
 
     // R2: Enrich skill nodes with best owner metadata
     for (const node of result.graph.nodes) {
@@ -113,6 +114,11 @@ export function enrichWithIdoneity(result: ParserResult): IdoneityMatrix {
 
     for (const edge of result.graph.edges) {
         if (edge.label === 'uses') {
+            const sourceType = nodeTypeById.get(edge.source);
+            const targetType = nodeTypeById.get(edge.target);
+            if (sourceType !== 'subagent' || targetType !== 'skill') {
+                continue;
+            }
             // For uses edges: always set idoneity (even 0) for mismatch/styling logic
             const key = `${edge.source}::${edge.target}`;
             const score = idoneityMap.get(key) ?? 0;
@@ -128,11 +134,18 @@ export function enrichWithIdoneity(result: ParserResult): IdoneityMatrix {
     }
 
     // R6: Detect mismatches and flag nodes + edges
-    const existingEdges = result.graph.edges.map(e => ({
-        source: e.source,
-        target: e.target,
-        label: e.label || '',
-    }));
+    const existingEdges = result.graph.edges
+        .filter(e => {
+            if (e.label !== 'uses') return true;
+            const sourceType = nodeTypeById.get(e.source);
+            const targetType = nodeTypeById.get(e.target);
+            return sourceType === 'subagent' && targetType === 'skill';
+        })
+        .map(e => ({
+            source: e.source,
+            target: e.target,
+            label: e.label || '',
+        }));
     const mismatches = detectMismatches(matrix, existingEdges);
     const mismatchSkills = new Set(mismatches.map(m => m.skillId));
     const mismatchEdgeKeys = new Set(mismatches.map(m => `${m.currentOwner}::${m.skillId}`));
@@ -253,12 +266,32 @@ export function addSemanticSuggestions(result: ParserResult, options?: SemanticM
     const existingEdges = result.graph.edges
         .filter(e => e.label === 'uses' || e.label === 'discovered')
         .map(e => ({ source: e.source, target: e.target }));
+    const semanticSuggestions = computeSemanticSuggestions(subagents, skills, existingEdges, options);
+    if (!Array.isArray(semanticSuggestions)) return;
 
-    const suggestions = computeSemanticSuggestions(subagents, skills, existingEdges, options);
+    const suggestions = semanticSuggestions.sort((a, b) => b.score - a.score);
+    const nodeById = new Map(result.graph.nodes.map(node => [node.id, node]));
+    const maxSuggestionsPerSubagent = Math.max(1, options?.maxSuggestionsPerSubagent ?? 2);
+    const acceptedPerSubagent = new Map<string, number>();
 
     for (const s of suggestions) {
         // R1: Skip dismissed suggestions
         if (dismissedSuggestions?.has(`${s.subagentId}::${s.skillId}`)) continue;
+
+        const sourceNode = nodeById.get(s.subagentId);
+        const targetNode = nodeById.get(s.skillId);
+        const sourceFramework = sourceNode?.metadata?._framework;
+        const targetFramework = targetNode?.metadata?._framework;
+        if (
+            typeof sourceFramework === 'string' &&
+            typeof targetFramework === 'string' &&
+            sourceFramework !== targetFramework
+        ) {
+            continue;
+        }
+
+        const currentCount = acceptedPerSubagent.get(s.subagentId) || 0;
+        if (currentCount >= maxSuggestionsPerSubagent) continue;
         const edgeId = `edge-${s.subagentId}-${s.skillId}-suggested`;
         if (!edgeExists(result, s.subagentId, s.skillId, 'suggested')) {
             result.graph.edges.push({
@@ -268,6 +301,7 @@ export function addSemanticSuggestions(result: ParserResult, options?: SemanticM
                 label: 'suggested',
                 metadata: { score: s.score, method: s.method },
             });
+            acceptedPerSubagent.set(s.subagentId, currentCount + 1);
         }
     }
 }
@@ -295,6 +329,25 @@ export function parseAgenticJson(content: string, result: ParserResult) {
                 if (saId === primaryId) {
                     const primaryNode = result.graph.nodes.find(n => n.id === primaryId);
                     if (primaryNode) primaryNode.metadata = { ...primaryNode.metadata, ...sa };
+
+                    // Primary agent can also own skills[]; persist as uses edges from agent → skill.
+                    if (sa.skills) {
+                        for (const skillId of sa.skills) {
+                            if (!nodeExists(result, skillId)) {
+                                result.errors.push({ file: '.agents/agentic.json', message: `Skill '${skillId}' referenced by agent '${primaryId}' does not exist as a node` });
+                                continue;
+                            }
+                            if (!edgeExists(result, primaryId, skillId, 'uses')) {
+                                result.graph.edges.push({
+                                    id: `edge-${primaryId}-${skillId}`,
+                                    source: primaryId,
+                                    target: skillId,
+                                    label: 'uses'
+                                });
+                            }
+                            markSkillLinked(result, skillId);
+                        }
+                    }
                     continue;
                 }
 
@@ -381,16 +434,17 @@ export function parseFeatureList(content: string, result: ParserResult) {
 
 export function parseMarkdown(content: string, filePath: string, result: ParserResult) {
     try {
+        const normalizedPath = filePath.replace(/\\/g, '/');
         const { data, content: body } = matter(content);
-        const fileName = filePath.split('/').pop();
-        const folderName = filePath.split('/').slice(-2, -1)[0];
+        const fileName = normalizedPath.split('/').pop();
+        const folderName = normalizedPath.split('/').slice(-2, -1)[0];
         
         // 1. Identify if this is a subagent/agent file
         if (fileName === 'SUBAGENT.md') {
             const agentId = data.name || folderName;
             const existingNode = result.graph.nodes.find(n => 
                 n.id === agentId || 
-                (n.metadata.role_file && filePath.endsWith(n.metadata.role_file))
+                (n.metadata.role_file && normalizedPath.endsWith(n.metadata.role_file))
             );
 
             // Extract Skills from body (## Skills section)
@@ -402,14 +456,14 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
                 : [];
 
             if (existingNode) {
-                existingNode.metadata = { ...existingNode.metadata, ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList };
+                existingNode.metadata = { ...existingNode.metadata, ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList, _filePath: normalizedPath };
                 if (data.name) existingNode.label = data.name;
             } else {
                 result.graph.nodes.push({
                     id: agentId,
                     type: 'subagent',
                     label: agentId,
-                    metadata: { ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList }
+                    metadata: { ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList, _filePath: normalizedPath }
                 });
             }
 
@@ -425,7 +479,7 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
             for (const skillName of skillsList) {
                 // R8: Skip if skill node doesn't exist
                 if (!nodeExists(result, skillName)) {
-                    result.errors.push({ file: filePath, message: `Skill '${skillName}' referenced by subagent '${agentId}' does not exist as a node` });
+                    result.errors.push({ file: normalizedPath, message: `Skill '${skillName}' referenced by subagent '${agentId}' does not exist as a node` });
                     continue;
                 }
                 if (!edgeExists(result, agentId, skillName, 'uses')) {
@@ -441,11 +495,12 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
             }
         } 
         // 2. Identify if this is a skill file
-        else if (fileName === 'SKILL.md' || filePath.includes('/skills/')) {
+        else if (fileName === 'SKILL.md' || normalizedPath.includes('/skills/')) {
             const skillId = data.name || folderName;
+            const existingSkillNode = result.graph.nodes.find(n => n.id === skillId);
             
             // Avoid duplicates
-            if (!result.graph.nodes.find(n => n.id === skillId)) {
+            if (!existingSkillNode) {
                 result.graph.nodes.push({
                     id: skillId,
                     type: 'skill',
@@ -453,35 +508,34 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
                     metadata: { 
                         ...data, 
                         body: body.substring(0, 500), _fullBody: body,
+                        _filePath: normalizedPath,
                         // Progressive Disclosure — Stage 1: scanned via directory discovery
                         _discovery: 'scanned' as DiscoveryMethod
                     }
                 });
             } else {
-                const existing = result.graph.nodes.find(n => n.id === skillId);
-                if (existing) {
-                    existing.metadata = { 
-                        ...existing.metadata, 
+                existingSkillNode.metadata = { 
+                        ...existingSkillNode.metadata, 
                         ...data, 
                         body: body.substring(0, 500), _fullBody: body,
+                        _filePath: normalizedPath,
                         // Preserve existing discovery status if already set
-                        _discovery: existing.metadata._discovery || 'scanned'
+                        _discovery: existingSkillNode.metadata._discovery || 'scanned'
                     };
-                }
             }
 
             // R2: Scan body for cross-references to other entities
             const allIds = new Set(result.graph.nodes.map(n => n.id));
             const crossRefs = scanCrossReferences(body, skillId, allIds);
             if (crossRefs.length > 0) {
-                const node = result.graph.nodes.find(n => n.id === skillId) || existing;
+                const node = result.graph.nodes.find(n => n.id === skillId) || existingSkillNode;
                 if (node) node.metadata._crossRefs = crossRefs;
             }
 
             // Auto-link: If a skill is inside a subagent's folder, link them
             // Path example: .agents/subagents/harness-vscode/skills/some-skill/SKILL.md
-            if (filePath.includes('/subagents/')) {
-                const parts = filePath.split('/');
+            if (normalizedPath.includes('/subagents/')) {
+                const parts = normalizedPath.split('/');
                 const subagentIdx = parts.indexOf('subagents') + 1;
                 if (subagentIdx > 0 && subagentIdx < parts.length) {
                     const subagentId = parts[subagentIdx];
@@ -500,7 +554,7 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
             }
         }
     } catch (e: any) {
-        result.errors.push({ file: filePath, message: e.message });
+        result.errors.push({ file: filePath.replace(/\\/g, '/'), message: e.message });
     }
 }
 

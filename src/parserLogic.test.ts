@@ -22,6 +22,26 @@ describe('Harness Parser Logic', () => {
         expect(result.graph.edges).toHaveLength(1);
     });
 
+    it('should create uses edges for skills declared on the primary agent entry', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({ id: 'skill-core', type: 'skill', label: 'Skill Core', metadata: {} });
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Main Agent',
+            subagents: [
+                { name: 'primary', mode: 'primary', description: 'Main Agent', skills: ['skill-core'] }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        const usesEdge = result.graph.edges.find(
+            edge => edge.label === 'uses' && edge.source === 'primary' && edge.target === 'skill-core'
+        );
+        expect(usesEdge).toBeDefined();
+    });
+
     it('should parse Markdown frontmatter correctly', () => {
         const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
         const content = `---
@@ -134,6 +154,70 @@ type: subagent
         expect(result.milestones[1].status).toBe('PENDING');
         expect(result.milestones[2].status).toBe('SPEC READY');
         expect(result.milestones[0].date).toBe('MVP');
+    });
+});
+
+describe('Suggestion noise reduction', () => {
+    it('limits suggested edges per subagent using maxSuggestionsPerSubagent', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({
+            id: 'sub-main',
+            type: 'subagent',
+            label: 'Sub Main',
+            metadata: { description: 'security reporting compliance audit', _framework: 'harness-sdd' }
+        });
+        result.graph.nodes.push({
+            id: 'skill-a',
+            type: 'skill',
+            label: 'Skill A',
+            metadata: { description: 'security reporting tool', _framework: 'harness-sdd' }
+        });
+        result.graph.nodes.push({
+            id: 'skill-b',
+            type: 'skill',
+            label: 'Skill B',
+            metadata: { description: 'compliance audit helper', _framework: 'harness-sdd' }
+        });
+        result.graph.nodes.push({
+            id: 'skill-c',
+            type: 'skill',
+            label: 'Skill C',
+            metadata: { description: 'security compliance checks', _framework: 'harness-sdd' }
+        });
+
+        logic.addSemanticSuggestions(result, { threshold: 0, maxSuggestionsPerSubagent: 2 });
+        const suggestedFromSub = result.graph.edges.filter(
+            e => e.label === 'suggested' && e.source === 'sub-main'
+        );
+        expect(suggestedFromSub.length).toBeLessThanOrEqual(2);
+    });
+
+    it('skips cross-framework suggestions when both nodes have different framework ids', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({
+            id: 'sub-main',
+            type: 'subagent',
+            label: 'Sub Main',
+            metadata: { description: 'security reporting compliance', _framework: 'harness-sdd' }
+        });
+        result.graph.nodes.push({
+            id: 'skill-same-framework',
+            type: 'skill',
+            label: 'Skill Same',
+            metadata: { description: 'security reporting', _framework: 'harness-sdd' }
+        });
+        result.graph.nodes.push({
+            id: 'skill-other-framework',
+            type: 'skill',
+            label: 'Skill Other',
+            metadata: { description: 'security reporting', _framework: 'claude-code' }
+        });
+
+        logic.addSemanticSuggestions(result, { threshold: 0, maxSuggestionsPerSubagent: 5 });
+        const suggestedEdges = result.graph.edges.filter(e => e.label === 'suggested');
+
+        expect(suggestedEdges.some(e => e.target === 'skill-same-framework')).toBe(true);
+        expect(suggestedEdges.some(e => e.target === 'skill-other-framework')).toBe(false);
     });
 });
 

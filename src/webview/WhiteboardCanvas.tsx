@@ -10,12 +10,14 @@ import ReactFlow, {
     useReactFlow,
     MarkerType,
     SelectionMode,
+    NodeChange,
 } from 'reactflow';
 import { CustomNode } from './components/CustomNode.js';
 import { EdgeContextMenu } from './components/EdgeContextMenu.js';
 import { getLayoutedElements } from './layoutUtils.js';
 import type { EdgeLabel } from '../types.js';
 import { HarnessGraph } from '../types.js';
+import { ManualPositionMap, isValidNodePosition, mergeLayoutedNodesWithManualPositions } from './nodePositionUtils.js';
 
 const nodeTypes = {
     agent: CustomNode,
@@ -105,8 +107,17 @@ interface Props {
 export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const manualPositionsRef = React.useRef<ManualPositionMap>({});
     const [highlightEdgeId, setHighlightEdgeId] = React.useState<string | null>(null);
     const [hoveredEdgeId, setHoveredEdgeId] = React.useState<string | null>(null);
+    const [pendingLinkSourceId, setPendingLinkSourceId] = React.useState<string | null>(null);
+    const [dragLinkSourceId, setDragLinkSourceId] = React.useState<string | null>(null);
+    const [dragLinkHoverTargetId, setDragLinkHoverTargetId] = React.useState<string | null>(null);
+    const previousNodeSignatureRef = React.useRef<string>('');
+    const hasInitialFitRef = React.useRef(false);
+    const edgesRef = React.useRef<Edge[]>([]);
+    const dragLinkSourceRef = React.useRef<string | null>(null);
+    const pendingEdgeCreationKeysRef = React.useRef<Set<string>>(new Set());
     const { fitView } = useReactFlow();
 
     // Edge context menu state
@@ -121,14 +132,11 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
     // FEAT-011: Idoneity dialog state (R7)
     const [idoneityDialog, setIdoneityDialog] = React.useState<{ subagentId: string; skills: { skillId: string; score: number }[] } | null>(null);
 
-    // Compute which skills are linked (uses) vs discovered per node
+    // Compute which skills are explicitly linked (uses) per node
     const connectedSkills = React.useMemo(() => {
         const map: Record<string, Set<string>> = {};
         for (const edge of graph.edges) {
-            // 'uses' = explicit link (Stage 2: activated)
-            // 'discovered' = available but not linked (Stage 1: discovered)
-            // NOTE: 'suggested' edges are NOT included here — they are not confirmed links
-            if ((edge.label === 'uses' || edge.label === 'discovered') && edge.source) {
+            if (edge.label === 'uses' && edge.source) {
                 if (!map[edge.source]) map[edge.source] = new Set();
                 map[edge.source].add(edge.target);
             }
@@ -139,6 +147,48 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
     const allSkills = React.useMemo(() => 
         graph.nodes.filter(n => n.type === 'skill'),
     [graph.nodes]);
+    const allOwners = React.useMemo(
+        () => graph.nodes.filter((n) => n.type === 'agent' || n.type === 'subagent'),
+        [graph.nodes]
+    );
+    const nodeTypeById = React.useMemo(
+        () => new Map(graph.nodes.map((node) => [node.id, node.type])),
+        [graph.nodes]
+    );
+    const connectedOwners = React.useMemo(() => {
+        const map: Record<string, Set<string>> = {};
+        for (const edge of graph.edges) {
+            if (edge.label !== 'uses') continue;
+            const sourceType = nodeTypeById.get(edge.source);
+            const targetType = nodeTypeById.get(edge.target);
+            if ((sourceType === 'agent' || sourceType === 'subagent') && targetType === 'skill') {
+                if (!map[edge.target]) map[edge.target] = new Set();
+                map[edge.target].add(edge.source);
+            }
+        }
+        return map;
+    }, [graph.edges, nodeTypeById]);
+    const getCanonicalUsesLinkPair = React.useCallback((sourceId: string, targetId: string): { sourceId: string; targetId: string } | null => {
+        if (!sourceId || !targetId || sourceId === targetId) return null;
+        const sourceType = nodeTypeById.get(sourceId);
+        const targetType = nodeTypeById.get(targetId);
+        if (!sourceType || !targetType) return null;
+
+        const sourceIsOwner = sourceType === 'subagent' || sourceType === 'agent';
+        const targetIsOwner = targetType === 'subagent' || targetType === 'agent';
+
+        if (sourceIsOwner && targetType === 'skill') {
+            return { sourceId, targetId };
+        }
+        if (targetIsOwner && sourceType === 'skill') {
+            return { sourceId: targetId, targetId: sourceId };
+        }
+        return null;
+    }, [nodeTypeById]);
+
+    const isValidUsesLinkPair = React.useCallback((sourceId: string, targetId: string): boolean => {
+        return getCanonicalUsesLinkPair(sourceId, targetId) !== null;
+    }, [getCanonicalUsesLinkPair]);
 
     // FEAT-011: Idoneity score → edge style thresholds (R5)
     const IDONEITY_STYLES = {
@@ -217,16 +267,165 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
     }, [selectedEdgeId, edges]);
 
     React.useEffect(() => {
+        edgesRef.current = edges;
+    }, [edges]);
+    React.useEffect(() => {
+        dragLinkSourceRef.current = dragLinkSourceId;
+    }, [dragLinkSourceId]);
+
+    const triggerEdgeCreationFeedback = React.useCallback((edgeId: string) => {
+        setHighlightEdgeId(edgeId);
+        window.setTimeout(() => {
+            setHighlightEdgeId((current) => current === edgeId ? null : current);
+        }, 1200);
+    }, []);
+
+    const createUsesEdge = React.useCallback((sourceId?: string | null, targetId?: string | null) => {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        const canonicalPair = getCanonicalUsesLinkPair(sourceId, targetId);
+        if (!canonicalPair) return;
+
+        const canonicalSourceId = canonicalPair.sourceId;
+        const canonicalTargetId = canonicalPair.targetId;
+        const edgeKey = `${canonicalSourceId}::${canonicalTargetId}::uses`;
+
+        if (pendingEdgeCreationKeysRef.current.has(edgeKey)) return;
+
+        const alreadyExists = edgesRef.current.some((edge) => {
+            const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
+            return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind.startsWith('uses');
+        });
+        if (alreadyExists) return;
+        pendingEdgeCreationKeysRef.current.add(edgeKey);
+        window.setTimeout(() => pendingEdgeCreationKeysRef.current.delete(edgeKey), 400);
+
+        const cfg = edgeConfigs['uses'] || defaultEdgeCfg;
+        const edgeId = `edge-${canonicalSourceId}-${canonicalTargetId}-${Date.now()}`;
+        const newEdge: Edge = {
+            id: edgeId,
+            source: canonicalSourceId,
+            target: canonicalTargetId,
+            label: 'uses',
+            type: EDGE_TYPE_ROUTING['uses'],
+            className: 'harness-edge harness-edge--uses',
+            style: cfg.style,
+            animated: cfg.animated,
+            markerEnd: cfg.markerEnd,
+            data: { originalLabel: 'uses' },
+            labelStyle: {
+                fontSize: '11px',
+                fontWeight: 600,
+                color: cfg.style.stroke as string,
+                background: 'var(--vscode-editor-background)',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                border: `1px solid ${cfg.style.stroke as string}`,
+            },
+            labelBgPadding: [10, 5] as [number, number],
+            labelBgBorderRadius: 4,
+            labelBgStyle: { fill: 'var(--vscode-editor-background)', fillOpacity: 0.95 },
+        };
+        setEdges((eds) => {
+            const existsInState = eds.some((edge) => {
+                const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
+                return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind.startsWith('uses');
+            });
+            return existsInState ? eds : addEdge(newEdge, eds);
+        });
+        triggerEdgeCreationFeedback(edgeId);
+
+        const vscode = (window as any).__harness_vscode_api;
+        if (vscode?.postMessage) {
+            vscode.postMessage({ type: 'createEdge', source: canonicalSourceId, target: canonicalTargetId });
+        }
+    }, [setEdges, triggerEdgeCreationFeedback, getCanonicalUsesLinkPair]);
+
+    const handleSourcePillClick = React.useCallback((sourceId: string) => {
+        setPendingLinkSourceId((current) => current === sourceId ? null : sourceId);
+    }, []);
+
+    const handleTargetPillClick = React.useCallback((targetId: string) => {
+        setPendingLinkSourceId((sourceId) => {
+            if (!sourceId || sourceId === targetId) return sourceId;
+            createUsesEdge(sourceId, targetId);
+            return null;
+        });
+    }, [createUsesEdge]);
+
+    const handleDragLinkHoverChange = React.useCallback((targetId: string, isHovering: boolean) => {
+        const sourceId = dragLinkSourceRef.current;
+        if (!sourceId) {
+            if (!isHovering) setDragLinkHoverTargetId((current) => current === targetId ? null : current);
+            return;
+        }
+        if (sourceId === targetId || !isValidUsesLinkPair(sourceId, targetId)) {
+            setDragLinkHoverTargetId((current) => current === targetId ? null : current);
+            return;
+        }
+        setDragLinkHoverTargetId((current) => {
+            if (isHovering) return targetId;
+            return current === targetId ? null : current;
+        });
+    }, [isValidUsesLinkPair]);
+
+    const handleDragLinkDropOnNode = React.useCallback((targetId: string) => {
+        const sourceId = dragLinkSourceRef.current;
+        if (!sourceId || sourceId === targetId) return;
+        if (!isValidUsesLinkPair(sourceId, targetId)) return;
+        createUsesEdge(sourceId, targetId);
+        setDragLinkHoverTargetId(null);
+        setDragLinkSourceId(null);
+    }, [createUsesEdge, isValidUsesLinkPair]);
+
+    const handleNodesChange = React.useCallback((changes: NodeChange[]) => {
+        onNodesChange(changes);
+
+        for (const change of changes) {
+            if (change.type === 'remove') {
+                delete manualPositionsRef.current[change.id];
+                continue;
+            }
+
+            if (
+                change.type === 'position' &&
+                change.dragging !== true &&
+                isValidNodePosition(change.position)
+            ) {
+                manualPositionsRef.current[change.id] = {
+                    x: change.position.x,
+                    y: change.position.y,
+                };
+            }
+        }
+    }, [onNodesChange]);
+
+    const handleNodeDragStop = React.useCallback((_: any, node: any) => {
+        if (!node?.id || !isValidNodePosition(node?.position)) return;
+        manualPositionsRef.current[node.id] = {
+            x: node.position.x,
+            y: node.position.y,
+        };
+    }, []);
+
+    React.useEffect(() => {
         if (!graph) return;
 
         const initialNodes = graph.nodes.map(n => {
-            let nodeAvailableSkills: { id: string; label: string; alreadyConnected: boolean }[] = [];
-            if (n.type === 'agent' || n.type === 'subagent') {
+            let nodeLinkTargets: { id: string; label: string; alreadyConnected: boolean }[] = [];
+            if (n.type === 'subagent' || n.type === 'agent') {
                 const connected = connectedSkills[n.id] || new Set();
-                nodeAvailableSkills = allSkills.map(skill => ({
+                nodeLinkTargets = allSkills.map(skill => ({
                     id: skill.id,
                     label: skill.label,
                     alreadyConnected: connected.has(skill.id)
+                }));
+            }
+            if (n.type === 'skill') {
+                const connected = connectedOwners[n.id] || new Set();
+                nodeLinkTargets = allOwners.map(owner => ({
+                    id: owner.id,
+                    label: owner.label,
+                    alreadyConnected: connected.has(owner.id)
                 }));
             }
 
@@ -236,43 +435,18 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
                 data: { 
                     label: n.label, 
                     metadata: n.metadata,
-                    availableSkills: nodeAvailableSkills,
-                    onAddSkill: (sourceId: string, skillId: string) => {
-                        const edgeId = `edge-${sourceId}-${skillId}-${Date.now()}`;
-                        const cfg = edgeConfigs['uses'] || defaultEdgeCfg;
-                        const newEdge: Edge = {
-                            id: edgeId,
-                            source: sourceId,
-                            target: skillId,
-                            label: 'uses',
-                            type: EDGE_TYPE_ROUTING['uses'],
-                            className: 'harness-edge harness-edge--uses',
-                            style: cfg.style,
-                            animated: cfg.animated,
-                            markerEnd: cfg.markerEnd,
-                            labelStyle: {
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: cfg.style.stroke as string,
-                                background: 'var(--vscode-editor-background)',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                border: `1px solid ${cfg.style.stroke as string}`,
-                            },
-                            labelBgPadding: [10, 5] as [number, number],
-                            labelBgBorderRadius: 4,
-                            labelBgStyle: { fill: 'var(--vscode-editor-background)', fillOpacity: 0.95 },
-                        };
-                        setEdges((eds) => addEdge(newEdge, eds));
-                        
-                        setHighlightEdgeId(edgeId);
-                        setTimeout(() => setHighlightEdgeId(null), 1500);
-                        
-                        const vscode = (window as any).__harness_vscode_api;
-                        if (vscode && vscode.postMessage) {
-                            vscode.postMessage({ type: 'createEdge', source: sourceId, target: skillId });
-                        }
+                    availableLinkTargets: nodeLinkTargets,
+                    onCreateLink: (sourceId: string, targetId: string) => {
+                        createUsesEdge(sourceId, targetId);
                     },
+                    onSourcePillClick: handleSourcePillClick,
+                    onTargetPillClick: handleTargetPillClick,
+                    onLinkTargetHoverChange: handleDragLinkHoverChange,
+                    onLinkDropOnNode: handleDragLinkDropOnNode,
+                    canLinkThroughPills: n.type === 'agent' || n.type === 'subagent' || n.type === 'skill',
+                    isLinkSourceArmed: false,
+                    isLinkTargetActive: false,
+                    isDragLinkHoverTarget: false,
                     suggestedCount: suggestedCounts[n.id] || 0,
                     isActive: n.id === selectedNodeId,
                     onContextMenu: (event: React.MouseEvent) => {
@@ -306,10 +480,8 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             // Show score in label for suggested edges (FEAT-010 R7)
             const displayLabel = isDisabled
                 ? `⏸ ${label}`
-                : label === 'suggested' && e.metadata?.score
-                ? e.metadata?.source === 'cross-ref'
-                    ? `🔗 suggested (${e.metadata.score})`
-                    : `suggested (${e.metadata.score})`
+                : label === 'suggested'
+                ? ''
                 : label === 'uses' && e.metadata?.idoneity !== undefined
                     ? `uses (${e.metadata.idoneity})`
                     : label;
@@ -350,12 +522,24 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             initialNodes,
             initialEdges
         );
+        const { nodes: mergedNodes, manualPositions } = mergeLayoutedNodesWithManualPositions(
+            layoutedNodes,
+            manualPositionsRef.current
+        );
+        manualPositionsRef.current = manualPositions;
 
-        setNodes([...layoutedNodes]);
+        setNodes([...mergedNodes]);
         setEdges([...layoutedEdges]);
-        
-        window.requestAnimationFrame(() => fitView({ padding: 0.2 }));
-    }, [graph, fitView, allSkills, connectedSkills, setEdges]);
+
+        const nodeSignature = mergedNodes.map((node) => node.id).sort().join('|');
+        const shouldFitView = !hasInitialFitRef.current || nodeSignature !== previousNodeSignatureRef.current;
+        previousNodeSignatureRef.current = nodeSignature;
+
+        if (shouldFitView) {
+            window.requestAnimationFrame(() => fitView({ padding: 0.2 }));
+            hasInitialFitRef.current = true;
+        }
+    }, [graph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
 
     // Update isActive + className on nodes when selectedNodeId changes — no full layout rerun
     React.useEffect(() => {
@@ -367,16 +551,53 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
         })));
     }, [selectedNodeId]);
 
+    React.useEffect(() => {
+        const linkSourceId = pendingLinkSourceId || dragLinkSourceId;
+        setNodes(nds => nds.map(n => ({
+            ...n,
+            data: {
+                ...n.data,
+                isLinkSourceArmed: pendingLinkSourceId === n.id,
+                isLinkTargetActive: Boolean(
+                    linkSourceId &&
+                    linkSourceId !== n.id &&
+                    isValidUsesLinkPair(linkSourceId, n.id) &&
+                    (pendingLinkSourceId ? true : dragLinkHoverTargetId === n.id)
+                ),
+                isDragLinkHoverTarget: Boolean(
+                    dragLinkSourceId &&
+                    dragLinkHoverTargetId === n.id &&
+                    linkSourceId &&
+                    linkSourceId !== n.id &&
+                    isValidUsesLinkPair(linkSourceId, n.id)
+                ),
+            },
+        })));
+    }, [pendingLinkSourceId, dragLinkSourceId, dragLinkHoverTargetId, setNodes, isValidUsesLinkPair]);
+
     const onConnect = React.useCallback(
         (params: Edge | Connection) => {
-            const vscode = (window as any).__harness_vscode_api;
-            if (vscode && vscode.postMessage) {
-                vscode.postMessage({ type: 'createEdge', source: params.source, target: params.target });
-            }
-            setEdges((eds) => addEdge(params, eds));
+            createUsesEdge(params.source, params.target);
+            setPendingLinkSourceId(null);
+            setDragLinkSourceId(null);
+            setDragLinkHoverTargetId(null);
         },
-        [setEdges]
+        [createUsesEdge]
     );
+
+    const onConnectStart = React.useCallback((_: MouseEvent | TouchEvent, params: any) => {
+        const sourceId = params?.handleType === 'source' ? params?.nodeId : null;
+        setPendingLinkSourceId(null);
+        setDragLinkSourceId(sourceId ?? null);
+        setDragLinkHoverTargetId(null);
+    }, []);
+
+    const onConnectEnd = React.useCallback(() => {
+        window.setTimeout(() => {
+            setDragLinkSourceId(null);
+            setDragLinkHoverTargetId(null);
+        }, 0);
+    }, []);
 
     // Edge click handler — show context menu
     const onEdgeClick = React.useCallback((event: React.MouseEvent, edge: Edge) => {
@@ -514,7 +735,8 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             let overrides: Partial<Edge> = {};
 
             if (isHighlight) {
-                const base = edgeConfigs[e.label as string] || defaultEdgeCfg;
+                const edgeLabelKey = ((e.data as any)?.originalLabel || e.label || '') as string;
+                const base = edgeConfigs[edgeLabelKey] || defaultEdgeCfg;
                 overrides = {
                     style: {
                         ...base.style,
@@ -536,9 +758,17 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             <ReactFlow
                 nodes={nodes}
                 edges={edgesWithZIndex}
-                onNodesChange={onNodesChange}
+                onNodesChange={handleNodesChange}
+                onNodeDragStop={handleNodeDragStop}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
+                onPaneClick={() => {
+                    setPendingLinkSourceId(null);
+                    setDragLinkSourceId(null);
+                    setDragLinkHoverTargetId(null);
+                }}
                 onNodeClick={(_, node) => onNodeSelect(node)}
                 onEdgeClick={onEdgeClick}
                 onEdgeMouseEnter={onEdgeMouseEnter}

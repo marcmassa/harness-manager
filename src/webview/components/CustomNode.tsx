@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
+import { FRAMEWORK_ACCENT_BY_ID } from '../../frameworks.js';
 
 const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
 const EASE_SMOOTH = 'cubic-bezier(0.4, 0, 0.2, 1)';
@@ -58,6 +59,7 @@ export const HANDLE_ACCENT: Record<string, string> = {
     feature:  '#888888',
 };
 
+
 export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     const [showSkillPicker, setShowSkillPicker] = React.useState(false);
     const [entered, setEntered] = React.useState(false);
@@ -72,14 +74,27 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
 
     React.useEffect(() => {
         if (!showSkillPicker) return;
-        const handler = (e: MouseEvent) => {
-            if (pickerRef.current && !pickerRef.current.contains(e.target as Node) &&
-                nodeRef.current && !nodeRef.current.contains(e.target as Node)) {
+        const pointerHandler = (e: PointerEvent) => {
+            if (
+                nodeRef.current &&
+                !nodeRef.current.contains(e.target as Node) &&
+                pickerRef.current &&
+                !pickerRef.current.contains(e.target as Node)
+            ) {
                 setShowSkillPicker(false);
             }
         };
-        const timer = setTimeout(() => document.addEventListener('mousedown', handler), 0);
-        return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
+        const keyHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowSkillPicker(false);
+            }
+        };
+        document.addEventListener('pointerdown', pointerHandler, true);
+        document.addEventListener('keydown', keyHandler);
+        return () => {
+            document.removeEventListener('pointerdown', pointerHandler, true);
+            document.removeEventListener('keydown', keyHandler);
+        };
     }, [showSkillPicker]);
 
     // Entrance animation
@@ -137,38 +152,67 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
         filter: 'grayscale(0.5)',
     } : {};
 
+    const frameworkId = typeof data.metadata?._framework === 'string'
+        ? data.metadata._framework
+        : '';
+    const frameworkAccentColor = FRAMEWORK_ACCENT_BY_ID[frameworkId];
+    const frameworkAccentStyle: React.CSSProperties = frameworkAccentColor ? {
+        borderLeft: `4px solid ${frameworkAccentColor}`,
+        boxShadow: `inset 2px 0 0 color-mix(in srgb, ${frameworkAccentColor} 28%, transparent)`,
+    } : {};
+
+    // T12 (R7): accent color derived from node type
+    const accent = HANDLE_ACCENT[type] ?? '#888888';
+    const canLinkThroughPills = data.canLinkThroughPills === true;
+    const isLinkSourceArmed = data.isLinkSourceArmed === true;
+    const isLinkTargetActive = data.isLinkTargetActive === true;
+    const isDragLinkHoverTarget = data.isDragLinkHoverTarget === true;
+    const showSourcePill = canLinkThroughPills && (isActive || isLinkSourceArmed);
+    const showTargetPill = canLinkThroughPills && (isActive || isLinkTargetActive);
+    const sourceHandleInteractive = canLinkThroughPills && showSourcePill;
+    const targetHandleInteractive = canLinkThroughPills && showTargetPill;
+    const dragHoverStyle: React.CSSProperties = isDragLinkHoverTarget ? {
+        outline: '3px solid var(--vscode-focusBorder)',
+        outlineOffset: '3px',
+        boxShadow: [
+            '0 0 0 2px var(--vscode-focusBorder)',
+            '0 0 0 7px rgba(var(--vscode-focusBorder-rgb, 0, 122, 204), 0.2)',
+            '0 0 24px rgba(var(--vscode-focusBorder-rgb, 0, 122, 204), 0.45)',
+            '0 10px 28px rgba(0,0,0,0.35)',
+        ].join(', '),
+    } : {};
+
     const mergedStyle: React.CSSProperties = { 
         ...nodeStyles[type], 
         ...entranceStyle, 
         ...hoverStyle,
         ...selectedStyle,
+        ...dragHoverStyle,
         ...activeStyle,
         ...mismatchBorderStyle,
+        ...frameworkAccentStyle,
         ...orphanStyle,
         position: 'relative' as const,
         cursor: 'pointer',
     };
 
-    // T12 (R7): accent color derived from node type
-    const accent = HANDLE_ACCENT[type] ?? '#888888';
-
     // ===== HANDLE STYLES — redesigned as labeled pill buttons =====
     // The Handle component keeps its drag-to-connect functionality.
-    // We overlay a visible pill label that appears on node hover.
+    // We keep geometry fixed to avoid cursor/handle drift while interacting.
     const handlePillBase: React.CSSProperties = {
-        position: 'absolute',
-        left: '50%',
-        transform: 'translateX(-50%)',
         display: 'flex',
         alignItems: 'center',
         gap: '3px',
-        padding: isHovered ? '2px 10px' : '2px 6px',
+        justifyContent: 'center',
+        minWidth: '78px',
+        height: '24px',
+        padding: '0 10px',
         borderRadius: '12px',
         fontSize: '0.6em',
         fontWeight: 700,
         letterSpacing: '0.8px',
         whiteSpace: 'nowrap',
-        pointerEvents: 'none',   // the Handle div handles events
+        pointerEvents: 'none',
         transition: `all 0.2s ${EASE_SMOOTH}`,
         zIndex: 11,
         userSelect: 'none',
@@ -176,59 +220,61 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
 
     const targetPillStyle: React.CSSProperties = {
         ...handlePillBase,
-        top: '-14px',
-        // BLOCKER-1 fix: use token-pair remoteBackground/remoteForeground — VS Code guarantees
-        // mutual contrast in all themes. Fallback #005f87 gives #fff ratio 7.03:1 (AAA).
-        background: isHovered
-            ? accent
+        background: isLinkTargetActive
+            ? 'color-mix(in srgb, var(--vscode-editorWidget-background, #252526) 72%, var(--vscode-focusBorder) 28%)'
             : 'var(--vscode-editorWidget-background, #252526)',
-        color: isHovered
+        color: isLinkTargetActive
             ? '#ffffff'
             : 'var(--vscode-editorWidget-foreground, var(--vscode-foreground))',
-        border: isHovered
+        border: isLinkTargetActive
             ? `1px solid ${accent}`
             : '1px solid var(--vscode-editorWidget-border, #454545)',
         opacity: 1,
-        boxShadow: isHovered ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
+        boxShadow: isLinkTargetActive ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
     };
 
     const sourcePillStyle: React.CSSProperties = {
         ...handlePillBase,
-        bottom: '-14px',
-        // WARNING-1 fix: same token as target pill — consistent visuals + AAA fallback (7.03:1)
-        background: isHovered
+        background: isLinkSourceArmed
             ? accent
             : 'var(--vscode-editorWidget-background, #252526)',
-        color: isHovered
+        color: isLinkSourceArmed
             ? '#ffffff'
             : 'var(--vscode-editorWidget-foreground, var(--vscode-foreground))',
-        border: isHovered
+        border: isLinkSourceArmed
             ? `1px solid ${accent}`
             : '1px solid var(--vscode-editorWidget-border, #454545)',
         opacity: 1,
-        boxShadow: isHovered ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
+        boxShadow: isLinkSourceArmed ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
     };
 
     // Invisible handle dot — keeps React Flow connection logic
     const hiddenHandleStyle: React.CSSProperties = {
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
+        width: '88px',
+        height: '24px',
+        borderRadius: '12px',
         background: 'transparent',
         border: 'none',
         opacity: 0,
         zIndex: 12,
-        cursor: 'crosshair',
+        cursor: 'pointer',
     };
 
-    const availableSkills: SkillOption[] = data.availableSkills || [];
-    const canAddSkills = (type === 'agent' || type === 'subagent') && availableSkills.length > 0;
+    const linkOptions: SkillOption[] = data.availableLinkTargets || data.availableSkills || [];
+    const canOpenLinkPicker = (type === 'subagent' || type === 'agent' || type === 'skill') && linkOptions.length > 0;
+    const linkPickerTitle = type === 'skill' ? 'Link to Agent/Sub-agent' : 'Link to a Skill';
+    const linkPickerCloseTitle = type === 'skill' ? 'Close Owner List' : 'Close Skills List';
+    const linkPickerHeader = type === 'skill' ? 'Available Owners' : 'Available Skills';
 
-    const handleAddSkill = (skillId: string) => {
+    const handleCreateLink = (targetId: string) => {
         setShowSkillPicker(false);
-        // Delegate to parent — it handles both local graph update + vscode persistence
+        if (data.onCreateLink) {
+            data.onCreateLink(id, targetId);
+            return;
+        }
+        // Backward compatibility
         if (data.onAddSkill) {
-            data.onAddSkill(id, skillId);
+            data.onAddSkill(id, targetId);
         }
     };
 
@@ -238,17 +284,31 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
             className="harness-node"
             data-type={type}
             style={mergedStyle}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => { setIsHovered(false); setShowSkillPicker(false); }}
+            onMouseEnter={() => {
+                setIsHovered(true);
+                if (data.onLinkTargetHoverChange) {
+                    data.onLinkTargetHoverChange(id, true);
+                }
+            }}
+            onMouseLeave={() => {
+                setIsHovered(false);
+                if (data.onLinkTargetHoverChange) {
+                    data.onLinkTargetHoverChange(id, false);
+                }
+            }}
+            onMouseUp={() => {
+                if (data.onLinkDropOnNode) {
+                    data.onLinkDropOnNode(id);
+                }
+            }}
             onContextMenu={data.onContextMenu}
         >
             {/* Active node badge — pinned top-left corner */}
             {isActive && (
                 <div style={{
                     position: 'absolute',
-                    top: '-10px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
+                    top: '8px',
+                    right: '10px',
                     background: 'var(--vscode-focusBorder)',
                     color: '#fff',
                     fontSize: '0.6em',
@@ -265,14 +325,35 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                     ▶ Viewing
                 </div>
             )}
-            {/* ===== TARGET HANDLE (top) — pill button ===== */}
-            <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={targetPillStyle}>
-                    <span>↓</span>
-                    {isHovered && <span>IN</span>}
-                </div>
-                {/* WARNING-3 fix: Handle centered over pill (top:50%) for correct hit area */}
-                <Handle type="target" position={Position.Top} style={{ ...hiddenHandleStyle, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+            {/* ===== TARGET HANDLE (top) — handle always mounted for edge anchoring, pill visual only when active ===== */}
+            <div style={{ position: 'absolute', top: '-28px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {showTargetPill && (
+                    <div style={targetPillStyle}>
+                        <span>{isLinkTargetActive ? '✓' : '↓'}</span>
+                        <span>{isLinkTargetActive ? 'LINK' : 'IN'}</span>
+                    </div>
+                )}
+                <Handle
+                    type="target"
+                    position={Position.Top}
+                    style={{
+                        ...hiddenHandleStyle,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        pointerEvents: targetHandleInteractive ? 'auto' : 'none',
+                        cursor: targetHandleInteractive ? 'pointer' : 'default',
+                    }}
+                    isConnectable={targetHandleInteractive}
+                    title={!canLinkThroughPills ? 'Only agent/subagent/skill nodes can be linked' : isLinkTargetActive ? 'Click to complete link' : 'Drag a link here'}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        if (canLinkThroughPills && data.onTargetPillClick) {
+                            data.onTargetPillClick(id);
+                        }
+                    }}
+                />
             </div>
 
             {/* Header */}
@@ -294,15 +375,36 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                 }}>
                     {type === 'agent' ? '⚡ Agent' : type === 'subagent' ? '▸ Subagent' : type === 'skill' ? '◆ Skill' : '▣ Feature'}
                 </div>
+                {typeof data.metadata?._frameworkLabel === 'string' && (
+                    <div style={{
+                        fontSize: '0.56em',
+                        letterSpacing: '0.4px',
+                        opacity: 0.78,
+                        border: '1px solid rgba(128,128,128,0.35)',
+                        borderRadius: '10px',
+                        padding: '1px 6px',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '120px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                    }}>
+                        {data.metadata._frameworkLabel}
+                    </div>
+                )}
 
                 {/* Redesigned (+) button — always visible on hover */}
-                {canAddSkills && isHovered && !showSkillPicker && (
+                {canOpenLinkPicker && (isHovered || showSkillPicker) && (
                     <div
-                        title="Link to a Skill"
-                        onClick={(e) => { e.stopPropagation(); setShowSkillPicker(true); }}
+                        title={showSkillPicker ? linkPickerCloseTitle : linkPickerTitle}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowSkillPicker((previousState: boolean) => !previousState);
+                        }}
                         style={{
                             width: '24px', height: '24px', borderRadius: '50%',
-                            background: 'var(--vscode-debugIcon-breakpointForeground)',
+                            background: showSkillPicker
+                                ? 'var(--vscode-inputValidation-warningBorder, var(--vscode-debugIcon-breakpointForeground))'
+                                : 'var(--vscode-debugIcon-breakpointForeground)',
                             color: '#fff',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', fontSize: '18px', fontWeight: 'bold',
@@ -320,12 +422,25 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                             (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
                             (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.35)';
                         }}
-                    >+</div>
+                    >
+                        {showSkillPicker ? '×' : '+'}
+                    </div>
                 )}
             </div>
 
             {/* Label */}
             <div style={{ fontWeight: 600, fontSize: '1.05em', lineHeight: 1.3 }}>{data.label}</div>
+            {isLinkSourceArmed && (
+                <div style={{
+                    marginTop: SPACE.xs,
+                    fontSize: '0.58em',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    color: accent,
+                }}>
+                    Click another IN pill to link
+                </div>
+            )}
 
             {/* Suggestion badge — shows on subagents with pending semantic suggestions (FEAT-010, R6) */}
             {(type === 'agent' || type === 'subagent') && data.suggestedCount > 0 && (
@@ -433,20 +548,48 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                 </div>
             )}
 
-            {/* ===== SOURCE HANDLE (bottom) — pill button ===== */}
-            <div style={{ position: 'absolute', bottom: '-14px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={sourcePillStyle}>
-                    <span>+</span>
-                    {isHovered && <span>LINK</span>}
-                </div>
-                {/* WARNING-3 fix: Handle centered over pill (top:50%) for correct hit area */}
-                <Handle type="source" position={Position.Bottom} style={{ ...hiddenHandleStyle, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+            {/* ===== SOURCE HANDLE (bottom) — handle always mounted for edge anchoring, pill visual only when active ===== */}
+            <div style={{ position: 'absolute', bottom: '-28px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {showSourcePill && (
+                    <div style={sourcePillStyle}>
+                        <span>{isLinkSourceArmed ? '✕' : '+'}</span>
+                        <span>{isLinkSourceArmed ? 'READY' : 'LINK'}</span>
+                    </div>
+                )}
+                <Handle
+                    type="source"
+                    position={Position.Bottom}
+                    style={{
+                        ...hiddenHandleStyle,
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        pointerEvents: sourceHandleInteractive ? 'auto' : 'none',
+                        cursor: sourceHandleInteractive ? 'pointer' : 'default',
+                    }}
+                    isConnectable={sourceHandleInteractive}
+                    title={!canLinkThroughPills ? 'Only agent/subagent/skill nodes can be linked' : isLinkSourceArmed ? 'Click to cancel link mode' : 'Click to start link or drag to connect'}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        if (canLinkThroughPills && data.onSourcePillClick) {
+                            data.onSourcePillClick(id);
+                        }
+                    }}
+                />
             </div>
 
             {/* Inline skill picker dropdown */}
             {showSkillPicker && (
                 <div
                     ref={pickerRef}
+                    className="nodrag nowheel"
+                    onWheel={(event) => {
+                        event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                        event.stopPropagation();
+                    }}
                     style={{
                         position: 'absolute',
                         top: '100%',
@@ -458,9 +601,11 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         borderRadius: '8px',
                         boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
                         zIndex: 1000,
-                        minWidth: '220px',
-                        maxHeight: '260px',
+                        minWidth: '280px',
+                        maxWidth: '340px',
+                        maxHeight: '360px',
                         overflowY: 'auto',
+                        overscrollBehavior: 'contain',
                         animation: 'pickerFadeIn 0.2s ease-out',
                     }}>
                     <div style={{
@@ -471,20 +616,20 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         borderBottom: '1px solid var(--vscode-dropdown-border)',
                         letterSpacing: '1px',
                         fontWeight: 700,
-                    }}>Available Skills</div>
-                    {availableSkills.length === 0 && (
+                    }}>{linkPickerHeader}</div>
+                    {linkOptions.length === 0 && (
                         <div style={{ padding: SPACE.sm, fontSize: '0.85em', opacity: 0.5, textAlign: 'center' }}>
-                            No skills available
+                            No options available
                         </div>
                     )}
-                    {availableSkills.map((skill, idx) => (
+                    {linkOptions.map((option, idx) => (
                         <div
-                            key={skill.id}
-                            onClick={(e) => { e.stopPropagation(); if (!skill.alreadyConnected) handleAddSkill(skill.id); }}
+                            key={option.id}
+                            onClick={(e) => { e.stopPropagation(); if (!option.alreadyConnected) handleCreateLink(option.id); }}
                             style={{
                                 padding: `10px 12px`,
-                                cursor: skill.alreadyConnected ? 'not-allowed' : 'pointer',
-                                opacity: skill.alreadyConnected ? 0.35 : 1,
+                                cursor: option.alreadyConnected ? 'not-allowed' : 'pointer',
+                                opacity: option.alreadyConnected ? 0.35 : 1,
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: SPACE.sm,
@@ -494,7 +639,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                                 transition: 'background 0.12s ease',
                             }}
                             onMouseEnter={(e) => { 
-                                if (!skill.alreadyConnected) 
+                                if (!option.alreadyConnected) 
                                     (e.currentTarget as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)'; 
                             }}
                             onMouseLeave={(e) => { 
@@ -503,14 +648,14 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         >
                             <span style={{
                                 width: '8px', height: '8px', borderRadius: '50%',
-                                background: skill.alreadyConnected
+                                background: option.alreadyConnected
                                     ? 'var(--vscode-inputValidation-infoBorder)'
                                     : 'var(--vscode-statusBarItem-remoteBackground)',
                                 display: 'inline-block',
                                 flexShrink: 0,
                             }}></span>
-                            <span>{skill.label}</span>
-                            {skill.alreadyConnected && (
+                            <span>{option.label}</span>
+                            {option.alreadyConnected && (
                                 <span style={{ fontSize: '0.7em', opacity: 0.6, marginLeft: 'auto', flexShrink: 0 }}>✓&nbsp;Linked</span>
                             )}
                         </div>
