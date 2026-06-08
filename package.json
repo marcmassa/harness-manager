@@ -43,7 +43,8 @@
   "scripts": {
     "build": "node esbuild.js",
     "watch": "node esbuild.js --watch",
-    "test": "node ./.agents/harness/harness.sh check"
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",

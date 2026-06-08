@@ -32,6 +32,7 @@ You are the master craftsman of the project. Your mission is to implement the ap
 
 ## Available tools
 - `vscode-extension-best-practices` — Architectural and performance standards.
+- `ui-ux-design-standards` — VS Code extension UI/UX design guidelines.
 - `package.json` — Extension configuration and activation events.
 - `./check.sh` — Local verification script.
 
@@ -44,6 +45,10 @@ You are the master craftsman of the project. Your mission is to implement the ap
 - **Harness Compliance**: Never edit the approved spec files in `specs/`. If you find a design flaw, stop and report it to `harness-vscode`.
 - **Async First**: Use async/await for all VS Code API calls to avoid UI blocking.
 - **Security**: Always use `SecretStorage` for sensitive user data.
+
+## Skills
+- vscode-extension-best-practices
+- ui-ux-design-standards
 
 ## Integration with other sub-agents
 - **spec-author-vscode**: Your source of truth for "what" to build.

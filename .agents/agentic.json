@@ -19,6 +19,7 @@
       "description": "Orchestrator for the VS Code plugin development. Manages feature_list.json and routes tasks between specialized agents.",
       "role_file": ".agents/subagents/harness-vscode/SUBAGENT.md",
       "default": true,
+      "skills": ["harness-sdd", "vscode-extension-best-practices"],
       "permission": {
         "edit": {
           "specs/**": "deny",
@@ -31,6 +32,7 @@
       "mode": "subagent",
       "description": "Responsible for defining EARS requirements and design specs for the VS Code plugin. Focuses on VS Code API interactions and user experience.",
       "role_file": ".agents/subagents/spec-author-vscode/SUBAGENT.md",
+      "skills": ["ears-requirements", "vscode-extension-best-practices"],
       "permission": {
         "edit": {
           "specs/**": "allow",
@@ -43,16 +45,19 @@
     {
       "name": "typescript-implementer",
       "mode": "subagent",
-      "description": "Writes TypeScript code for the VS Code plugin. Implements the design specs while adhering to VS Code extension guidelines.",
+      "description": "Writes TypeScript code for the VS Code plugin. Implements the design specs while adhering to VS Code extension guidelines. Applies UI/UX design standards.",
       "role_file": ".agents/subagents/typescript-implementer/SUBAGENT.md",
       "applies_when": {
         "file_glob": [
           "**/*.ts",
+          "**/*.tsx",
+          "**/*.css",
           "package.json",
           "tsconfig.json",
           "src/**"
         ]
       },
+      "skills": ["vscode-extension-best-practices", "ui-ux-design-standards"],
       "permission": {
         "edit": {
           "specs/**": "deny",
@@ -66,6 +71,7 @@
       "mode": "subagent",
       "description": "Validates that the implementation matches the specs and passes all automated checks. Ensures R<n> traceability in tests.",
       "role_file": ".agents/subagents/reviewer-vscode/SUBAGENT.md",
+      "skills": ["harness-sdd", "vscode-extension-best-practices"],
       "permission": {
         "edit": {
           "specs/**": "deny",

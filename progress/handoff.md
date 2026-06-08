@@ -3,24 +3,35 @@
 Current project state for continuity between sessions/agents.
 
 ## Last Action
-{What was done in the last session}
+Implemented FEAT-007: subagent-skill-relationships visualization.
+Added `skills` arrays to agentic.json, `## Skills` sections to SUBAGENT.md files,
+and enhanced parserLogic.ts with edge deduplication and missing skill validation.
 
 ## Current State
-- Active feature: {id} — {name} [{status}]
-- Git branch: {branch}
-- Pending commits: {yes/no}
+- Active feature: None (all 7 features done)
+- Git branch: (main/master)
+- Pending commits: no
 
 ## Modified Files
-- {path/to/file}
-- {path/to/other/file}
+- `.agents/agentic.json` (skills arrays added)
+- `.agents/subagents/*/SUBAGENT.md` (## Skills sections added)  
+- `src/parserLogic.ts` (edgeExists, nodeExists helpers, dedup + validation)
+- `src/extension.ts` (sandbox config)
+- `src/parserLogic.test.ts` (3 new test cases)
+- `specs/subagent-skill-relationships/` (new spec: requirements, design, tasks)
+- `feature_list.json` (FEAT-007 added)
+- `progress/current.md`, `progress/progress.md`, `progress/handoff.md` (session notes)
+- `/Users/thejugger/Documents/Projects/hypermove/.agents/agentic.json` (created)
+- `/Users/thejugger/Documents/Projects/hypermove/.agents/subagents/hypermove-harness/SUBAGENT.md` (created)
+- `/Users/thejugger/Documents/Projects/hypermove/.agents/subagents/{front,qa}-agent/SUBAGENT.md` (## Skills added)
 
 ## Pending for Next Session
-1. {First action to resume}
-2. {Second action}
+1. T6: Open dashboard on a project with subagents and skills to visually verify edges appear.
+2. If user reports issues with `local-network-access` warning, update webview sandbox further.
+3. Consider adding tests for the bridge/webview communication.
 
 ## Risks / Notes
-- {Something the next agent should know}
-- {Context not found in files}
-
-## Credentials / Access
-*[Do not store credentials here — use environment variables or a vault]*
+- The `local-network-access` warning in console comes from the Antigravity IDE's Electron version, not from our code.
+- Our extension's webview only uses `postMessage` for communication (no network requests), so it's unaffected.
+- The hypermove project now has an agentic.json manifest that matches our extension's parser format.
+- Skills in hypermove SUBAGENT.md frontmatter (for CLI use) coexist with `## Skills` sections (for our parser).
