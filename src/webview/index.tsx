@@ -8,12 +8,87 @@ import { EntitySidePanel } from './components/EntitySidePanel.js';
 import { MDViewer } from './components/MDViewer.js';
 import type { EntityFormData } from './components/EntitySidePanel.js';
 import { DashboardData, MarkdownFileContent } from '../types.js';
+import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 
 import 'reactflow/dist/style.css';
 
 provideVSCodeDesignSystem().register(allComponents);
 
 const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
+
+const PanelActionIcon = ({ children }: { children: React.ReactNode }) => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        {children}
+    </svg>
+);
+
+const IconChevronLeft = () => (
+    <PanelActionIcon>
+        <path d="M10.5 3.5L6 8l4.5 4.5" />
+    </PanelActionIcon>
+);
+
+const IconChevronRight = () => (
+    <PanelActionIcon>
+        <path d="M5.5 3.5L10 8l-4.5 4.5" />
+    </PanelActionIcon>
+);
+
+const IconEdit = () => (
+    <PanelActionIcon>
+        <path d="M3 13l2.8-.7L12.6 5.5 10.5 3.4 3.7 10.2z" />
+        <path d="M9.9 4l2.1 2.1" />
+    </PanelActionIcon>
+);
+
+const IconTrash = () => (
+    <PanelActionIcon>
+        <path d="M2.8 4.5h10.4" />
+        <path d="M6.2 4.5V3.2h3.6v1.3" />
+        <path d="M4.5 4.5l.8 8.3h5.4l.8-8.3" />
+        <path d="M6.7 7v4.2" />
+        <path d="M9.3 7v4.2" />
+    </PanelActionIcon>
+);
+
+const IconClose = () => (
+    <PanelActionIcon>
+        <path d="M4 4l8 8" />
+        <path d="M12 4L4 12" />
+    </PanelActionIcon>
+);
+
+const PanelActionButton = ({
+    title,
+    onClick,
+    children,
+    danger = false,
+}: {
+    title: string;
+    onClick: () => void;
+    children: React.ReactNode;
+    danger?: boolean;
+}) => (
+    <button
+        type="button"
+        className={`harness-panel-action-button${danger ? ' harness-panel-action-button--danger' : ''}`}
+        title={title}
+        aria-label={title}
+        onClick={onClick}
+    >
+        {children}
+    </button>
+);
 
 // ===== SINGLE VS Code API acquisition — shared globally =====
 let _vscode: any = null;
@@ -64,6 +139,88 @@ const SkeletonLoading = () => (
         </div>
     </div>
 );
+const FRAMEWORK_SIGNATURES: Array<{ label: string; signatures: string }> = SUPPORTED_FRAMEWORKS.map((framework) => ({
+    label: framework.label,
+    signatures: framework.signatures.join(', '),
+}));
+
+const FrameworkBadge = ({ frameworks }: { frameworks: string[] }) => {
+    if (frameworks.length === 0) return null;
+    return (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACE.xs,
+                maxWidth: '460px',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                padding: '2px',
+            }}
+            title={`Detected frameworks: ${frameworks.join(' · ')}`}
+        >
+            {frameworks.map((framework) => (
+                <span
+                    key={framework}
+                    style={{
+                        fontSize: '0.68em',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
+                        background: 'var(--vscode-editorWidget-background, var(--vscode-sideBar-background))',
+                        color: 'var(--vscode-editorWidget-foreground, var(--vscode-foreground))',
+                        fontWeight: 600,
+                        letterSpacing: '0.2px',
+                        flexShrink: 0,
+                    }}
+                >
+                    {framework}
+                </span>
+            ))}
+        </div>
+    );
+};
+
+const EmptyState = () => (
+    <div
+        style={{
+            margin: SPACE.lg,
+            border: '1px solid var(--vscode-panel-border)',
+            borderRadius: '10px',
+            padding: SPACE.lg,
+            background: 'color-mix(in srgb, var(--vscode-editor-background) 88%, var(--vscode-sideBar-background))',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: SPACE.md,
+        }}
+    >
+        <div>
+            <div style={{ fontSize: '1.05em', fontWeight: 700, marginBottom: SPACE.xs }}>
+                No agent framework detected
+            </div>
+            <div style={{ opacity: 0.78, lineHeight: 1.45 }}>
+                Add one of the supported framework files to this workspace and the graph will load automatically.
+            </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+            {FRAMEWORK_SIGNATURES.map((framework) => (
+                <div
+                    key={framework.label}
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '160px 1fr',
+                        gap: SPACE.sm,
+                        padding: `${SPACE.xs} 0`,
+                        borderBottom: '1px solid color-mix(in srgb, var(--vscode-panel-border) 70%, transparent)',
+                    }}
+                >
+                    <span style={{ fontWeight: 600 }}>{framework.label}</span>
+                    <code style={{ opacity: 0.82 }}>{framework.signatures}</code>
+                </div>
+            ))}
+        </div>
+    </div>
+);
 
 const App = () => {
     const [data, setData] = React.useState<DashboardData | null>(null);
@@ -71,7 +228,7 @@ const App = () => {
     const [activeTab, setActiveTab] = React.useState('whiteboard');
     const [showSpecs, setShowSpecs] = React.useState(false);
     // T15 (R3): global suggestion edge visibility toggle (session-only)
-    const [showSuggestions, setShowSuggestions] = React.useState(true);
+    const [showSuggestions, setShowSuggestions] = React.useState(false);
     
     // Side panel state (replaces inline isCreating form)
     const [isSidePanelOpen, setIsSidePanelOpen] = React.useState(false);
@@ -81,6 +238,7 @@ const App = () => {
     const [mdLoading, setMdLoading] = React.useState(false);
     // Detail panel tab (FEAT-011 redesigned panel)
     const [detailTab, setDetailTab] = React.useState<'description' | 'markdown'>('description');
+    const [isDetailPanelCollapsed, setIsDetailPanelCollapsed] = React.useState(false);
 
     // Listen for messages from extension
     React.useEffect(() => {
@@ -108,13 +266,15 @@ const App = () => {
     // When a node is selected, request its Markdown file content (R3) and reset detail tab
     React.useEffect(() => {
         if (selectedNode) {
+            setIsDetailPanelCollapsed(false);
             setMdLoading(true);
             setMdContent(null);
             setDetailTab('description');
             vscode.postMessage({ 
                 type: 'getMarkdownContent', 
                 nodeId: selectedNode.id, 
-                nodeType: selectedNode.type 
+                nodeType: selectedNode.type,
+                filePath: selectedNode.data?.metadata?._filePath,
             });
         } else {
             setMdContent(null);
@@ -138,6 +298,25 @@ const App = () => {
 
         return { nodes, edges };
     }, [data, showSpecs, showSuggestions]);
+
+    const detectedFrameworks = React.useMemo(() => {
+        if (!data) return [] as string[];
+        if (Array.isArray(data.detectedFrameworks) && data.detectedFrameworks.length > 0) {
+            return data.detectedFrameworks;
+        }
+        const frameworkSet = new Set<string>();
+        for (const node of data.graph.nodes) {
+            const label = node.metadata?._frameworkLabel || node.metadata?._framework;
+            if (typeof label === 'string' && label.trim().length > 0) {
+                frameworkSet.add(label.trim());
+            }
+        }
+        if (frameworkSet.size === 0 && data.graph.nodes.length > 0) {
+            frameworkSet.add('Harness SDD');
+        }
+        return Array.from(frameworkSet);
+    }, [data]);
+    const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph.nodes.length === 0;
 
     // Handle entity creation from side panel
     const handleCreateEntity = React.useCallback((formData: EntityFormData) => {
@@ -195,6 +374,7 @@ const App = () => {
                     <div style={{ display: 'flex', gap: SPACE.sm, alignItems: 'center' }}>
                         <vscode-checkbox checked={showSpecs} onChange={(e: any) => setShowSpecs(e.target.checked)}>Specs</vscode-checkbox>
                         <vscode-checkbox checked={showSuggestions} onChange={(e: any) => setShowSuggestions(e.target.checked)}>Suggestions</vscode-checkbox>
+                        <FrameworkBadge frameworks={detectedFrameworks} />
                         <vscode-button onClick={() => setIsSidePanelOpen(true)}>Add Entity</vscode-button>
                     </div>
                 </div>
@@ -251,9 +431,13 @@ const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'whiteboard' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <ReactFlowProvider>
-                    <WhiteboardCanvas graph={filteredGraph} onNodeSelect={setSelectedNode} selectedNodeId={selectedNode?.id} />
-                </ReactFlowProvider>
+                {shouldShowEmptyState ? (
+                    <EmptyState />
+                ) : (
+                    <ReactFlowProvider>
+                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={setSelectedNode} selectedNodeId={selectedNode?.id} />
+                    </ReactFlowProvider>
+                )}
             </section>
 
             <section style={{ 
@@ -269,7 +453,7 @@ const App = () => {
             {/* Right: detail panel — slides in from right when a node is selected */}
             {selectedNode && activeTab === 'whiteboard' && (
                 <aside style={{ 
-                    width: '380px',
+                    width: isDetailPanelCollapsed ? '56px' : '380px',
                     display: 'flex',
                     flexDirection: 'column',
                     background: 'var(--vscode-sideBar-background)', 
@@ -279,10 +463,11 @@ const App = () => {
                     animation: 'slideInRight 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
                     overflow: 'hidden',
                     flexShrink: 0,
+                    transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}>
                     {/* Panel header */}
                     <div style={{ 
-                        padding: `${SPACE.sm} ${SPACE.md}`,
+                        padding: isDetailPanelCollapsed ? `${SPACE.sm} ${SPACE.xs}` : `${SPACE.sm} ${SPACE.md}`,
                         borderBottom: '1px solid var(--vscode-panel-border)',
                         display: 'flex', 
                         justifyContent: 'space-between', 
@@ -291,47 +476,60 @@ const App = () => {
                         flexShrink: 0,
                         background: 'color-mix(in srgb, var(--vscode-sideBar-background) 70%, var(--vscode-editor-background))',
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, minWidth: 0, flex: 1 }}>
-                            <h3 style={{ margin: 0, fontSize: '1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {selectedNode.data.label}
-                            </h3>
-                            <vscode-badge style={{ flexShrink: 0 }}>{selectedNode.type.toUpperCase()}</vscode-badge>
-                        </div>
-                        <div style={{ display: 'flex', gap: SPACE.sm, alignItems: 'center' }}>
+                        {!isDetailPanelCollapsed && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, minWidth: 0, flex: 1 }}>
+                                <h3 style={{ margin: 0, fontSize: '1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {selectedNode.data.label}
+                                </h3>
+                                <vscode-badge style={{ flexShrink: 0 }}>{selectedNode.type.toUpperCase()}</vscode-badge>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', gap: SPACE.xs, alignItems: 'center', justifyContent: isDetailPanelCollapsed ? 'center' : 'flex-end', flex: isDetailPanelCollapsed ? 1 : undefined }}>
                             {/* R1, R2 (FEAT-014): Edit File button — visible text, only for skill/subagent */}
-                            {(selectedNode.type === 'skill' || selectedNode.type === 'subagent') && (
-                                <vscode-button
-                                    appearance="secondary"
+                            {!isDetailPanelCollapsed && (selectedNode.type === 'skill' || selectedNode.type === 'subagent') && (
+                                <PanelActionButton
                                     title="Open in VS Code editor for editing"
                                     onClick={() => {
                                         vscode.postMessage({
                                             type: 'openMarkdownFile',
                                             nodeId: selectedNode.id,
                                             nodeType: selectedNode.type,
+                                            filePath: selectedNode.data?.metadata?._filePath,
                                         });
                                         setDetailTab('markdown'); // R4: switch to markdown tab
                                     }}
                                 >
-                                    ✏ Edit File
-                                </vscode-button>
+                                    <IconEdit />
+                                </PanelActionButton>
                             )}
-                            <vscode-button appearance="icon" title="Delete" onClick={() => {
-                                vscode.postMessage({ type: 'deleteNode', id: selectedNode.id, nodeType: selectedNode.type });
-                                setSelectedNode(null);
-                            }}>
-                                <span className="codicon codicon-trash"></span>
-                            </vscode-button>
-                            <vscode-button 
-                                appearance="icon" 
+                            {!isDetailPanelCollapsed && (
+                                <PanelActionButton
+                                    title="Delete"
+                                    danger
+                                    onClick={() => {
+                                        vscode.postMessage({ type: 'deleteNode', id: selectedNode.id, nodeType: selectedNode.type });
+                                        setSelectedNode(null);
+                                    }}
+                                >
+                                    <IconTrash />
+                                </PanelActionButton>
+                            )}
+                            <PanelActionButton
+                                title={isDetailPanelCollapsed ? 'Expand details panel' : 'Collapse details panel'}
+                                onClick={() => setIsDetailPanelCollapsed((collapsed) => !collapsed)}
+                            >
+                                {isDetailPanelCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
+                            </PanelActionButton>
+                            <PanelActionButton
                                 title="Close"
                                 onClick={() => setSelectedNode(null)}
-                                style={{ fontSize: '16px', width: '28px', height: '28px' }}
                             >
-                                <span className="codicon codicon-close"></span>
-                            </vscode-button>
+                                <IconClose />
+                            </PanelActionButton>
                         </div>
                     </div>
-
+                    {!isDetailPanelCollapsed && (
+                        <>
                     {/* Tab bar: Description | Markdown File */}
                     <div style={{ 
                         display: 'flex', 
@@ -531,6 +729,8 @@ const App = () => {
                             </div>
                         )}
                     </div>
+                        </>
+                    )}
                 </aside>
             )}
             </div>{/* end row wrapper */}
@@ -542,6 +742,41 @@ const App = () => {
                     --space-md: 16px;
                     --space-lg: 24px;
                     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .harness-panel-action-button {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 6px;
+                    border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
+                    background: var(--vscode-toolbar-hoverBackground, color-mix(in srgb, var(--vscode-sideBar-background) 80%, var(--vscode-editor-background)));
+                    color: var(--vscode-foreground);
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease, color 0.16s ease;
+                    padding: 0;
+                }
+                .harness-panel-action-button:hover {
+                    background: var(--vscode-list-hoverBackground);
+                    border-color: var(--vscode-focusBorder);
+                }
+                .harness-panel-action-button:active {
+                    transform: scale(0.96);
+                }
+                .harness-panel-action-button--danger {
+                    background: color-mix(in srgb, var(--vscode-errorForeground, #e86f4a) 16%, transparent);
+                    border-color: color-mix(in srgb, var(--vscode-errorForeground, #e86f4a) 42%, var(--vscode-panel-border));
+                    color: color-mix(in srgb, var(--vscode-errorForeground, #e86f4a) 90%, var(--vscode-foreground));
+                }
+                .harness-panel-action-button--danger:hover {
+                    background: color-mix(in srgb, var(--vscode-errorForeground, #e86f4a) 24%, transparent);
+                    color: var(--vscode-errorForeground, #e86f4a);
+                    border-color: var(--vscode-errorForeground, #e86f4a);
+                }
+                .harness-panel-action-button:focus-visible {
+                    outline: 2px solid var(--vscode-focusBorder);
+                    outline-offset: 1px;
                 }
 
                 /* ===== ANIMATIONS ===== */
@@ -727,22 +962,8 @@ const App = () => {
                     font-weight: 600 !important;
                 }
 
-                /* Handle styling */
-                .react-flow__handle {
-                    opacity: 1 !important;
-                    transition: all 0.2s var(--ease-smooth) !important;
-                    cursor: crosshair !important;
-                }
-                .react-flow__handle:hover {
-                    transform: scale(1.3) !important;
-                }
                 .react-flow__handle-connecting {
                     background: var(--vscode-editorWarning-foreground) !important;
-                }
-                .react-flow__node .react-flow__handle {
-                    width: 14px !important;
-                    height: 14px !important;
-                    border: 2.5px solid var(--vscode-editor-background) !important;
                 }
                 .react-flow__node.selected { outline: none; }
 

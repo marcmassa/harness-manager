@@ -1,84 +1,101 @@
 import * as vscode from 'vscode';
 import { ParserResult, MarkdownFileContent } from './types.js';
-import * as logic from './parserLogic.js';
-import { reconcileSkillDiscovery, enrichWithIdoneity, addCrossRefEdges, addSemanticSuggestions, enrichSuggestedEdgesWithIdoneity } from './parserLogic.js';
+import {
+    reconcileSkillDiscovery,
+    enrichWithIdoneity,
+    addCrossRefEdges,
+    addSemanticSuggestions,
+    enrichSuggestedEdgesWithIdoneity,
+} from './parserLogic.js';
+import { AdapterRegistry } from './adapters/AdapterRegistry.js';
+import { createDefaultAdapters } from './adapters/index.js';
+import { normalizePath } from './adapters/adapterUtils.js';
 
-// T2: Options for parse() to support persistent dismissal and disabled connections (R1, R4)
 export interface ParseOptions {
-    dismissedSuggestions?: Set<string>;  // "subagentId::skillId"
-    disabledConnections?: Set<string>;   // "source::target"
+    dismissedSuggestions?: Set<string>;
+    disabledConnections?: Set<string>;
 }
 
 export class HarnessParser {
-    constructor(private readonly workspaceRoot: vscode.Uri) {}
+    private readonly _registry: AdapterRegistry;
+
+    constructor(
+        private readonly workspaceRoot: vscode.Uri,
+        log?: vscode.LogOutputChannel
+    ) {
+        this._registry = new AdapterRegistry(createDefaultAdapters(), log);
+    }
+
+    public getWatchGlobs(): string[] {
+        return this._registry.watchGlobs();
+    }
 
     public async parse(options?: ParseOptions): Promise<ParserResult> {
-        const result: ParserResult = {
-            graph: { nodes: [], edges: [] },
-            milestones: [],
-            errors: []
-        };
-
+        const result = await this._registry.parse(this.workspaceRoot);
         const { dismissedSuggestions, disabledConnections } = options ?? {};
 
         try {
-            const agenticJson = await this._safeReadFile('.agents/agentic.json');
-            if (agenticJson) logic.parseAgenticJson(agenticJson, result);
-
-            const featureList = await this._safeReadFile('feature_list.json');
-            if (featureList) logic.parseFeatureList(featureList, result);
-
-            const progressMd = await this._safeReadFile('progress/progress.md');
-            if (progressMd) logic.parseProgressMd(progressMd, result);
-
-            // Parse skills FIRST so skill nodes exist when subagents reference them
-            await this._parseSkills(result);
-            await this._parseSubagents(result);
-
-            // Progressive Disclosure reconciliation:
-            // Skills that were scanned but never linked → 'orphan' + 'discovered' edges
-            const primaryAgentId = result.graph.nodes.find(n => n.type === 'agent')?.id || 'harness';
+            const primaryAgentId = result.graph.nodes.find((node) => node.type === 'agent')?.id || 'harness';
             reconcileSkillDiscovery(result, primaryAgentId);
 
-            // FEAT-011: Agent-Skill Idoneity & Semantic Ownership
-            // Compute bidirectional idoneity matrix, enrich nodes/edges, detect mismatches
-            // T5 (R10): enrichWithIdoneity now returns the matrix to avoid re-computation
             const idoneityMatrix = enrichWithIdoneity(result);
-
-            // FEAT-012 R3: Cross-reference edge suggestion (T3 R1: pass dismissedSuggestions)
             addCrossRefEdges(result, dismissedSuggestions);
 
-            // FEAT-010: Semantic Skill Discovery (T3 R1: pass dismissedSuggestions)
             const llmScorer = this._createLlmScorer();
             const config = vscode.workspace.getConfiguration('harness.semanticMatcher');
-            await addSemanticSuggestions(result, {
-                threshold: config.get<number>('threshold', 0.25),
+            addSemanticSuggestions(result, {
+                threshold: config.get<number>('threshold', 0.35),
                 llmScorer: config.get<boolean>('llm.enabled', false) ? llmScorer : undefined,
                 llmTopK: config.get<number>('llm.topK', 5),
+                maxSuggestionsPerSubagent: config.get<number>('maxSuggestionsPerSubagent', 2),
             }, dismissedSuggestions);
 
-            // T5 (R10): Pass the pre-computed matrix — no second computeIdoneityMatrix call
             enrichSuggestedEdgesWithIdoneity(result, idoneityMatrix);
 
-            // T4 (R4, R5): Mark disabled connections
             if (disabledConnections && disabledConnections.size > 0) {
                 for (const edge of result.graph.edges) {
                     if (edge.label !== 'uses') continue;
                     const key = `${edge.source}::${edge.target}`;
-                    if (disabledConnections.has(key)) {
-                        edge.metadata = { ...edge.metadata, disabled: true };
-                    }
+                    if (!disabledConnections.has(key)) continue;
+                    edge.metadata = { ...edge.metadata, disabled: true };
                 }
             }
-        } catch (e: any) {
-            result.errors.push({ file: 'system', message: e.message });
+        } catch (error: any) {
+            result.errors.push({ file: 'system', message: error?.message ?? String(error) });
         }
 
         return result;
     }
 
-    private async _safeReadFile(relativePath: string): Promise<string | null> {
-        const uri = vscode.Uri.joinPath(this.workspaceRoot, relativePath);
+    public async getMarkdownContent(nodeId: string, nodeType: string, filePath?: string): Promise<MarkdownFileContent> {
+        const resolvedPath = filePath
+            ? this._toWorkspaceRelativePath(filePath)
+            : this._defaultPathForNode(nodeId, nodeType);
+
+        if (!resolvedPath) {
+            return {
+                nodeId,
+                filePath: '',
+                content: '',
+                exists: false,
+            };
+        }
+
+        const content = await this._safeReadFile(resolvedPath);
+        return {
+            nodeId,
+            filePath: resolvedPath,
+            content: content ?? '',
+            exists: content !== null,
+        };
+    }
+
+    private async _safeReadFile(path: string): Promise<string | null> {
+        const normalizedPath = normalizePath(path);
+        const uri = this._isAbsolutePath(normalizedPath)
+            ? vscode.Uri.file(normalizedPath)
+            : vscode.Uri.joinPath(this.workspaceRoot, normalizedPath);
+
         try {
             const content = await vscode.workspace.fs.readFile(uri);
             return content.toString();
@@ -87,56 +104,32 @@ export class HarnessParser {
         }
     }
 
-    private async _parseSubagents(result: ParserResult) {
-        // Build a set of subagent names already registered from agentic.json
-        const registeredSubagents = new Set(
-            result.graph.nodes
-                .filter(n => n.type === 'subagent')
-                .map(n => n.id)
-        );
-
-        const pattern = new vscode.RelativePattern(vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'subagents'), '**/SUBAGENT.md');
-        const files = await vscode.workspace.findFiles(pattern);
-
-        for (const file of files) {
-            if (file.fsPath.includes('agent-template')) continue;
-            const content = await this._safeReadFile(vscode.workspace.asRelativePath(file));
-            if (content) logic.parseMarkdown(content, file.fsPath, result);
+    private _defaultPathForNode(nodeId: string, nodeType: string): string | null {
+        if (nodeType === 'skill') {
+            return `.agents/skills/${nodeId}/SKILL.md`;
         }
-
-        // R6: Detect orphan subagents — SUBAGENT.md exists but agent NOT in agentic.json
-        // After parseMarkdown, check which subagent nodes were NOT registered before
-        for (const node of result.graph.nodes) {
-            if (node.type !== 'subagent') continue;
-            if (node.metadata._orphan) continue; // already marked
-            if (!registeredSubagents.has(node.id)) {
-                // Node was created by parseMarkdown but not in agentic.json → orphan
-                node.metadata._orphan = true;
-                if (!node.metadata._discovery) {
-                    node.metadata._discovery = 'scanned' as DiscoveryMethod;
-                }
-                result.errors.push({
-                    file: `.agents/subagents/${node.id}/SUBAGENT.md`,
-                    message: `Subagent '${node.id}' found on disk but not registered in agentic.json#subagents[] (orphan)`,
-                });
-            }
+        if (nodeType === 'subagent') {
+            return `.agents/subagents/${nodeId}/SUBAGENT.md`;
         }
+        return null;
     }
 
-    private async _parseSkills(result: ParserResult) {
-        const pattern = new vscode.RelativePattern(vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'skills'), '**/SKILL.md');
-        const files = await vscode.workspace.findFiles(pattern);
+    private _toWorkspaceRelativePath(inputPath: string): string {
+        const normalizedInput = normalizePath(inputPath);
+        if (!this._isAbsolutePath(normalizedInput)) return normalizedInput;
 
-        for (const file of files) {
-            const content = await this._safeReadFile(vscode.workspace.asRelativePath(file));
-            if (content) logic.parseMarkdown(content, file.fsPath, result);
+        const normalizedRoot = normalizePath(this.workspaceRoot.fsPath).replace(/\/+$/, '');
+        if (normalizedInput.startsWith(`${normalizedRoot}/`)) {
+            return normalizedInput.slice(normalizedRoot.length + 1);
         }
+
+        return normalizedInput;
     }
 
-    /**
-     * Creates an LLM scorer callback using vscode.lm (R8, R9).
-     * Returns a dummy scorer that always returns 0 if vscode.lm is unavailable.
-     */
+    private _isAbsolutePath(targetPath: string): boolean {
+        return /^([a-zA-Z]:\/|\/)/.test(normalizePath(targetPath));
+    }
+
     private _createLlmScorer(): (subagentDesc: string, skillDesc: string) => Promise<number> {
         return async (subagentDesc: string, skillDesc: string): Promise<number> => {
             try {
@@ -155,31 +148,10 @@ export class HarnessParser {
                     result += chunk;
                 }
                 const parsed = parseFloat(result.trim());
-                return isNaN(parsed) ? 0 : Math.max(0, Math.min(1, parsed / 10));
+                return Number.isNaN(parsed) ? 0 : Math.max(0, Math.min(1, parsed / 10));
             } catch {
-                // LLM failed — return 0 (fallback to pure TF-IDF)
                 return 0;
             }
-        };
-    }
-
-    public async getMarkdownContent(nodeId: string, nodeType: string): Promise<MarkdownFileContent> {
-        let relativePath: string;
-
-        if (nodeType === 'skill') {
-            relativePath = `.agents/skills/${nodeId}/SKILL.md`;
-        } else {
-            // agent or subagent
-            relativePath = `.agents/subagents/${nodeId}/SUBAGENT.md`;
-        }
-
-        const content = await this._safeReadFile(relativePath);
-
-        return {
-            nodeId,
-            filePath: relativePath,
-            content: content ?? '',
-            exists: content !== null
         };
     }
 }

@@ -1,21 +1,16 @@
 # Current Session State
 
 ## Active Feature
-- None (session closed)
+- FEAT-017 — node-position-persistence-and-pill-linking — **done**
 
 ## Completed This Session
-- FEAT-013 — Skill Toggle & Suggestion Visibility Control — **done**
+- FEAT-015 — Universal Agent Architecture Reader — **implementation completed and validated**
+- FEAT-017 — Node Position Persistence & Handle-Pill Linking — **implementation completed and validated**
 
 ## Summary
-- Bug R7 fixed: `isSuggested`/`isUses` en EdgeContextMenu derivados de `originalLabel`
-- Bug R8 fixed: `handleDismissSuggestion` filtra por `originalLabel === 'suggested'`
-- Bug R9 fixed: dialog Accept usa `(e.data as any)?.originalLabel === 'suggested'`
-- Bug R1/R2 fixed: sugerencias descartadas persisten en `workspaceState` y se excluyen del parser
-- Bug R10 fixed: `enrichWithIdoneity` devuelve la matriz; `enrichSuggestedEdgesWithIdoneity` la recibe
-- Bug R11 fixed: `acc: Record<string, number>` en `_sendData`
-- Bug R12 fixed: overlay transparente cierra menú contextual de nodo
-- R3: checkbox "Suggestions" en header filtra aristas suggested del grafo
-- R4/R6: botón "Disable / Enable Connection" en EdgeContextMenu
-- R5: aristas desactivadas con estilo muted (#6c6c8a, dasharray, opacity 0.45)
-- 8 nuevos tests; total 96 tests, todos en verde; `./check.sh` verde
+- FEAT-017 now persists manual node positions in-session by capturing final drag coordinates and merging them over Dagre layout output during graph refreshes.
+- Handle-pill linking UX was improved by enlarging and centering source/target handle hit areas directly on visible pills, preserving drag-to-connect behavior.
+- Suggestion noise was reduced by tightening semantic suggestion generation (higher threshold, per-subagent cap, cross-framework filtering), hiding suggested edge labels, and defaulting suggestion visibility to off.
+- Added and updated tests for node position merge safety and suggestion noise constraints.
+- Validation passed: `npm test`, `npm run build`, and `./check.sh`.
 

@@ -16,6 +16,8 @@ export interface SemanticMatcherOptions {
     nGramSize?: number;
     /** Optional name-boost map: entity-id → multiplier (R4-R5). */
     nameBoostMap?: Map<string, number>;
+    /** Maximum number of suggested skills to keep per subagent after scoring. */
+    maxSuggestionsPerSubagent?: number;
 }
 
 export interface EntityContent {

@@ -3,6 +3,8 @@ import * as path from 'path';
 import { HarnessParser } from './harnessParser.js';
 import { HarnessWriter } from './harnessWriter.js';
 import type { MarkdownFileContent } from './types.js';
+type CustomUsesEdge = { source: string; target: string };
+const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
 
 export function activate(context: vscode.ExtensionContext) {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
@@ -43,9 +45,9 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         private readonly _context: vscode.ExtensionContext,
         log: vscode.LogOutputChannel,
     ) {
-        this._parser = new HarnessParser(this._workspaceRoot);
-        this._writer = new HarnessWriter(this._workspaceRoot);
         this._log = log;
+        this._parser = new HarnessParser(this._workspaceRoot, this._log);
+        this._writer = new HarnessWriter(this._workspaceRoot);
     }
 
     public resolveWebviewView(
@@ -98,15 +100,23 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         this._sendData();
                         break;
                     case 'createEdge':
-                        await this._writer.createEdge(data.source, data.target);
+                        try {
+                            await this._writer.createEdge(data.source, data.target);
+                        } catch (error: any) {
+                            if (this._shouldUseCustomEdgeFallback(error)) {
+                                await this._upsertCustomUsesEdge(data.source, data.target);
+                            } else {
+                                throw error;
+                            }
+                        }
                         this._sendData();
                         break;
                     case 'getMarkdownContent':
-                        const mdContent: MarkdownFileContent = await this._parser.getMarkdownContent(data.nodeId, data.nodeType);
+                        const mdContent: MarkdownFileContent = await this._parser.getMarkdownContent(data.nodeId, data.nodeType, data.filePath);
                         this._view?.webview.postMessage({ type: 'markdownContent', content: mdContent });
                         break;
                     case 'deleteEdge':
-                        await this._writer.deleteEdge(data.source, data.target, data.label || 'uses');
+                        await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
                         this._sendData();
                         break;
                     case 'confirmAndDeleteEdge':
@@ -116,7 +126,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                             'Yes, Delete'
                         );
                         if (result === 'Yes, Delete') {
-                            await this._writer.deleteEdge(data.source, data.target, data.label || 'uses');
+                            await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
                             this._sendData();
                         }
                         break;
@@ -168,12 +178,17 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                     case 'openMarkdownFile':
                         // Resolve the file path the same way as getMarkdownContent, then open in editor
                         let relPath: string;
-                        if (data.nodeType === 'skill') {
+                        if (typeof data.filePath === 'string' && data.filePath.trim().length > 0) {
+                            relPath = data.filePath;
+                        } else if (data.nodeType === 'skill') {
                             relPath = `.agents/skills/${data.nodeId}/SKILL.md`;
                         } else {
                             relPath = `.agents/subagents/${data.nodeId}/SUBAGENT.md`;
                         }
-                        const fileUri = vscode.Uri.joinPath(this._workspaceRoot, relPath);
+                        const normalizedPath = relPath.replace(/\\/g, '/');
+                        const fileUri = /^([a-zA-Z]:\/|\/)/.test(normalizedPath)
+                            ? vscode.Uri.file(normalizedPath)
+                            : vscode.Uri.joinPath(this._workspaceRoot, normalizedPath);
                         try {
                             await vscode.workspace.fs.stat(fileUri);
                             const doc = await vscode.workspace.openTextDocument(fileUri);
@@ -188,19 +203,71 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             }
         });
 
-        // T7: Setup Watcher
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this._workspaceRoot, '{.agents/**,feature_list.json}')
+        const watchGlobs = this._parser.getWatchGlobs();
+        const watcherPatterns = Array.from(new Set(watchGlobs));
+        const watchers = watcherPatterns.map((glob) =>
+            vscode.workspace.createFileSystemWatcher(
+                new vscode.RelativePattern(this._workspaceRoot, glob)
+            )
         );
-        watcher.onDidChange(() => this._sendData());
-        watcher.onDidCreate(() => this._sendData());
-        watcher.onDidDelete(() => this._sendData());
+
+        for (const watcher of watchers) {
+            watcher.onDidChange(() => this._sendData());
+            watcher.onDidCreate(() => this._sendData());
+            watcher.onDidDelete(() => this._sendData());
+        }
 
         webviewView.onDidDispose(() => {
-            watcher.dispose();
+            for (const watcher of watchers) {
+                watcher.dispose();
+            }
         });
     }
 
+    private _shouldUseCustomEdgeFallback(error: unknown): boolean {
+        const message = String((error as any)?.message || '');
+        return (
+            message.includes('not recognized') ||
+            message.includes('not found in agentic.json#subagents[]')
+        );
+    }
+
+    private async _upsertCustomUsesEdge(source: string, target: string): Promise<void> {
+        if (!source || !target || source === target) return;
+        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
+        if (current.some((edge) => edge.source === source && edge.target === target)) return;
+        await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, [...current, { source, target }]);
+    }
+
+    private async _removeCustomUsesEdge(source: string, target: string): Promise<void> {
+        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
+        const updated = current.filter((edge) =>
+            !(
+                (edge.source === source && edge.target === target) ||
+                (edge.source === target && edge.target === source)
+            )
+        );
+        if (updated.length !== current.length) {
+            await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, updated);
+        }
+    }
+
+    private async _deleteEdgeWithFallback(source: string, target: string, label: string): Promise<void> {
+        if (label !== 'uses') {
+            await this._writer.deleteEdge(source, target, label);
+            return;
+        }
+
+        try {
+            await this._writer.deleteEdge(source, target, label);
+        } catch (error: any) {
+            if (!this._shouldUseCustomEdgeFallback(error)) {
+                throw error;
+            }
+        }
+
+        await this._removeCustomUsesEdge(source, target);
+    }
     private async _sendData() {
         if (this._view) {
             this._log.info('Parsing project data…');
@@ -211,6 +278,28 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                 dismissedSuggestions: new Set(dismissedRaw),
                 disabledConnections: new Set(disabledRaw),
             });
+            const customUsesEdges = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
+            if (customUsesEdges.length > 0) {
+                const nodeIds = new Set(result.graph.nodes.map((node) => node.id));
+                const existingUses = new Set(
+                    result.graph.edges
+                        .filter((edge) => edge.label === 'uses')
+                        .map((edge) => `${edge.source}::${edge.target}`)
+                );
+                for (const edge of customUsesEdges) {
+                    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue;
+                    const key = `${edge.source}::${edge.target}`;
+                    if (existingUses.has(key)) continue;
+                    result.graph.edges.push({
+                        id: `custom-edge-${edge.source}-${edge.target}-uses`,
+                        source: edge.source,
+                        target: edge.target,
+                        label: 'uses',
+                        metadata: { custom: true },
+                    });
+                    existingUses.add(key);
+                }
+            }
 
             const nodeTypeCounts = result.graph.nodes.reduce((acc: Record<string, number>, n) => {
                 acc[n.type] = (acc[n.type] || 0) + 1; // T6 (R11): explicit type, no implicit any

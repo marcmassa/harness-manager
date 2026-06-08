@@ -1,5 +1,20 @@
 # Progress Log
 
+## [2026-06-08] FEAT-017: node-position-persistence-and-pill-linking (COMPLETED)
+- **Objective:** Prevent manually moved nodes from snapping back to auto-layout positions and improve direct pill-to-pill linking ergonomics.
+- **Outcome:** Implemented manual position capture in `WhiteboardCanvas` (`handleNodesChange` + `handleNodeDragStop`) and merged manual coordinates over Dagre layout via `mergeLayoutedNodesWithManualPositions`. Added defensive coordinate validation (`isValidNodePosition`) and stale/invalid map sanitization. Increased handle-pill interaction area and kept handle centers aligned with pills in `CustomNode` for more reliable drag linking.
+- **Additional UX refinement:** Reduced suggestion visual noise by increasing semantic threshold, limiting suggestions per subagent, filtering cross-framework pairs, removing suggested edge inline labels, and defaulting suggestion visibility to off.
+- **Tests:** `src/webview/nodePositionUtils.test.ts`, updates in `src/parserLogic.test.ts`, plus full validation with `npm test`, `npm run build`, and `./check.sh`.
+- **Traceability:** `progress/impl_node-position-persistence-and-pill-linking.md`.
+- **Reviewer:** typescript-implementer (PASSED)
+
+## [2026-06-08] FEAT-015: universal-agent-reader (COMPLETED)
+- **Objective:** Implement universal multi-framework agent architecture parsing and visualization without breaking existing Harness behavior.
+- **Outcome:** Added adapter architecture (`IAgentAdapter`, `AdapterRegistry`, `HarnessSddAdapter`) plus adapters for Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCode, and Windsurf. Integrated parser/UI framework metadata (`detectedFrameworks`, `_framework`, `_frameworkLabel`) with framework badge, 4px node framework accent, and framework empty state. Extended file watching through adapter `watchGlobs()`.
+- **Tests:** `npm run build`, `npx vitest run src/adapters/adapterRegistry.test.ts` (8 passed), `npm test` (120 passed), `./check.sh` (passed).
+- **Traceability:** `progress/impl_universal-agent-reader.md`.
+- **Reviewer:** typescript-implementer (PASSED)
+
 ## [2026-06-08] FEAT-016: relationship-visual-refinement (COMPLETED)
 - **Objective:** Improve edge visual quality and interaction: per-type routing, per-type CSS shadows/glows, label pill borders colored by edge type, animated `suggested` edges, handle-pill accent colors, Z-index layering for hovered/selected edges.
 - **Outcome:** Implemented T1→T15 across three files. Removed global blue `drop-shadow` rules; added per-type `.harness-edge--<type>` CSS blocks with normal/hover/selected states. Added `@keyframes dash-scroll` for `suggested` edges. Added `EDGE_TYPE_ROUTING` constant and applied `type` + `className` to all edge objects. Fixed `labelStyle.border` to use edge stroke color (triple condition: mismatch / disabled / normal). Added `hoveredEdgeId` state + handlers and unified `edgesWithZIndex` memo (highlight flash now #4ec9b0). Updated `handleChangeLabel` and `onAddSkill` to propagate `type`, `className`, and colored border. Added `HANDLE_ACCENT` lookup in `CustomNode` and applied accent color to handle pills on hover.

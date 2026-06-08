@@ -111,37 +111,96 @@ export class HarnessWriter {
         const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
         const content = await vscode.workspace.fs.readFile(agenticUri);
         const data = JSON.parse(content.toString());
+        const primaryAgentName = typeof data.default_agent === 'string' ? data.default_agent : null;
+        if (!Array.isArray(data.subagents)) data.subagents = [];
+        const normalizeNodeId = (value: string): string => {
+            const trimmed = String(value || '').trim();
+            if (!trimmed.includes('::')) return trimmed;
+            const parts = trimmed.split('::').filter(Boolean);
+            return parts.length > 0 ? parts[parts.length - 1] : trimmed;
+        };
+        const normalizedSource = normalizeNodeId(source);
+        const normalizedTarget = normalizeNodeId(target);
 
-        // Determine which is the subagent and which is the skill (support both directions)
-        let subagentName: string | null = null;
+        const findOwnerEntry = (name: string) => data.subagents.find((sa: any) => sa.name === name);
+        const isKnownOwner = (name: string) =>
+            Boolean(findOwnerEntry(name)) || (primaryAgentName !== null && name === primaryAgentName);
+        const skillExists = async (name: string): Promise<boolean> => {
+            const skillUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'skills', name, 'SKILL.md');
+            try {
+                await vscode.workspace.fs.stat(skillUri);
+                return true;
+            } catch {
+                return false;
+            }
+        };
+
+        // Determine owner (agent/subagent) and skill, regardless of drag direction.
+        let ownerName: string | null = null;
         let skillName: string | null = null;
+        const sourceIsOwner = isKnownOwner(normalizedSource);
+        const targetIsOwner = isKnownOwner(normalizedTarget);
 
-        if (data.subagents?.find((sa: any) => sa.name === source)) {
-            subagentName = source;
-            skillName = target;
-        } else if (data.subagents?.find((sa: any) => sa.name === target)) {
-            subagentName = target;
-            skillName = source;
+        if (sourceIsOwner && !targetIsOwner) {
+            ownerName = normalizedSource;
+            skillName = normalizedTarget;
+        } else if (targetIsOwner && !sourceIsOwner) {
+            ownerName = normalizedTarget;
+            skillName = normalizedSource;
+        } else if (sourceIsOwner && targetIsOwner) {
+            throw new Error(`Edge requires one owner (agent/subagent) and one skill. '${normalizedSource}' and '${normalizedTarget}' are both owners.`);
+        } else {
+            const sourceIsSkill = await skillExists(normalizedSource);
+            const targetIsSkill = await skillExists(normalizedTarget);
+
+            if (sourceIsSkill && !targetIsSkill) {
+                ownerName = normalizedTarget;
+                skillName = normalizedSource;
+            } else if (targetIsSkill && !sourceIsSkill) {
+                ownerName = normalizedSource;
+                skillName = normalizedTarget;
+            } else if (sourceIsSkill && targetIsSkill) {
+                throw new Error(`Edge requires one owner (agent/subagent) and one skill. '${normalizedSource}' and '${normalizedTarget}' are both skills.`);
+            }
         }
 
-        if (!subagentName || !skillName) {
-            throw new Error(`Edge requires one subagent and one skill. '${source}' and '${target}' not recognized.`);
+        if (!ownerName || !skillName) {
+            throw new Error(`Edge requires one owner (agent/subagent) and one skill. '${normalizedSource}' and '${normalizedTarget}' not recognized.`);
+        }
+        let ownerEntry = findOwnerEntry(ownerName);
+        // If primary agent is not represented in subagents[], add a minimal entry
+        // so skills[] relations can still be persisted.
+        if (!ownerEntry && ownerName === primaryAgentName) {
+            ownerEntry = {
+                name: ownerName,
+                mode: 'primary',
+                description: data.description || '',
+                role_file: `.agents/subagents/${ownerName}/SUBAGENT.md`,
+                permission: {
+                    edit: {
+                        '*': 'deny'
+                    }
+                }
+            };
+            data.subagents.push(ownerEntry);
+        }
+        if (!ownerEntry) {
+            throw new Error(`Owner '${ownerName}' not found in agentic.json#subagents[]`);
         }
 
         // 1. Update agentic.json
-        const subagent = data.subagents.find((sa: any) => sa.name === subagentName);
-        if (!subagent.skills) subagent.skills = [];
-        if (!subagent.skills.includes(skillName)) {
-            subagent.skills.push(skillName);
+        if (!ownerEntry.skills) ownerEntry.skills = [];
+        if (!ownerEntry.skills.includes(skillName)) {
+            ownerEntry.skills.push(skillName);
         }
         await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
 
         // 2. Update SUBAGENT.md — add ## Skills section if missing, or append to it
-        const subagentMdUri = vscode.Uri.joinPath(
-            this.workspaceRoot, '.agents', 'subagents', subagentName, 'SUBAGENT.md'
+        const ownerMdUri = vscode.Uri.joinPath(
+            this.workspaceRoot, '.agents', 'subagents', ownerName, 'SUBAGENT.md'
         );
         try {
-            const mdContent = (await vscode.workspace.fs.readFile(subagentMdUri)).toString();
+            const mdContent = (await vscode.workspace.fs.readFile(ownerMdUri)).toString();
             const parsed = matter(mdContent);
             let body = parsed.content;
 
@@ -170,11 +229,11 @@ export class HarnessWriter {
 
             if (body !== parsed.content) {
                 const newContent = matter.stringify(body, parsed.data);
-                await vscode.workspace.fs.writeFile(subagentMdUri, Buffer.from(newContent));
+                await vscode.workspace.fs.writeFile(ownerMdUri, Buffer.from(newContent));
             }
         } catch {
             // SUBAGENT.md might not exist yet — silently skip markdown update
-            console.warn(`SUBAGENT.md not found for '${subagentName}', skipped markdown update`);
+            console.warn(`SUBAGENT.md not found for '${ownerName}', skipped markdown update`);
         }
     }
 
@@ -184,27 +243,38 @@ export class HarnessWriter {
         const agentic = JSON.parse(agenticContent.toString());
 
         if (label === 'uses') {
-            // Find subagent and remove skill from its skills[] array
-            const subagent = agentic.subagents?.find((sa: any) => sa.name === source);
-            const subagentName = subagent ? source : 
-                agentic.subagents?.find((sa: any) => sa.name === target) ? target : null;
-            const skillName = subagent ? target : source;
+            if (!Array.isArray(agentic.subagents)) agentic.subagents = [];
+            const primaryAgentName = typeof agentic.default_agent === 'string' ? agentic.default_agent : null;
+            const normalizeNodeId = (value: string): string => {
+                const trimmed = String(value || '').trim();
+                if (!trimmed.includes('::')) return trimmed;
+                const parts = trimmed.split('::').filter(Boolean);
+                return parts.length > 0 ? parts[parts.length - 1] : trimmed;
+            };
+            const normalizedSource = normalizeNodeId(source);
+            const normalizedTarget = normalizeNodeId(target);
 
-            if (subagentName) {
-                const sa = agentic.subagents?.find((s: any) => s.name === subagentName);
-                if (sa && sa.skills) {
-                    sa.skills = sa.skills.filter((s: string) => s !== skillName);
+            const sourceIsOwner = Boolean(agentic.subagents.find((sa: any) => sa.name === normalizedSource)) || normalizedSource === primaryAgentName;
+            const targetIsOwner = Boolean(agentic.subagents.find((sa: any) => sa.name === normalizedTarget)) || normalizedTarget === primaryAgentName;
+
+            const ownerName = sourceIsOwner ? normalizedSource : targetIsOwner ? normalizedTarget : null;
+            const skillName = ownerName === normalizedSource ? normalizedTarget : normalizedSource;
+
+            if (ownerName) {
+                const ownerEntry = agentic.subagents.find((s: any) => s.name === ownerName);
+                if (ownerEntry && ownerEntry.skills) {
+                    ownerEntry.skills = ownerEntry.skills.filter((s: string) => s !== skillName);
                 }
 
                 // Persist agentic.json
                 await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(agentic, null, 2)));
 
                 // Remove from SUBAGENT.md ## Skills section
-                const subagentMdUri = vscode.Uri.joinPath(
-                    this.workspaceRoot, '.agents', 'subagents', subagentName, 'SUBAGENT.md'
+                const ownerMdUri = vscode.Uri.joinPath(
+                    this.workspaceRoot, '.agents', 'subagents', ownerName, 'SUBAGENT.md'
                 );
                 try {
-                    const mdContent = (await vscode.workspace.fs.readFile(subagentMdUri)).toString();
+                    const mdContent = (await vscode.workspace.fs.readFile(ownerMdUri)).toString();
                     const parsed = matter(mdContent);
                     let body = parsed.content;
 
@@ -229,11 +299,11 @@ export class HarnessWriter {
 
                         if (body !== parsed.content) {
                             const newContent = matter.stringify(body.trimStart(), parsed.data);
-                            await vscode.workspace.fs.writeFile(subagentMdUri, Buffer.from(newContent));
+                            await vscode.workspace.fs.writeFile(ownerMdUri, Buffer.from(newContent));
                         }
                     }
                 } catch {
-                    console.warn(`SUBAGENT.md not found for '${subagentName}', skipped markdown update`);
+                    console.warn(`SUBAGENT.md not found for '${ownerName}', skipped markdown update`);
                 }
             }
         } else if (label === 'manages') {
