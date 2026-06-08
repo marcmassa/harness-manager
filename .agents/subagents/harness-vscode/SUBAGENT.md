@@ -51,6 +51,9 @@ You are the central conductor of the **Harness SDD** framework for this VS Code 
 - **typescript-implementer**: Routes approved specs to this agent for coding.
 - **reviewer-vscode**: Invokes this agent to validate the final implementation and tests.
 
+## Skills
+- harness-sdd
+
 ## Workflow
 1. Read `feature_list.json` to identify the next `pending` feature.
 2. Delegate to `spec-author-vscode` to create the requirements, design, and tasks.

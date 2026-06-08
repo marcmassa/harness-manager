@@ -4,15 +4,27 @@ import { Node, Edge } from 'reactflow';
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 172;
-const nodeHeight = 50;
+const nodeWidth = 200;
+const nodeHeight = 80;
 
 export const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
     const isHorizontal = direction === 'LR';
-    dagreGraph.setGraph({ rankdir: direction });
+    dagreGraph.setGraph({ 
+        rankdir: direction,
+        ranksep: 120, 
+        nodesep: 100,
+    });
 
+    // To influence hierarchy, we can set node rank based on type
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+        // High rank (top) for agents, low rank (bottom) for skills
+        let rank = 1;
+        if (node.type === 'agent') rank = 0;
+        if (node.type === 'subagent') rank = 1;
+        if (node.type === 'skill') rank = 2;
+        if (node.type === 'feature') rank = 3;
+
+        dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight, rank });
     });
 
     edges.forEach((edge) => {

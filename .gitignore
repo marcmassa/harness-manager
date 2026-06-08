@@ -57,6 +57,7 @@ charts/**/charts/*.tgz
 /CLAUDE.md
 /.claude/
 /agy.config*
+.agents/
 
 # --- Local progress ---
 progress/archive/*.bak

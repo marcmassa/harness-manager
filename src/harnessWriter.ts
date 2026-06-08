@@ -46,15 +46,29 @@ export class HarnessWriter {
         await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(subagentDir, 'SUBAGENT.md'), Buffer.from(mdContent));
     }
 
-    public async createSkill(name: string, description: string): Promise<void> {
+    public async createSkill(
+        name: string, 
+        description: string, 
+        options?: { license?: string; compatibility?: string; author?: string; version?: string }
+    ): Promise<void> {
         const skillDir = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'skills', name);
         await vscode.workspace.fs.createDirectory(skillDir);
 
-        const mdContent = matter.stringify(`\n${description}`, {
+        const frontmatter: Record<string, any> = {
             name,
+            description,
             type: 'skill'
-        });
+        };
 
+        if (options?.license) frontmatter.license = options.license;
+        if (options?.compatibility) frontmatter.compatibility = options.compatibility;
+        if (options?.author || options?.version) {
+            frontmatter.metadata = {};
+            if (options?.author) frontmatter.metadata.author = options.author;
+            if (options?.version) frontmatter.metadata.version = options.version;
+        }
+
+        const mdContent = matter.stringify(`\n${description}`, frontmatter);
         await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(skillDir, 'SKILL.md'), Buffer.from(mdContent));
     }
 
@@ -87,19 +101,256 @@ export class HarnessWriter {
         }
     }
 
+    public async acceptSuggestion(subagentId: string, skillId: string): Promise<void> {
+        // Accepting a suggestion is semantically identical to creating a uses edge:
+        // updates agentic.json skills[] array + SUBAGENT.md ## Skills section
+        await this.createEdge(subagentId, skillId);
+    }
+
     public async createEdge(source: string, target: string): Promise<void> {
-        // Logic: if source is subagent and target is skill, update subagent metadata
         const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
         const content = await vscode.workspace.fs.readFile(agenticUri);
         const data = JSON.parse(content.toString());
 
-        const subagent = data.subagents?.find((sa: any) => sa.name === source);
-        if (subagent) {
-            if (!subagent.skills) subagent.skills = [];
-            if (!subagent.skills.includes(target)) {
-                subagent.skills.push(target);
-                await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+        // Determine which is the subagent and which is the skill (support both directions)
+        let subagentName: string | null = null;
+        let skillName: string | null = null;
+
+        if (data.subagents?.find((sa: any) => sa.name === source)) {
+            subagentName = source;
+            skillName = target;
+        } else if (data.subagents?.find((sa: any) => sa.name === target)) {
+            subagentName = target;
+            skillName = source;
+        }
+
+        if (!subagentName || !skillName) {
+            throw new Error(`Edge requires one subagent and one skill. '${source}' and '${target}' not recognized.`);
+        }
+
+        // 1. Update agentic.json
+        const subagent = data.subagents.find((sa: any) => sa.name === subagentName);
+        if (!subagent.skills) subagent.skills = [];
+        if (!subagent.skills.includes(skillName)) {
+            subagent.skills.push(skillName);
+        }
+        await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+
+        // 2. Update SUBAGENT.md — add ## Skills section if missing, or append to it
+        const subagentMdUri = vscode.Uri.joinPath(
+            this.workspaceRoot, '.agents', 'subagents', subagentName, 'SUBAGENT.md'
+        );
+        try {
+            const mdContent = (await vscode.workspace.fs.readFile(subagentMdUri)).toString();
+            const parsed = matter(mdContent);
+            let body = parsed.content;
+
+            // Check if ## Skills section already exists
+            const skillsSectionRegex = /##\s+Skills\s*\n([\s\S]*?)(?=\n##|\n*$)/i;
+            const match = body.match(skillsSectionRegex);
+
+            if (match) {
+                // Append to existing ## Skills section if skill not already listed
+                const existingSkills = match[1].split('\n')
+                    .map(s => s.replace(/^[-*\s]*/, '').trim())
+                    .filter(s => s.length > 0);
+                if (!existingSkills.some(s => s === skillName)) {
+                    const newSection = `## Skills\n${match[1].trimEnd()}\n- ${skillName}\n`;
+                    body = body.replace(/##\s+Skills\s*\n[\s\S]*?(?=\n##|\n*$)/i, newSection);
+                }
+            } else {
+                // No ## Skills section exists — add it before first ## section or at end
+                const firstSectionMatch = body.match(/\n(?=##)/);
+                if (firstSectionMatch) {
+                    body = body.replace(firstSectionMatch, `\n## Skills\n- ${skillName}\n\n`);
+                } else {
+                    body += `\n\n## Skills\n- ${skillName}\n`;
+                }
+            }
+
+            if (body !== parsed.content) {
+                const newContent = matter.stringify(body, parsed.data);
+                await vscode.workspace.fs.writeFile(subagentMdUri, Buffer.from(newContent));
+            }
+        } catch {
+            // SUBAGENT.md might not exist yet — silently skip markdown update
+            console.warn(`SUBAGENT.md not found for '${subagentName}', skipped markdown update`);
+        }
+    }
+
+    public async deleteEdge(source: string, target: string, label: string): Promise<void> {
+        const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
+        const agenticContent = await vscode.workspace.fs.readFile(agenticUri);
+        const agentic = JSON.parse(agenticContent.toString());
+
+        if (label === 'uses') {
+            // Find subagent and remove skill from its skills[] array
+            const subagent = agentic.subagents?.find((sa: any) => sa.name === source);
+            const subagentName = subagent ? source : 
+                agentic.subagents?.find((sa: any) => sa.name === target) ? target : null;
+            const skillName = subagent ? target : source;
+
+            if (subagentName) {
+                const sa = agentic.subagents?.find((s: any) => s.name === subagentName);
+                if (sa && sa.skills) {
+                    sa.skills = sa.skills.filter((s: string) => s !== skillName);
+                }
+
+                // Persist agentic.json
+                await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(agentic, null, 2)));
+
+                // Remove from SUBAGENT.md ## Skills section
+                const subagentMdUri = vscode.Uri.joinPath(
+                    this.workspaceRoot, '.agents', 'subagents', subagentName, 'SUBAGENT.md'
+                );
+                try {
+                    const mdContent = (await vscode.workspace.fs.readFile(subagentMdUri)).toString();
+                    const parsed = matter(mdContent);
+                    let body = parsed.content;
+
+                    // Remove skill from ## Skills section
+                    const skillsSectionRegex = /##\s+Skills\s*\n([\s\S]*?)(?=\n##|\n*$)/i;
+                    const match = body.match(skillsSectionRegex);
+                    if (match) {
+                        const remainingLines = match[1].split('\n')
+                            .filter(line => {
+                                const trimmed = line.replace(/^[-*\s]*/, '').trim();
+                                return trimmed.length === 0 || trimmed !== skillName;
+                            });
+                        
+                        if (remainingLines.some(l => l.trim().length > 0)) {
+                            // Keep section with remaining skills
+                            const newSection = `## Skills\n${remainingLines.join('\n')}\n`;
+                            body = body.replace(/##\s+Skills\s*\n[\s\S]*?(?=\n##|\n*$)/i, newSection);
+                        } else {
+                            // Remove entire ## Skills section (no skills left)
+                            body = body.replace(/\n*##\s+Skills\s*\n[\s\S]*?(?=\n##|\n*$)/i, '\n');
+                        }
+
+                        if (body !== parsed.content) {
+                            const newContent = matter.stringify(body.trimStart(), parsed.data);
+                            await vscode.workspace.fs.writeFile(subagentMdUri, Buffer.from(newContent));
+                        }
+                    }
+                } catch {
+                    console.warn(`SUBAGENT.md not found for '${subagentName}', skipped markdown update`);
+                }
+            }
+        } else if (label === 'manages') {
+            // Remove subagent from agentic.json subagents[] array
+            // source is the primary agent, target is the subagent to remove
+            const subagentName = target;
+            agentic.subagents = agentic.subagents.filter((sa: any) => sa.name !== subagentName);
+            await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(agentic, null, 2)));
+        } else if (label === 'executing') {
+            // Remove agent assignment from feature_list.json
+            const featureListUri = vscode.Uri.joinPath(this.workspaceRoot, 'feature_list.json');
+            try {
+                const flContent = await vscode.workspace.fs.readFile(featureListUri);
+                const flData = JSON.parse(flContent.toString());
+                if (flData.features) {
+                    // target is the feature ID
+                    const feature = flData.features.find((f: any) => f.id === target);
+                    if (feature && feature.agent) {
+                        delete feature.agent;
+                    }
+                    await vscode.workspace.fs.writeFile(featureListUri, Buffer.from(JSON.stringify(flData, null, 2)));
+                }
+            } catch {
+                console.warn(`feature_list.json not found or invalid`);
             }
         }
+    }
+
+    public async reassignSkill(skillId: string, newOwner: string): Promise<void> {
+        // 1. Find and delete ALL uses edges pointing to this skill
+        const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
+        const content = await vscode.workspace.fs.readFile(agenticUri);
+        const data = JSON.parse(content.toString());
+
+        const oldOwners: string[] = [];
+
+        if (data.subagents) {
+            for (const sa of data.subagents) {
+                if (sa.skills && sa.skills.includes(skillId)) {
+                    oldOwners.push(sa.name);
+                    sa.skills = sa.skills.filter((s: string) => s !== skillId);
+                }
+            }
+        }
+
+        // 2. Persist agentic.json with old owners removed
+        await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+
+        // 3. Remove from each old owner's SUBAGENT.md ## Skills section
+        for (const oldOwner of oldOwners) {
+            const subagentMdUri = vscode.Uri.joinPath(
+                this.workspaceRoot, '.agents', 'subagents', oldOwner, 'SUBAGENT.md'
+            );
+            try {
+                const mdContent = (await vscode.workspace.fs.readFile(subagentMdUri)).toString();
+                const parsed = matter(mdContent);
+                let body = parsed.content;
+
+                const skillsSectionRegex = /##\s+Skills\s*\n([\s\S]*?)(?=\n##|\n*$)/i;
+                const match = body.match(skillsSectionRegex);
+                if (match) {
+                    const remainingLines = match[1].split('\n')
+                        .filter(line => {
+                            const trimmed = line.replace(/^[-*\s]*/, '').trim();
+                            return trimmed.length === 0 || trimmed !== skillId;
+                        });
+
+                    if (remainingLines.some(l => l.trim().length > 0)) {
+                        const newSection = `## Skills\n${remainingLines.join('\n')}\n`;
+                        body = body.replace(/##\s+Skills\s*\n[\s\S]*?(?=\n##|\n*$)/i, newSection);
+                    } else {
+                        body = body.replace(/\n*##\s+Skills\s*\n[\s\S]*?(?=\n##|\n*$)/i, '\n');
+                    }
+
+                    if (body !== parsed.content) {
+                        const newContent = matter.stringify(body.trimStart(), parsed.data);
+                        await vscode.workspace.fs.writeFile(subagentMdUri, Buffer.from(newContent));
+                    }
+                }
+            } catch {
+                console.warn(`SUBAGENT.md not found for '${oldOwner}', skipped markdown update`);
+            }
+        }
+
+        // 4. Ensure newOwner exists in agentic.json (it may be an orphan subagent detected from disk)
+        const newOwnerExists = data.subagents?.some((sa: any) => sa.name === newOwner);
+        if (!newOwnerExists) {
+            if (!data.subagents) data.subagents = [];
+            data.subagents.push({
+                name: newOwner,
+                mode: 'subagent',
+                description: '',  // will be populated from SUBAGENT.md on next parse
+                role_file: `.agents/subagents/${newOwner}/SUBAGENT.md`,
+                permission: {
+                    edit: {
+                        '*': 'deny'
+                    }
+                }
+            });
+            await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+        }
+
+        // 5. Create new uses edge from newOwner to skillId
+        await this.createEdge(newOwner, skillId);
+    }
+
+    public async updateEdgeLabel(source: string, target: string, newLabel: string): Promise<void> {
+        // For 'uses' edges: no label is persisted separately — the relationship
+        // is stored in subagent.skills[] and the label is always 'uses'.
+        // For 'manages' and 'executing' edges, the label is derived from the data structure.
+        // This method handles the data restructuring needed for label changes.
+        
+        if (newLabel === 'uses') {
+            // If changing to 'uses', ensure the skill link exists in subagent.skills[]
+            await this.createEdge(source, target);
+        }
+        // Other label transitions are structural changes that require re-parsing;
+        // the local graph update handles the visual change.
     }
 }

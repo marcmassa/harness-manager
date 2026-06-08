@@ -147,7 +147,7 @@ if ! $SPEC_ONLY && ! $PY_ONLY && ! $GO_ONLY && [ -f "package.json" ]; then
 
 	if [ -f "vitest.config.js" ] || [ -f "vitest.config.ts" ]; then
 		section "TypeScript — Tests"
-		npm test -- --run 2>&1 | tail -10 && pass "npm test" || warn "npm test: some tests failed"
+		npm test 2>&1 | tail -20 && pass "npm test" || warn "npm test: some tests failed"
 	fi
 fi
 

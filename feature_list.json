@@ -68,6 +68,138 @@
       "priority": "P2",
       "agent": "harness-vscode",
       "sprint": "MVP"
+    },
+    {
+      "id": "FEAT-006",
+      "name": "ui-ux-refinement",
+      "title": "UI/UX Refinement & Layout Fixes",
+      "description": "Ensure all agents/subagents are visible, fix detail panel visibility, and optimize whiteboard screen utilization.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "harness-vscode",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-007",
+      "name": "subagent-skill-relationships",
+      "title": "Subagent-Skill Relationships Visualization",
+      "description": "Visualize which skills each subagent uses by adding skills array to agentic.json and ## Skills section to SUBAGENT.md files. Ensure subagents are positioned north of skills in the whiteboard layout.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "harness-vscode",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-008",
+      "name": "ui-ux-visual-design",
+      "title": "UI/UX Visual Design & Interaction Enhancement",
+      "description": "Apply ui-ux-design-standards skill to improve node styling, edge clarity, spacing consistency, hover/selection feedback, empty states, and detail panel layout across the whiteboard and timeline.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-009",
+      "name": "relationship-editor-md-viewer-side-panel",
+      "title": "Relationship Editor, MD Viewer & Side Panel for Entity Creation",
+      "description": "Allow users to delete/modify edges between nodes, view SUBAGENT.md/SKILL.md content on node click, and open a side panel alongside the activity bar for creating entities with full Agent Skills spec fields.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-010",
+      "name": "semantic-skill-discovery",
+      "title": "Semantic Skill Discovery & Suggestion",
+      "description": "Infers subagent↔skill relationships from description texts using TF-IDF cosine similarity. Rendered as suggested edges on the whiteboard; user can accept to convert to hard-linked uses edges. Optional vscode.lm LLM re-ranking improves accuracy.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P2",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-011",
+      "name": "agent-skill-idoneity",
+      "title": "Agent-Skill Idoneity & Semantic Ownership",
+      "description": "Refactors subagent↔skill relationships to be driven by bidirectional semantic idoneity. Computes composite TF-IDF scores for all pairs, assigns a best semantic owner per skill, highlights mismatches where current uses differs from the best owner, and modulates edge styling by idoneity score.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-012",
+      "name": "enhanced-entity-intelligence",
+      "title": "Enhanced Entity Discovery & Cross-Reference Intelligence",
+      "description": "Improves subagent/skill detection and agent-skill relationship inference with full-body semantic signal (instead of only frontmatter description), cross-reference scanning from markdown bodies, name-boosted TF-IDF scoring, n-gram support for phrase-level matching, orphan subagent detection, and elimination of the arbitrary 500-char body truncation.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-013",
+      "name": "skill-toggle-and-suggestion-control",
+      "title": "Skill Toggle & Suggestion Visibility Control",
+      "description": "Allow users to permanently dismiss semantic relationship suggestions (they don't reappear after reload), and enable/disable (toggle) existing skill connections for agents and subagents. Also fixes critical bugs found by code analysis: suggestion persistence, double idoneity computation, implicit any types, and fragile event listeners.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-014",
+      "name": "open-file-in-editor",
+      "title": "Open Markdown File in VS Code Editor",
+      "description": "Fix the 'Open in Editor' button that was partially implemented in FEAT-009 but is effectively invisible. Root causes: icon-only button (codicon may not render in webview sandbox), placed inside tab content instead of the panel header, and shown for all node types including agent/feature which have no editable file. Fix: add a prominent text button in the detail panel header, visible only for skill and subagent nodes.",
+      "type": "fix",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Post-MVP"
+    },
+    {
+      "id": "FEAT-015",
+      "name": "universal-agent-reader",
+      "title": "Universal Agent Architecture Reader",
+      "description": "Extend the plugin to detect and visualize agent architectures from any major agentic tool (Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCode, Windsurf, Continue) without requiring Harness SDD. Each tool's config is parsed through a dedicated adapter into the common HarnessGraph model, merged into a single unified whiteboard view.",
+      "type": "feat",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-016",
+      "name": "relationship-visual-refinement",
+      "title": "Relationship Lines Visual & Interaction Refinement",
+      "description": "Improve how relationship edges look and interact with node boxes: per-type routing (smoothstep for manages, bezier for uses/suggested), per-type glow/shadow, label pills with edge color, hover/selection states per edge type, animated scroll for suggested edges, handle-pill visual integration, and Z-index layering for selected/hovered edges.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
     }
   ]
 }
