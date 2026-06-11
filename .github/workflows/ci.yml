@@ -46,6 +46,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # `clean: true` is the default but we set it explicitly
+          # so a future maintainer does not accidentally leave
+          # files from a previous run. (The CI was seeing
+          # `esbuild@0.28.0` in package-lock.json after we
+          # pushed 0.19.12 — the only way that can happen is if
+          # the runner's working directory had a leftover file
+          # from a previous run that the checkout did not clean.)
+          clean: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -62,18 +71,27 @@ jobs:
           # Re-enable the cache only if `npm ci` becomes a
           # bottleneck in CI.
 
-      # Diagnostic: report the runner's architecture. If the CI
-      # ever starts failing on @esbuild platform packages again,
-      # this line tells you whether the runner is x64 or arm64.
-      # If it is arm64 (e.g., the GitHub Actions arm64 rollout
-      # is now default for this account), regenerate the
-      # lockfile from an arm64 Linux environment, or change
-      # `runs-on` to `[ubuntu-latest, x64]` to force x64.
-      - name: Report runner architecture
+      # Diagnostic + safety: report the runner architecture,
+      # the md5sum of the lockfile, the lockfile version,
+      # and the esbuild version it contains. The expected
+      # output for a healthy run is:
+      #   Runner arch: x86_64
+      #   Node arch:   x64
+      #   OS:          Linux
+      #   lockfile md5: <hash>
+      #   lockfileVersion: 2
+      #   esbuild in lockfile: 0.19.12
+      # If the esbuild version is anything other than 0.19.12,
+      # the lockfile is NOT what we pushed — the runner is
+      # using a stale file from somewhere.
+      - name: Diagnostic: lockfile state
         run: |
           echo "Runner arch: $(uname -m)"
           echo "Node arch:   $(node -e 'console.log(process.arch)')"
           echo "OS:          $(uname -s)"
+          echo "lockfile md5: $(md5sum package-lock.json | cut -d' ' -f1)"
+          echo "lockfileVersion: $(node -e 'console.log(require("./package-lock.json").lockfileVersion)')"
+          echo "esbuild in lockfile: $(node -e 'console.log(require("./package-lock.json").packages["node_modules/esbuild"].version)')"
 
       # Defensive: clear any pre-existing npm cache before
       # `npm ci`. This is belt-and-suspenders against the
@@ -83,6 +101,17 @@ jobs:
       # this run's install.
       - name: Clear npm cache
         run: npm cache clean --force 2>/dev/null || true
+
+      # Defensive: remove any leftover `node_modules/` from a
+      # previous failed run on the same runner. `actions/checkout`
+      # with `clean: true` removes everything except files in
+      # `.gitignore`, but `.gitignore` lists `node_modules/`
+      # so it WILL be removed. This step is belt-and-suspenders
+      # for the case where the runner's working dir was somehow
+      # not cleaned (it has been observed to happen in rare
+      # GitHub Actions caching scenarios).
+      - name: Clean node_modules
+        run: rm -rf node_modules && echo "removed node_modules (if any)"
 
       - name: Install dependencies
         run: npm ci
