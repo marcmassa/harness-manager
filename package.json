@@ -85,7 +85,7 @@
     "@vscode/test-electron": "2.3.0",
     "@vscode/vsce": "^3.9.2",
     "canvas": "^3.2.3",
-    "esbuild": "^0.19.11",
+    "esbuild": "^0.28.0",
     "mocha": "^11.7.6",
     "typescript": "^5.3.3",
     "vitest": "^4.1.8"
