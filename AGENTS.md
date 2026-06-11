@@ -301,3 +301,10 @@ This template is **CLI-agnostic**. It does **not** ship hand-crafted config file
 To add a new CLI: copy `.agents/adapters/opencode/` to `.agents/adapters/<your-cli>/`, edit the templates and the README to map fields to your CLI's schema, then add a case in `.agents/adapters/_common/render.py`.
 
 To change capabilities (a new subagent, skill, or command): **edit `.agents/agentic.json`** and re-run `./.agents/bootstrap.sh <your-cli>`. Never edit the generated adapter files directly.
+
+
+
+### Skill Loading Mechanism
+According to the `agentskills.io` standard, skill association and loading happens in two ways:
+1. **Explicit Association (Primary):** Sub-agents explicitly declare the skills they need in their `SUBAGENT.md` under the `## Skills` section. The agent MUST load these skills fully when assuming the role.
+2. **Progressive Disclosure (Dynamic):** For skills not explicitly linked, the agent reads ONLY the YAML frontmatter (`name` and `description`) of `SKILL.md` files in `.agents/skills/`. If the current task matches the `description` trigger, the agent MUST read and apply the full skill.

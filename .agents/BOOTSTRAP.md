@@ -22,8 +22,11 @@ expects, and to write the resulting file(s) wherever your CLI scans.
 2. **Read the reference examples.**
    Inspect at least one prebuilt adapter for inspiration:
    - `.agents/adapters/opencode/README.md` (field mapping reference)
-   - `.agents/adapters/opencode/opencode.json.tmpl`
    - Optionally `.agents/adapters/claude-code/` and `.agents/adapters/gemini-cli/`
+
+   > **Note**: opencode is rendered **programmatically** by `render_opencode()`
+   > in `.agents/adapters/_common/render.py` (no `.tmpl` file is processed).
+   > Inspect the Python function for the canonical output shape.
 
 3. **Detect your project stack.**
    Inspect the repo for: `**/*.tf`, `pyproject.toml`, `setup.py`, `requirements.txt`,
