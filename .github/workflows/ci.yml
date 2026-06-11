@@ -23,6 +23,23 @@ permissions:
 jobs:
   ci:
     name: ci
+    # Pin the architecture to x64 explicitly. The `ubuntu-latest`
+    # label has been migrating to arm64 in some GitHub Actions
+    # accounts and runner pools since 2025, which would silently
+    # change the CPU that the lockfile's platform packages target.
+    # The esbuild and @vscode/test-electron (VS Code download)
+    # platform packages have both x64 and arm64 variants, and
+    # `npm ci` may pick the wrong one if the runner arch is
+    # ambiguous. Pinning to x64 here pins the entire install
+    # to the same architecture the lockfile was generated for
+    # (the maintainer's macOS dev box, which is x64-compatible
+    # via Rosetta when needed; the local CI-equivalent runs on
+    # x64 Linux per the previous debugging).
+    #
+    # To switch to arm64: change `ubuntu-latest` to
+    # `[ubuntu-latest, arm64]` and regenerate the lockfile from
+    # an arm64 Linux environment (Docker on Apple Silicon,
+    # a Linux arm64 VM, or a native arm64 dev box).
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -44,6 +61,19 @@ jobs:
           # class of "lockfile says X, cache has Y" failures.
           # Re-enable the cache only if `npm ci` becomes a
           # bottleneck in CI.
+
+      # Diagnostic: report the runner's architecture. If the CI
+      # ever starts failing on @esbuild platform packages again,
+      # this line tells you whether the runner is x64 or arm64.
+      # If it is arm64 (e.g., the GitHub Actions arm64 rollout
+      # is now default for this account), regenerate the
+      # lockfile from an arm64 Linux environment, or change
+      # `runs-on` to `[ubuntu-latest, x64]` to force x64.
+      - name: Report runner architecture
+        run: |
+          echo "Runner arch: $(uname -m)"
+          echo "Node arch:   $(node -e 'console.log(process.arch)')"
+          echo "OS:          $(uname -s)"
 
       # Defensive: clear any pre-existing npm cache before
       # `npm ci`. This is belt-and-suspenders against the
