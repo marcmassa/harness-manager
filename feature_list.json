@@ -212,6 +212,66 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "Next"
+    },
+    {
+      "id": "FEAT-018",
+      "name": "ci-github-actions",
+      "title": "CI with GitHub Actions",
+      "description": "Add a GitHub Actions workflow that, on every push and pull_request targeting main, runs `npm ci`, `npm run build`, `npm test`, and `./check.sh` to guarantee that PRs cannot merge with a broken build, broken tests, broken harness adapters, or a malformed feature list.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-019",
+      "name": "governance-docs",
+      "title": "Populate Governance Documents (DESIGN.md, backlog.md, first ADR)",
+      "description": "Replace the placeholder contents of DESIGN.md, progress/backlog.md, and progress/decisions.md with concrete, accurate content for the Harness Dashboard VS Code extension. Establish a real architectural overview, a prioritised backlog, and the first ADR documenting the project-level decision to use the Harness SDD framework itself. Closes the 'documentation says one thing, repo does another' gap identified in the 2026-06-10 project analysis.",
+      "type": "docs",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "spec-author-vscode",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-020",
+      "name": "vsix-gitignore-cleanup",
+      "title": "Exclude *.vsix from git and clean the three committed binaries",
+      "description": "Add `*.vsix` to `.gitignore`, remove the three committed VSIX binaries from the index with `git rm --cached`, and verify the CI workflow and the local `./check.sh` no longer see them as untracked noise. Trivial hygiene change. Closes the first P0 item in the backlog written by FEAT-019.",
+      "type": "chore",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-021",
+      "name": "e2e-integration-test",
+      "title": "End-to-end integration test of the critical user path",
+      "description": "Add a `@vscode/test-electron` integration test that runs the extension in a headless VS Code instance, opens a fixture Harness SDD workspace, exercises the critical user path (activate → whiteboard renders → click a node → detail panel shows MD content → click 'Open in editor' → file opens in VS Code's text editor), and asserts the on-disk and on-screen state at each step. Closes the 'zero integration tests' gap noted in the 2026-06-10 analysis: the project ships 126 unit tests but no test that exercises the webview in a real VS Code instance.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-022",
+      "name": "repo-rename-decision",
+      "title": "Decide the repository rename (harness-manager → harness-dashboard) and document as ADR-002",
+      "description": "The repository, the npm package, the VSIX, and the README all reference 'harness-dashboard' except the GitHub repo name itself, which is still 'harness-manager'. This is the last P0 item in the backlog. The feature records the decision as ADR-002 (accept the mismatch, or rename the repo) and, if the rename is chosen, executes it. Closes the 'documented inconsistency' gap that has been visible since the project started.",
+      "type": "docs",
+      "status": "done",
+      "sdd": true,
+      "priority": "P0",
+      "agent": "spec-author-vscode",
+      "sprint": "Next"
     }
   ]
 }

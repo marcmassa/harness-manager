@@ -147,7 +147,7 @@ if ! $SPEC_ONLY && ! $PY_ONLY && ! $GO_ONLY && [ -f "package.json" ]; then
 
 	if [ -f "vitest.config.js" ] || [ -f "vitest.config.ts" ]; then
 		section "TypeScript — Tests"
-		npm test 2>&1 | tail -20 && pass "npm test" || warn "npm test: some tests failed"
+		npm test -- --run 2>&1 | tail -10 && pass "npm test" || warn "npm test: some tests failed"
 	fi
 fi
 
@@ -182,7 +182,7 @@ if [ -f "feature_list.json" ]; then
 		fail "feature_list.json is NOT valid JSON"
 	fi
 
-	python3 /dev/stdin <<'PYEOF' 2>/dev/null || true
+	python3 /dev/stdin <<'PYEOF'
 import json, os, sys
 with open('feature_list.json') as f:
     data = json.load(f)
@@ -224,8 +224,9 @@ else:
     else:
         print("        No features in progress")
 PYEOF
+	fl_rc=$?
 
-	if [ $? -eq 0 ]; then
+	if [ "$fl_rc" -eq 0 ]; then
 		pass "Feature list validation completed"
 	else
 		fail "Errors in feature_list.json"
@@ -342,6 +343,72 @@ if [ -f ".agents/BOOTSTRAP.md" ]; then
 	pass "Exists .agents/BOOTSTRAP.md (LLM fallback for unknown CLIs)"
 else
 	warn "Missing .agents/BOOTSTRAP.md"
+fi
+
+# ── CLI Adapter Parity & Placeholders Tests (FEAT-002) ───────
+section "CLI Adapter Tests"
+for t in test_cli_adapter_parity test_agent_template_placeholders; do
+	if [ -f "$ROOT_DIR/tests/${t}.sh" ]; then
+		if bash "$ROOT_DIR/tests/${t}.sh" >/dev/null 2>&1; then
+			pass "${t}"
+		else
+			fail "${t} (see tests/${t}.sh for details)"
+		fi
+	else
+		warn "Missing tests/${t}.sh (skipped)"
+	fi
+done
+
+# ── Governance Documents check (FEAT-019 R16, R17) ───────
+# Fails if any governance document still contains a recognised
+# template placeholder, or if the backlog references a feature whose
+# status in feature_list.json is "done". Read-only: does not auto-fix.
+section "Governance Documents"
+gov_fail=0
+# R16: scan governance docs for template placeholders.
+# The pattern matches a brace-enclosed token that starts with an
+# uppercase letter and contains letters/digits/spaces/underscores/
+# hyphens (2-40 chars), which covers all of the Harness SDD template
+# placeholders ({Briefly describe}, {Component Name}, {e.g. Modular}, etc.).
+PLACEHOLDER_PATTERN='\{[A-Z][A-Za-z0-9 _-]{2,40}\}'
+GOVERNANCE_FILES=(DESIGN.md progress/backlog.md progress/decisions.md)
+for f in "${GOVERNANCE_FILES[@]}"; do
+	if [ ! -f "$f" ]; then
+		warn "Missing $f (governance doc absent — check skipped)"
+		gov_fail=1
+		continue
+	fi
+	placeholder_hits=$(grep -nE "$PLACEHOLDER_PATTERN" "$f" 2>/dev/null || true)
+	if [ -n "$placeholder_hits" ]; then
+		fail "$f still contains template placeholders:"
+		echo "$placeholder_hits" | sed 's/^/       /'
+		gov_fail=1
+	else
+		pass "$f is free of template placeholders"
+	fi
+done
+# R9 (backlog-only): no item in progress/backlog.md SHALL reference a
+# feature whose status in feature_list.json is "done".
+if [ -f progress/backlog.md ] && [ -f feature_list.json ]; then
+	done_ids=$(python3 -c "
+import json
+d = json.load(open('feature_list.json'))
+print(' '.join(f['id'] for f in d['features'] if f['status'] == 'done'))" 2>/dev/null || echo "")
+	stale_refs=""
+	for did in $done_ids; do
+		if grep -q "$did" progress/backlog.md 2>/dev/null; then
+			stale_refs="$stale_refs $did"
+		fi
+	done
+	if [ -n "$stale_refs" ]; then
+		fail "backlog.md references done feature(s):$stale_refs"
+		gov_fail=1
+	else
+		pass "backlog.md does not reference any done feature"
+	fi
+fi
+if [ "$gov_fail" -ne 0 ]; then
+	EXIT_CODE=1
 fi
 
 # ── Summary ─────────────────────────────────────────
