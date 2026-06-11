@@ -6,6 +6,8 @@ src/
 specs/
 docs/
 progress/
+out/
+out/**
 .agents/
 .claude/
 .gemini/

@@ -38,7 +38,6 @@ __pycache__/
 *.key
 *.cert
 .env
-.env.local
 .env.*
 credentials.json
 service-account.json
