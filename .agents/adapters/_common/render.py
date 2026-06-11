@@ -120,6 +120,65 @@ def merge_permissions(base: dict[str, Any], override: dict[str, Any]) -> dict[st
     return out
 
 
+def _merge_unique_ordered(*lists: list[str]) -> list[str]:
+    """Unión ordenada y deduplicada preservando la primera aparición.
+
+    Usado para fusionar `manifest.skills.paths[]` con `extra_skills[]`
+    (calculado desde `project_detect[].apply.add_skills[]`). El primer argumento
+    tiene precedencia: si un path aparece en `manifest.skills.paths[]` y en
+    `extra_skills[]`, se conserva la posición del primero.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for lst in lists:
+        for item in lst:
+            if item not in seen:
+                seen.add(item)
+                out.append(item)
+    return out
+
+
+_PLACEHOLDER_RE = re.compile(r"^(\s*)\[([A-Za-z][A-Za-z0-9 _-]{0,30})\]\s*$")
+
+
+def _sanitize_template_body(body: str) -> str:
+    """Elimina líneas que son placeholders huérfanos del estilo '[Area 1]'.
+
+    Un placeholder huérfano es una línea que:
+      - Empieza con 0+ espacios
+      - Sigue con '[' + (letra inicial) + (letras/dígitos/espacios/guiones_bajos/guiones, máx 30) + ']'
+      - Termina con 0+ espacios
+      - NO está dentro de un bloque de código ```...```
+
+    Heurística: si la línea coincide con `^\\s*\\[[A-Za-z][A-Za-z0-9 _-]{0,30}\\]\\s*$`,
+    se reemplaza por un comentario HTML indicando que se sustituye en producción.
+    Conserva la indentación original.
+
+    Por qué existe: el archivo `.agents/subagents/agent-template/SUBAGENT.md`
+    contiene corchetes literales como `[Area 1]`, `[Step 1]` pensados como
+    referencia humana. Si ese cuerpo se usa para scaffold de un sub-agent de
+    producción, los placeholders se filtrarían. Esta función los reemplaza
+    por `<!-- TODO: personalizar esta sección -->`.
+    """
+    sanitized: list[str] = []
+    in_code_block = False
+    for line in body.splitlines():
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            sanitized.append(line)
+            continue
+        if in_code_block:
+            sanitized.append(line)
+            continue
+        m = _PLACEHOLDER_RE.match(line)
+        if m:
+            indent = m.group(1)
+            sanitized.append(f"{indent}<!-- TODO: personalizar esta sección -->")
+        else:
+            sanitized.append(line)
+    return "\n".join(sanitized) + "\n"
+
+
 def build_context(
     root: Path, manifest: dict[str, Any], stack_matches: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -137,12 +196,13 @@ def build_context(
         if overrides:
             implementer_perm = merge_permissions(implementer_perm, overrides)
 
+    base_paths = manifest.get("skills", {}).get("paths", [])
     return {
         "manifest": manifest,
         "root": str(root),
         "default_agent": manifest.get("default_agent", "harness"),
         "instructions": manifest.get("instructions", []),
-        "skills_paths": manifest.get("skills", {}).get("paths", []),
+        "skills_paths": _merge_unique_ordered(base_paths, extra_skills),
         "subagents": manifest.get("subagents", []),
         "commands": manifest.get("commands", []),
         "implementer_permission": implementer_perm,
@@ -415,6 +475,7 @@ def scaffold_subagent_role_file(root: Path, sa: dict[str, Any]) -> bool:
             target_dir = role_file.parent
             target_dir.mkdir(parents=True, exist_ok=True)
             body = source.read_text()
+            body = _sanitize_template_body(body)
             body = re.sub(
                 r"^name:\s+agent-template\s*$",
                 f"name: {sa['name']}",
