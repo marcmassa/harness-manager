@@ -34,7 +34,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
+          # IMPORTANT: no `cache: 'npm'` here. The npm cache can
+          # become stale between runs (the cache key is the
+          # package-lock.json hash, but GitHub's cache eviction
+          # is async and the runner may serve a stale entry for
+          # one run after a new lockfile is pushed). For this
+          # project, `npm ci` is fast enough (~10 s on a cold
+          # runner) that the cache saves < 5 s; not worth the
+          # class of "lockfile says X, cache has Y" failures.
+          # Re-enable the cache only if `npm ci` becomes a
+          # bottleneck in CI.
+
+      # Defensive: clear any pre-existing npm cache before
+      # `npm ci`. This is belt-and-suspenders against the
+      # stale-cache failure mode described above; in practice
+      # it is a no-op on a clean runner but it guarantees that
+      # a cached tarball from a previous run cannot poison
+      # this run's install.
+      - name: Clear npm cache
+        run: npm cache clean --force 2>/dev/null || true
 
       - name: Install dependencies
         run: npm ci
