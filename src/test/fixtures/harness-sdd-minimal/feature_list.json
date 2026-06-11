@@ -1,0 +1,25 @@
+{
+  "project": "Harness Dashboard E2E fixture",
+  "description": "Minimal Harness SDD workspace used as the test workspace for the end-to-end integration test (FEAT-021). One agent, one subagent, one done feature.",
+  "rules": {
+    "maxConcurrent": 1,
+    "requireSpec": true,
+    "requireTests": true,
+    "requireCheck": true,
+    "validStatus": ["pending", "spec_ready", "in_progress", "done", "blocked"]
+  },
+  "features": [
+    {
+      "id": "FIX-001",
+      "name": "fixture-feature",
+      "title": "Fixture feature for E2E test",
+      "description": "A single done feature so the parser has something to render in the timeline view.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "fixture",
+      "sprint": "Fixture"
+    }
+  ]
+}

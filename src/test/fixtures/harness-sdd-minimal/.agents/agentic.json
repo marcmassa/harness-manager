@@ -1,0 +1,14 @@
+{
+  "subagents": [
+    {
+      "name": "demo-subagent",
+      "description": "A minimal subagent used as the click target in the FEAT-021 end-to-end integration test.",
+      "permission": "edit",
+      "role_file": ".agents/subagents/demo-subagent/SUBAGENT.md",
+      "default": true,
+      "mode": "subagent"
+    }
+  ],
+  "commands": [],
+  "skills": []
+}
