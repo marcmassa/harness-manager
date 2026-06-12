@@ -56,7 +56,7 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 ## Getting started
 
 1. Install the extension
-2. Open a workspace that uses [Harness SDD](https://github.com/marcmassa/harness-manager) or any supported agentic framework  
+2. Open a workspace that uses [Harness SDD](https://github.com/marcmassa/harness-sdd-template.git) or any supported agentic framework  
 3. Click the **Harness Dashboard** icon in the Activity Bar
 4. The whiteboard renders your agent graph automatically
 
