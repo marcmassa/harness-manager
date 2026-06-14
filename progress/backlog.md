@@ -26,7 +26,7 @@
 ## P2 — Nice to have (whenever possible)
 
 - [ ] **Coverage report upload to Codecov (or Coveralls)**. Out of scope of the ci-github-actions spec by design; revisit when there's a meaningful coverage delta to track. *This backlog item was originally authored with a placeholder ID; the real feature ID will be assigned when the feature is created in `feature_list.json`.*
-- [ ] **Publish VSIX workflow**. A second GitHub Actions job triggered on tag push (`v*.*.*`) that runs `vsce package` and `vsce publish` using a `VSCE_PAT` secret stored in repo settings. Requires the PAT to be created and documented; not blocking the 0.1.x line. *(The previous FEAT-023 placeholder ID was a stale reference — FEAT-023 was reassigned in this release to the configurable-adapter-paths + Kiro + whiteboard-polish feature. This publish-workflow item will be assigned a fresh ID when the feature is created in `feature_list.json`.)*
+- [ ] **Publish VSIX workflow**. A second GitHub Actions job triggered on tag push (`v*.*.*`) that runs `vsce package` and `vsce publish` using a `VSCE_PAT` secret stored in repo settings. Requires the PAT to be created and documented; not blocking the 0.1.x line. *(This publish-workflow item will be assigned a fresh FEAT-XXX ID when the feature is created in `feature_list.json`.)*
 - [ ] **Animated screenshots / GIF in `README.md`** showing the whiteboard, the timeline, the suggestion accept flow, and the MD viewer. The README's "Features" table is currently text-only; visuals would shorten the "what does this look like?" loop for evaluators.
 
 ## Technical / Debt
