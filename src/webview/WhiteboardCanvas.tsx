@@ -536,7 +536,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
         previousNodeSignatureRef.current = nodeSignature;
 
         if (shouldFitView) {
-            window.requestAnimationFrame(() => fitView({ padding: 0.2 }));
+            window.requestAnimationFrame(() => fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' }));
             hasInitialFitRef.current = true;
         }
     }, [graph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
@@ -782,6 +782,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
                 }}
                 nodeTypes={nodeTypes}
                 fitView
+                fitViewOptions={{ padding: 0.2, duration: 400, ease: 'ease-in-out' }}
                 nodesDraggable={true}
                 nodesConnectable={true}
                 elementsSelectable={true}

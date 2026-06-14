@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import matter from 'gray-matter';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
+import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
     createEmptyResult,
@@ -17,8 +18,10 @@ import {
 } from './adapterUtils.js';
 
 export class ClaudeCodeAdapter implements IAgentAdapter {
+    private static readonly CONFIG_KEY = 'claude-code';
+
     public id(): string {
-        return 'claude-code';
+        return ClaudeCodeAdapter.CONFIG_KEY;
     }
 
     public label(): string {
@@ -26,12 +29,20 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
     }
 
     public watchGlobs(): string[] {
-        return ['CLAUDE.md', '.claude/agents/**/*.md'];
+        const path = ConfigurationRegistry.getInstance()
+            .getPathFor(ClaudeCodeAdapter.CONFIG_KEY);
+        return ['CLAUDE.md', `${path}/agents/**/*.md`];
+    }
+
+    public isPathConfigurable(): boolean {
+        return true; // `.claude/` path is overridable via harness-dashboard.adapters.claude-code.path
     }
 
     public async detect(root: vscode.Uri): Promise<boolean> {
         if (await fileExists(root, 'CLAUDE.md')) return true;
-        const agentFiles = await findFiles(root, '.claude/agents/**/*.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(ClaudeCodeAdapter.CONFIG_KEY, root);
+        const agentFiles = await findFiles(root, `${path}/agents/**/*.md`);
         return agentFiles.length > 0;
     }
 
@@ -41,7 +52,9 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
         const adapterLabel = this.label();
 
         const claudeMd = await readTextIfExists(root, 'CLAUDE.md');
-        const agentFiles = await findFiles(root, '.claude/agents/**/*.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(ClaudeCodeAdapter.CONFIG_KEY, root);
+        const agentFiles = await findFiles(root, `${path}/agents/**/*.md`);
 
         const rootLabel = claudeMd
             ? extractMarkdownTitle(claudeMd, 'Claude Code')

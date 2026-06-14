@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
+import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
     createEmptyResult,
@@ -17,8 +18,10 @@ import {
 } from './adapterUtils.js';
 
 export class GeminiCliAdapter implements IAgentAdapter {
+    private static readonly CONFIG_KEY = 'gemini-cli';
+
     public id(): string {
-        return 'gemini-cli';
+        return GeminiCliAdapter.CONFIG_KEY;
     }
 
     public label(): string {
@@ -26,12 +29,20 @@ export class GeminiCliAdapter implements IAgentAdapter {
     }
 
     public watchGlobs(): string[] {
-        return ['GEMINI.md', '.gemini/commands/**/*.toml'];
+        const path = ConfigurationRegistry.getInstance()
+            .getPathFor(GeminiCliAdapter.CONFIG_KEY);
+        return ['GEMINI.md', `${path}/commands/**/*.toml`];
+    }
+
+    public isPathConfigurable(): boolean {
+        return true; // `.gemini/` path is overridable via harness-dashboard.adapters.gemini-cli.path
     }
 
     public async detect(root: vscode.Uri): Promise<boolean> {
         if (await fileExists(root, 'GEMINI.md')) return true;
-        const commandFiles = await findFiles(root, '.gemini/commands/**/*.toml');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(GeminiCliAdapter.CONFIG_KEY, root);
+        const commandFiles = await findFiles(root, `${path}/commands/**/*.toml`);
         return commandFiles.length > 0;
     }
 
@@ -41,7 +52,9 @@ export class GeminiCliAdapter implements IAgentAdapter {
         const adapterLabel = this.label();
 
         const geminiMd = await readTextIfExists(root, 'GEMINI.md');
-        const commandFiles = await findFiles(root, '.gemini/commands/**/*.toml');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(GeminiCliAdapter.CONFIG_KEY, root);
+        const commandFiles = await findFiles(root, `${path}/commands/**/*.toml`);
 
         const rootLabel = geminiMd
             ? extractMarkdownTitle(geminiMd, 'Gemini CLI')

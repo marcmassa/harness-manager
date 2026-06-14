@@ -272,6 +272,18 @@
       "priority": "P0",
       "agent": "spec-author-vscode",
       "sprint": "Next"
-    }
+    },
+  {
+    "id": "FEAT-023",
+    "name": "adapter-config-paths-and-kiro-and-whiteboard-polish",
+    "title": "Configurable adapter paths + Kiro adapter + whiteboard UX polish (animations, no overlap)",
+    "description": "Three-part feature: (1) introduce a general 'Configuration Registry' pattern that lets the user override the detection paths of any adapter via VS Code settings (extensible, not Kiro-specific), so users with custom installs (e.g., a Kiro IDE install in a non-standard path) can still see their agents on the whiteboard; (2) add a Kiro adapter (detection file: .kiro/) as the FIRST consumer of the Configuration Registry; (3) polish the whiteboard UX: smoother, more professional node animations, and an explicit no-overlap guarantee for node positions. The Configuration Registry is the lasting architectural contribution; the Kiro adapter is its first payoff; the whiteboard polish closes two long-standing UX gaps.",
+    "type": "feat",
+  "status": "done",
+  "sdd": true,
+  "priority": "P1",
+  "agent": "typescript-implementer",
+  "sprint": "Current"
+  }
   ]
 }

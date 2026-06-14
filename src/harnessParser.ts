@@ -6,6 +6,7 @@ import {
     addCrossRefEdges,
     addSemanticSuggestions,
     enrichSuggestedEdgesWithIdoneity,
+    detectAndFixOverlaps,
 } from './parserLogic.js';
 import { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { createDefaultAdapters } from './adapters/index.js';
@@ -51,6 +52,13 @@ export class HarnessParser {
             }, dismissedSuggestions);
 
             enrichSuggestedEdgesWithIdoneity(result, idoneityMatrix);
+
+            // No-overlap guarantee (FEAT-023, R16–R18). At parse
+            // time no node has `metadata._position` set, so this
+            // is a no-op pass. The same function is callable
+            // from the webview after dagre layout, where
+            // positions are set, to actually do the work.
+            detectAndFixOverlaps(result);
 
             if (disabledConnections && disabledConnections.size > 0) {
                 for (const edge of result.graph.edges) {

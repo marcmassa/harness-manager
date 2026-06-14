@@ -539,3 +539,92 @@ describe('FEAT-013 — enrichWithIdoneity returns IdoneityMatrix (T17)', () => {
     });
 });
 
+describe('FEAT-023 — detectAndFixOverlaps (R16, R17, R18, R22)', () => {
+    function buildGraphWithPositions(nodePositions: Array<{ id: string; x: number; y: number }>): ParserResult {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        for (const { id, x, y } of nodePositions) {
+            result.graph.nodes.push({
+                id,
+                type: 'subagent',
+                label: id,
+                metadata: {
+                    description: id,
+                    _position: { x, y },
+                },
+            });
+        }
+        return result;
+    }
+
+    function positionsUnique(result: ParserResult, tolerance: number): boolean {
+        const seen: Array<{ x: number; y: number }> = [];
+        for (const node of result.graph.nodes) {
+            const pos = (node.metadata as any)._position as { x: number; y: number } | undefined;
+            if (!pos) continue;
+            for (const prev of seen) {
+                if (Math.abs(prev.x - pos.x) <= tolerance && Math.abs(prev.y - pos.y) <= tolerance) {
+                    return false;
+                }
+            }
+            seen.push(pos);
+        }
+        return true;
+    }
+
+    it('(R16, R22a) 5-node graph with all manual positions set to (0, 0) — no two nodes share a position after merge', () => {
+        const result = buildGraphWithPositions([
+            { id: 'a', x: 0, y: 0 },
+            { id: 'b', x: 0, y: 0 },
+            { id: 'c', x: 0, y: 0 },
+            { id: 'd', x: 0, y: 0 },
+            { id: 'e', x: 0, y: 0 },
+        ]);
+
+        logic.detectAndFixOverlaps(result);
+
+        expect(positionsUnique(result, 4)).toBe(true);
+        // Overlaps were detected → 4 collisions among 5 nodes (C(5,2) pairs minus the canonicalised one).
+        // Function emits one ParserError per colliding *pair*, so we expect errors here.
+        expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('(R16, R22b) 10-node graph with dagre-style auto-layout positions — no two nodes share a position', () => {
+        // Simulate a dagre layout by spreading positions across a grid.
+        const positions = [];
+        for (let i = 0; i < 10; i += 1) {
+            positions.push({ id: `n${i}`, x: i * 200, y: 0 });
+        }
+        const result = buildGraphWithPositions(positions);
+
+        logic.detectAndFixOverlaps(result);
+
+        expect(positionsUnique(result, 4)).toBe(true);
+        // No collisions → no errors emitted.
+        expect(result.errors).toHaveLength(0);
+    });
+
+    it('(R16, R22c) mixed graph (some overlapping, some distinct) — no two nodes share a position', () => {
+        // Three pairs that overlap within 4 px (3 * 2 = 6 nodes), and
+        // two distinct nodes. After the fix, all 8 should be at
+        // distinct positions.
+        const result = buildGraphWithPositions([
+            { id: 'a1', x: 0, y: 0 },
+            { id: 'a2', x: 0, y: 0 },
+            { id: 'b1', x: 100, y: 0 },
+            { id: 'b2', x: 100, y: 0 },
+            { id: 'c1', x: 200, y: 0 },
+            { id: 'c2', x: 200, y: 0 },
+            { id: 'd', x: 300, y: 0 },
+            { id: 'e', x: 400, y: 0 },
+        ]);
+
+        logic.detectAndFixOverlaps(result);
+
+        expect(positionsUnique(result, 4)).toBe(true);
+        // 3 collisions detected (one per overlapping pair).
+        // Note: the function emits one error per colliding pair,
+        // so this should be at least 3.
+        expect(result.errors.length).toBeGreaterThanOrEqual(3);
+    });
+});
+

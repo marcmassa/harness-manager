@@ -824,6 +824,26 @@ const App = () => {
 
                 .react-flow__node:hover { z-index: 10; }
 
+                /* ===== FEAT-023 R19 — node appear/disappear animation ===== */
+                @keyframes nodeAppear {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.85);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                .node-enter {
+                    animation: nodeAppear 200ms ease-out forwards;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .node-enter {
+                        animation: none;
+                    }
+                }
+
                 /* ===== ACTIVE NODE — panel open ===== */
                 @keyframes activeNodePulse {
                     0%, 100% {
@@ -870,8 +890,22 @@ const App = () => {
                 }
 
                 /* ===== EDGE VISIBILITY ===== */
+                /* FEAT-023 R21 — edge style transitions: stroke, stroke-width,
+                   opacity, stroke-dasharray animate over 150ms when the
+                   edge's style changes (e.g., from "manages" to "uses"
+                   after a re-parse, or from "uses" to "disabled" after
+                   the user toggles a connection). */
                 .react-flow__edge-path {
-                    transition: stroke 0.3s var(--ease-smooth), stroke-width 0.3s var(--ease-smooth);
+                    transition:
+                        stroke 150ms ease,
+                        stroke-width 150ms ease,
+                        opacity 150ms ease,
+                        stroke-dasharray 150ms ease;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .react-flow__edge-path {
+                        transition: none;
+                    }
                 }
 
                 @keyframes dash-scroll {

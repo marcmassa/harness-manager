@@ -98,6 +98,7 @@ vi.mock('vscode', () => {
             if (full.startsWith(`${ROOT}/`)) return full.slice(ROOT.length + 1);
             return full;
         }),
+        onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
         getConfiguration: vi.fn(() => ({ get: (_key: string, fallback: unknown) => fallback })),
     };
 
@@ -110,9 +111,19 @@ vi.mock('vscode', () => {
         },
     };
 
+    // Mirror VS Code's `FileType` enum so that
+    // `ConfigurationRegistry.isValidPath` works in tests.
+    const FileType = {
+        Unknown: 0,
+        File: 1,
+        Directory: 2,
+        SymbolicLink: 64,
+    };
+
     return {
         Uri,
         RelativePattern,
+        FileType,
         workspace,
     };
 });
@@ -121,6 +132,7 @@ import * as vscode from 'vscode';
 import { AdapterRegistry } from './AdapterRegistry.js';
 import {
     ClaudeCodeAdapter,
+    ConfigurationRegistry,
     CopilotAdapter,
     CursorAdapter,
     GeminiCliAdapter,
@@ -131,6 +143,12 @@ import {
 import { IAgentAdapter } from './IAgentAdapter.js';
 
 const rootUri = () => vscode.Uri.file(ROOT);
+
+// Reset the ConfigurationRegistry singleton between tests so
+// the cache doesn't leak across test cases.
+beforeEach(() => {
+    ConfigurationRegistry.resetInstance();
+});
 
 describe('Adapter framework parsing', () => {
     beforeEach(() => {
@@ -260,6 +278,7 @@ describe('AdapterRegistry behavior', () => {
                 errors: [],
             }),
             watchGlobs: () => [],
+            isPathConfigurable: () => false,
         };
         const second: IAgentAdapter = {
             id: () => 'second',
@@ -274,6 +293,7 @@ describe('AdapterRegistry behavior', () => {
                 errors: [],
             }),
             watchGlobs: () => [],
+            isPathConfigurable: () => false,
         };
 
         const registry = new AdapterRegistry([first, second]);
@@ -294,6 +314,7 @@ describe('AdapterRegistry behavior', () => {
                 throw new Error('boom');
             },
             watchGlobs: () => ['broken.json'],
+            isPathConfigurable: () => false,
         };
         const healthy: IAgentAdapter = {
             id: () => 'ok',
@@ -308,6 +329,7 @@ describe('AdapterRegistry behavior', () => {
                 errors: [],
             }),
             watchGlobs: () => ['ok.json'],
+            isPathConfigurable: () => false,
         };
 
         const registry = new AdapterRegistry([failing, healthy], { warn });

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import matter from 'gray-matter';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
+import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
     createEmptyResult,
@@ -16,8 +17,10 @@ import {
 } from './adapterUtils.js';
 
 export class WindsurfAdapter implements IAgentAdapter {
+    private static readonly CONFIG_KEY = 'windsurf';
+
     public id(): string {
-        return 'windsurf';
+        return WindsurfAdapter.CONFIG_KEY;
     }
 
     public label(): string {
@@ -25,12 +28,20 @@ export class WindsurfAdapter implements IAgentAdapter {
     }
 
     public watchGlobs(): string[] {
-        return ['.windsurfrc', '.windsurf/rules/**/*.md'];
+        const path = ConfigurationRegistry.getInstance()
+            .getPathFor(WindsurfAdapter.CONFIG_KEY);
+        return ['.windsurfrc', `${path}/rules/**/*.md`];
+    }
+
+    public isPathConfigurable(): boolean {
+        return true; // `.windsurf/` path is overridable via harness-dashboard.adapters.windsurf.path
     }
 
     public async detect(root: vscode.Uri): Promise<boolean> {
         if (await fileExists(root, '.windsurfrc')) return true;
-        const ruleFiles = await findFiles(root, '.windsurf/rules/**/*.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(WindsurfAdapter.CONFIG_KEY, root);
+        const ruleFiles = await findFiles(root, `${path}/rules/**/*.md`);
         return ruleFiles.length > 0;
     }
 
@@ -63,7 +74,9 @@ export class WindsurfAdapter implements IAgentAdapter {
             )
         );
 
-        const ruleFiles = await findFiles(root, '.windsurf/rules/**/*.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(WindsurfAdapter.CONFIG_KEY, root);
+        const ruleFiles = await findFiles(root, `${path}/rules/**/*.md`);
         const sortedRules = [...ruleFiles].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
         for (const file of sortedRules) {
             const content = await readTextFromUri(file);

@@ -25,6 +25,10 @@ export class OpenCodeAdapter implements IAgentAdapter {
         return ['opencode.json', 'opencode.jsonc'];
     }
 
+    public isPathConfigurable(): boolean {
+        return false; // canonical config file for the opencode CLI itself
+    }
+
     public async detect(root: vscode.Uri): Promise<boolean> {
         return (await fileExists(root, 'opencode.json')) || (await fileExists(root, 'opencode.jsonc'));
     }

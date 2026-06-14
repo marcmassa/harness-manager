@@ -7,6 +7,23 @@ export interface IAgentAdapter {
     detect(root: vscode.Uri): Promise<boolean>;
     parse(root: vscode.Uri): Promise<Partial<ParserResult>>;
     watchGlobs(): string[];
+
+    /**
+     * Returns true if the user can override this adapter's
+     * detection path via
+     * `harness-dashboard.adapters.<id>.path`.
+     *
+     * Adapters that opt in (return `true`) MUST use
+     * `ConfigurationRegistry.getInstance().getPathFor(id())`
+     * instead of hardcoded path strings in their
+     * `detect`/`parse`/`watchGlobs` methods.
+     *
+     * Adapters that opt out (return `false`) have a canonical
+     * path defined by the framework itself (e.g., Harness
+     * SDD's `.agents/agentic.json`); no setting is registered
+     * and the registry skips the id.
+     */
+    isPathConfigurable(): boolean;
 }
 
 export function mergeResults(results: Partial<ParserResult>[]): ParserResult {

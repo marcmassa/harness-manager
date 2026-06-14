@@ -48,6 +48,12 @@ export const SUPPORTED_FRAMEWORKS: SupportedFramework[] = [
         signatures: ['.windsurfrc', '.windsurf/rules/*.md'],
         accent: '#ec4899',
     },
+    {
+        id: 'kiro',
+        label: 'Kiro',
+        signatures: ['.kiro/agents/*.md', '.kiro/skills/**/SKILL.md'],
+        accent: '#06b6d4',
+    },
 ];
 
 export const FRAMEWORK_LABEL_BY_ID: Record<string, string> = Object.fromEntries(
