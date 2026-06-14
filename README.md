@@ -3,6 +3,8 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
 
@@ -56,7 +58,7 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ## Getting started
 
-1. Install the extension
+1. **Install** — download the latest VSIX from the [Releases page](https://github.com/marcmassa/harness-manager/releases) and install it via `Extensions: Install from VSIX...`, or install directly from the VS Code Marketplace (*coming soon*).
 2. Open a workspace that uses [Harness SDD](https://github.com/marcmassa/harness-sdd-template.git) or any supported agentic framework  
 3. Click the **Harness Dashboard** icon in the Activity Bar
 4. The whiteboard renders your agent graph automatically
