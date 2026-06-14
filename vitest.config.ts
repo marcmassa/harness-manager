@@ -17,5 +17,16 @@ export default defineConfig({
             'src/test/integration/**',
         ],
         environment: 'node',
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'lcov', 'html'],
+            include: ['src/**/*.ts'],
+            exclude: [
+                'src/**/*.test.ts',
+                'src/test/**',
+                'src/webview/**',
+                'src/types.ts',
+            ],
+        },
     },
 });

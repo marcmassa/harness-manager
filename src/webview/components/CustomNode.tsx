@@ -1,63 +1,13 @@
 import * as React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { FRAMEWORK_ACCENT_BY_ID } from '../../frameworks.js';
-
-const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
-const EASE_SMOOTH = 'cubic-bezier(0.4, 0, 0.2, 1)';
-
-// Distinct visual shapes per type (R2) — improved contrast
-const nodeStyles: Record<string, React.CSSProperties> = {
-    agent: { 
-        background: 'var(--vscode-editor-background)', 
-        color: 'var(--vscode-editor-foreground)', 
-        padding: SPACE.md, 
-        borderRadius: SPACE.sm, 
-        border: '2.5px solid var(--vscode-debugIcon-breakpointForeground)',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-        minWidth: '180px'
-    },
-    subagent: { 
-        background: 'linear-gradient(135deg, var(--vscode-button-background), color-mix(in srgb, var(--vscode-button-background) 85%, black))',
-        color: 'var(--vscode-button-foreground)', 
-        padding: SPACE.md, 
-        borderRadius: SPACE.sm, 
-        border: '1.5px solid color-mix(in srgb, var(--vscode-button-background) 70%, var(--vscode-button-foreground))',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-        minWidth: '160px'
-    },
-    skill: { 
-        background: 'var(--vscode-editor-background)', 
-        color: 'var(--vscode-editor-foreground)', 
-        padding: '12px 20px', 
-        borderRadius: '20px', 
-        border: '2px solid var(--vscode-statusBarItem-remoteBackground)',
-        minWidth: '140px',
-        textAlign: 'center' as const,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    },
-    feature: { 
-        background: 'linear-gradient(135deg, var(--vscode-activityBarBadge-background), color-mix(in srgb, var(--vscode-activityBarBadge-background) 80%, black))',
-        color: 'var(--vscode-activityBarBadge-foreground)', 
-        padding: '12px 16px', 
-        borderRadius: SPACE.xs, 
-        border: '1.5px solid color-mix(in srgb, var(--vscode-activityBarBadge-background) 60%, transparent)',
-        minWidth: '160px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
-    }
-};
+import { SPACE, EASE_SMOOTH, NODE_STYLES, HANDLE_ACCENT, HANDLE_PILL_BASE, HIDDEN_HANDLE_STYLE, activeNodeShadow } from '../styles.js';
 
 interface SkillOption {
     id: string;
     label: string;
     alreadyConnected: boolean;
 }
-
-export const HANDLE_ACCENT: Record<string, string> = {
-    agent:    '#4a7dff',
-    subagent: '#4a7dff',
-    skill:    '#2aa198',
-    feature:  '#888888',
-};
 
 
 export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
@@ -118,13 +68,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     const isActive: boolean = data.isActive === true;
     const activeStyle: React.CSSProperties = isActive ? {
         border: '2px solid var(--vscode-focusBorder)',
-        // Triple-layer shadow: tight ring + mid glow + outer halo
-        boxShadow: [
-            '0 0 0 3px var(--vscode-focusBorder)',
-            '0 0 0 7px rgba(var(--vscode-focusBorder-rgb, 0, 122, 204), 0.25)',
-            '0 0 24px 8px rgba(var(--vscode-focusBorder-rgb, 0, 122, 204), 0.18)',
-            '0 12px 40px rgba(0,0,0,0.5)',
-        ].join(', '),
+        boxShadow: activeNodeShadow(),
         animation: 'activeNodePulse 2.4s ease-in-out infinite',
     } : {};
 
@@ -174,7 +118,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     } : {};
 
     const mergedStyle: React.CSSProperties = { 
-        ...nodeStyles[type], 
+        ...NODE_STYLES[type], 
         ...hoverStyle,
         ...selectedStyle,
         ...dragHoverStyle,
@@ -189,27 +133,9 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     // ===== HANDLE STYLES — redesigned as labeled pill buttons =====
     // The Handle component keeps its drag-to-connect functionality.
     // We keep geometry fixed to avoid cursor/handle drift while interacting.
-    const handlePillBase: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '3px',
-        justifyContent: 'center',
-        minWidth: '78px',
-        height: '24px',
-        padding: '0 10px',
-        borderRadius: '12px',
-        fontSize: '0.6em',
-        fontWeight: 700,
-        letterSpacing: '0.8px',
-        whiteSpace: 'nowrap',
-        pointerEvents: 'none',
-        transition: `all 0.2s ${EASE_SMOOTH}`,
-        zIndex: 11,
-        userSelect: 'none',
-    };
 
     const targetPillStyle: React.CSSProperties = {
-        ...handlePillBase,
+        ...HANDLE_PILL_BASE,
         background: isLinkTargetActive
             ? 'color-mix(in srgb, var(--vscode-editorWidget-background, #252526) 72%, var(--vscode-focusBorder) 28%)'
             : 'var(--vscode-editorWidget-background, #252526)',
@@ -224,7 +150,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     };
 
     const sourcePillStyle: React.CSSProperties = {
-        ...handlePillBase,
+        ...HANDLE_PILL_BASE,
         background: isLinkSourceArmed
             ? accent
             : 'var(--vscode-editorWidget-background, #252526)',
@@ -236,18 +162,6 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
             : '1px solid var(--vscode-editorWidget-border, #454545)',
         opacity: 1,
         boxShadow: isLinkSourceArmed ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
-    };
-
-    // Invisible handle dot — keeps React Flow connection logic
-    const hiddenHandleStyle: React.CSSProperties = {
-        width: '88px',
-        height: '24px',
-        borderRadius: '12px',
-        background: 'transparent',
-        border: 'none',
-        opacity: 0,
-        zIndex: 12,
-        cursor: 'pointer',
     };
 
     const linkOptions: SkillOption[] = data.availableLinkTargets || data.availableSkills || [];
@@ -327,7 +241,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                     type="target"
                     position={Position.Top}
                     style={{
-                        ...hiddenHandleStyle,
+                        ...HIDDEN_HANDLE_STYLE,
                         position: 'absolute',
                         top: '50%',
                         left: '50%',
@@ -550,7 +464,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                     type="source"
                     position={Position.Bottom}
                     style={{
-                        ...hiddenHandleStyle,
+                        ...HIDDEN_HANDLE_STYLE,
                         position: 'absolute',
                         top: '50%',
                         left: '50%',

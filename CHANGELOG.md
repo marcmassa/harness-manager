@@ -3,7 +3,39 @@
 All notable changes to Harness Dashboard are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+> **On test counts:** Every feature in this project that has `"sdd": true` in
+> `feature_list.json` goes through Spec-Driven Development. Each spec adds a set
+> of EARS requirements (R1..Rn), each requirement has one or more corresponding
+> unit tests. The test count therefore grows by 5–30 per feature — it is not
+> a fixed metric but a direct reflection of the requirement surface. Test counts
+> in this changelog are informational checkpoints, not targets.
+
 ---
+
+## [0.2.1] — 2026-06-14
+
+> Backlog clearance: CSS refactor, CI/CD hardening, technical debt items.
+
+### Added
+
+- **Centralised style tokens** (backlog P1) — extracted `SPACE`, `NODE_STYLES`, `HANDLE_ACCENT`, `HANDLE_PILL_BASE`, edge glow RGB tokens, animation durations, keyframes string, `activeNodeShadow()` helper, and `edgeGlowCSS()` generator into `src/webview/styles.ts`. Both `CustomNode.tsx` and `index.tsx` now import from a single source of truth.
+- **Publish VSIX workflow** (backlog P2) — `.github/workflows/publish.yml` triggered on `v*.*.*` tags; runs `vsce package` + `vsce publish` with `VSCE_PAT` secret.
+- **Codecov coverage upload** (backlog P2) — CI workflow now generates coverage via `@vitest/coverage-v8` and uploads to Codecov after every push/PR.
+- **GitHub Actions SHA pinning** (backlog P1) — `actions/checkout@v4` and `actions/setup-node@v4` replaced with pinned commit SHAs (`34e1148`, `49933ea`); comments document the versions and update procedure.
+
+### Changed
+
+- **Publisher identity** (backlog tech-debt) — `package.json#publisher` changed from `marcmassacapo` to `marcmassa` to match the GitHub repo owner.
+- **CHANGELOG footnote** (backlog tech-debt) — added an explanatory note about test-count drift: each SDD feature adds 5–30 tests, so the count is a reflection of requirements, not a fixed target.
+
+### Removed
+
+- **Duplicated CSS constants** — `const SPACE`, `const EASE_SMOOTH`, `const nodeStyles`, `export const HANDLE_ACCENT`, `const handlePillBase`, `const hiddenHandleStyle` removed from `CustomNode.tsx` and `const SPACE` from `index.tsx`; all now imported from `styles.ts`.
+
+### Technical
+
+- Test suite: 141 unit tests (Vitest), 11 test files, 1 integration test.
+- `@vitest/coverage-v8` added as devDependency; coverage reports generated to `coverage/` (lcov + text + html).
 
 ## [0.1.0] — 2026-06-08
 

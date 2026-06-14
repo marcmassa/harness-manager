@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { EDGE_TYPE_ROUTING } from './WhiteboardCanvas.js';
-import { HANDLE_ACCENT } from './components/CustomNode.js';
+import { HANDLE_ACCENT } from './styles.js';
 
 // ─── T13 ─────────────────────────────────────────────────────────────────────
 describe('EDGE_TYPE_ROUTING (R1)', () => {
