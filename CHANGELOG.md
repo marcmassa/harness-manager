@@ -12,30 +12,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [0.2.1] — 2026-06-14
+## [0.3.0] — 2026-06-14
 
-> Backlog clearance: CSS refactor, CI/CD hardening, technical debt items.
+> First published VSIX. FEAT-023 (configurable adapter paths + Kiro adapter + whiteboard polish) is the headline feature; backlog clearance and CI/CD hardening round out the release.
 
 ### Added
 
-- **Centralised style tokens** (backlog P1) — extracted `SPACE`, `NODE_STYLES`, `HANDLE_ACCENT`, `HANDLE_PILL_BASE`, edge glow RGB tokens, animation durations, keyframes string, `activeNodeShadow()` helper, and `edgeGlowCSS()` generator into `src/webview/styles.ts`. Both `CustomNode.tsx` and `index.tsx` now import from a single source of truth.
-- **Publish VSIX workflow** (backlog P2) — `.github/workflows/publish.yml` triggered on `v*.*.*` tags; runs `vsce package` + `vsce publish` with `VSCE_PAT` secret.
-- **Codecov coverage upload** (backlog P2) — CI workflow now generates coverage via `@vitest/coverage-v8` and uploads to Codecov after every push/PR.
-- **GitHub Actions SHA pinning** (backlog P1) — `actions/checkout@v4` and `actions/setup-node@v4` replaced with pinned commit SHAs (`34e1148`, `49933ea`); comments document the versions and update procedure.
+#### FEAT-023 — Configurable adapter paths + Kiro adapter + whiteboard UX polish
+
+- **ConfigurationRegistry** (Part A) — singleton that lets users override adapter detection paths via VS Code settings. Five configurable adapters (Claude Code, Cursor, Gemini CLI, Copilot, Windsurf); two canonical adapters (Harness SDD, OpenCode) are not configurable. Six `contributes.configuration` entries in `package.json`. Cache is invalidated on `onDidChangeConfiguration`.
+- **Kiro adapter** (Part B) — detects `.kiro/` files (agents, skills, relationships). First consumer of the ConfigurationRegistry. Registered as the 7th advertised adapter.
+- **Whiteboard UX polish** (Part C) — `detectAndFixOverlaps()` guarantees no overlapping dagre-positioned nodes (4 px tolerance, 8 px stride, 5 iterations). Node appear animation (`@keyframes nodeAppear`, scale 0.85→1, 200 ms ease-out) with `prefers-reduced-motion: reduce` support. Edge style transitions animated at 150 ms. `fitView` eased to 400 ms `ease-in-out`.
+
+#### Backlog clearance
+
+- **Centralised style tokens** (P1) — extracted `SPACE`, `NODE_STYLES`, `HANDLE_ACCENT`, `HANDLE_PILL_BASE`, edge glow RGB tokens, animation keyframes, box-shadow helpers into `src/webview/styles.ts`. `CustomNode.tsx` and `index.tsx` now import from a single source of truth.
+- **Publish VSIX workflow** (P2) — `.github/workflows/publish.yml` triggered on `v*.*.*` tags; runs `vsce package` + `vsce publish` with `VSCE_PAT` secret.
+- **Codecov coverage upload** (P2) — CI workflow generates coverage via `@vitest/coverage-v8` and uploads to Codecov.
+- **GitHub Actions SHA pinning** (P1) — `actions/checkout@v4` and `actions/setup-node@v4` pinned to commit SHAs.
 
 ### Changed
 
-- **Publisher identity** (backlog tech-debt) — `package.json#publisher` changed from `marcmassacapo` to `marcmassa` to match the GitHub repo owner.
-- **CHANGELOG footnote** (backlog tech-debt) — added an explanatory note about test-count drift: each SDD feature adds 5–30 tests, so the count is a reflection of requirements, not a fixed target.
+- **Published VSIX** — first public build at `harness-dashboard-vscode-0.3.0.vsix` (265 KB, 14 files).
+- **Publisher identity** — `package.json#publisher` set to `marcmassacapo` (Marketplace identity).
+- **CHANGELOG footnote** — explanatory note about test-count drift: each SDD feature adds 5–30 tests; the count reflects requirements, not a fixed target.
+- **Zero npm audit warnings** — production dependency tree is clean.
 
 ### Removed
 
-- **Duplicated CSS constants** — `const SPACE`, `const EASE_SMOOTH`, `const nodeStyles`, `export const HANDLE_ACCENT`, `const handlePillBase`, `const hiddenHandleStyle` removed from `CustomNode.tsx` and `const SPACE` from `index.tsx`; all now imported from `styles.ts`.
+- **Duplicated CSS constants** — `SPACE`, `EASE_SMOOTH`, `nodeStyles`, `HANDLE_ACCENT`, `handlePillBase`, `hiddenHandleStyle` removed from component files; all now imported from `styles.ts`.
+
+### Documentation
+
+- `docs/configuration.md` — long-form ConfigurationRegistry reference (6 configurable adapters, 2 canonical, edge cases).
+- `progress/impl_adapter-config-paths-and-kiro-and-whiteboard-polish.md` — full R↔T↔test traceability for FEAT-023 (22 requirements, 31 tasks).
+- `progress/backlog.md` — completed items moved to "Completed" section; 3 remaining items documented as blocked.
 
 ### Technical
 
-- Test suite: 141 unit tests (Vitest), 11 test files, 1 integration test.
-- `@vitest/coverage-v8` added as devDependency; coverage reports generated to `coverage/` (lcov + text + html).
+- Test suite: 141 unit tests (Vitest, 11 files) + 1 integration test (VS Code 1.124.2, 2.1 s).
+- Coverage via `@vitest/coverage-v8`; reports to `coverage/` (lcov + text + html).
+- `./check.sh`: 33 checks, 0 failures, 2 expected warnings (skipped CLI parity tests).
+- All 23 SDD features in `feature_list.json` are `done`.
 
 ## [0.1.0] — 2026-06-08
 
