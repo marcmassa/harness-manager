@@ -9,12 +9,11 @@ import { MDViewer } from './components/MDViewer.js';
 import type { EntityFormData } from './components/EntitySidePanel.js';
 import { DashboardData, MarkdownFileContent } from '../types.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
+import { SPACE } from './styles.js';
 
 import 'reactflow/dist/style.css';
 
 provideVSCodeDesignSystem().register(allComponents);
-
-const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
 
 const PanelActionIcon = ({ children }: { children: React.ReactNode }) => (
     <svg

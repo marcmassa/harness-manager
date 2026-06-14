@@ -1,0 +1,52 @@
+name: Publish VSIX
+
+# Trigger: when a tag matching v*.*.* is pushed.
+# The CI workflow already validated the commit when it was merged to main;
+# this workflow only packages and publishes the VSIX to the Marketplace.
+# It does NOT re-run tests or checks.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# SHA-pinned for supply-chain security.
+#   actions/checkout@v4 → 34e114876b0b11c390a56381ad16ebd13914f8d5
+#   actions/setup-node@v4 → 49933ea5288caeca8642d1e84afbd3f7d6820020
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          clean: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build extension
+        run: npm run build
+
+      # Package the VSIX with vsce. The version string comes from
+      # package.json, which must already be bumped.
+      - name: Package VSIX
+        run: npx vsce package --out harness-dashboard.vsix
+
+      # Publish to the VS Code Marketplace using the VSCE_PAT secret.
+      # The PAT must have the `Marketplace` permission scope and be
+      # stored in the GitHub repo or org secrets as `VSCE_PAT`.
+      - name: Publish to Marketplace
+        run: npx vsce publish --packagePath harness-dashboard.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
