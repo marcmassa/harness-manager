@@ -67,7 +67,48 @@
         "command": "harness-dashboard.openDashboard",
         "title": "Harness: Open Dashboard"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Harness Dashboard",
+      "properties": {
+        "harness-dashboard.adapters.claude-code.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".claude",
+          "description": "Path to the Claude Code agent configuration directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.cursor.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".cursor",
+          "description": "Path to the Cursor agent configuration directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.gemini-cli.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".gemini",
+          "description": "Path to the Gemini CLI agent configuration directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.copilot.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".github",
+          "description": "Path to the GitHub Copilot instructions directory (relative to workspace root). The .vscode/prompts/ directory is unaffected by this setting."
+        },
+        "harness-dashboard.adapters.windsurf.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".windsurf",
+          "description": "Path to the Windsurf rules directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.kiro.path": {
+          "type": "string",
+          "scope": "resource",
+          "default": ".kiro",
+          "description": "Path to the Kiro agent configuration directory (relative to workspace root)."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node esbuild.js",

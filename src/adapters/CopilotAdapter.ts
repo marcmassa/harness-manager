@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import matter from 'gray-matter';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
+import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
     createEmptyResult,
@@ -23,8 +24,10 @@ function describeApplyTo(applyTo: unknown): string {
 }
 
 export class CopilotAdapter implements IAgentAdapter {
+    private static readonly CONFIG_KEY = 'copilot';
+
     public id(): string {
-        return 'copilot';
+        return CopilotAdapter.CONFIG_KEY;
     }
 
     public label(): string {
@@ -32,16 +35,24 @@ export class CopilotAdapter implements IAgentAdapter {
     }
 
     public watchGlobs(): string[] {
+        const path = ConfigurationRegistry.getInstance()
+            .getPathFor(CopilotAdapter.CONFIG_KEY);
         return [
-            '.github/copilot-instructions.md',
-            '.github/instructions/**/*.instructions.md',
+            `${path}/copilot-instructions.md`,
+            `${path}/instructions/**/*.instructions.md`,
             '.vscode/prompts/**/*.prompt.md',
         ];
     }
 
+    public isPathConfigurable(): boolean {
+        return true; // `.github/` path is overridable; `.vscode/prompts/` stays fixed
+    }
+
     public async detect(root: vscode.Uri): Promise<boolean> {
-        if (await fileExists(root, '.github/copilot-instructions.md')) return true;
-        const instructionFiles = await findFiles(root, '.github/instructions/**/*.instructions.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(CopilotAdapter.CONFIG_KEY, root);
+        if (await fileExists(root, `${path}/copilot-instructions.md`)) return true;
+        const instructionFiles = await findFiles(root, `${path}/instructions/**/*.instructions.md`);
         if (instructionFiles.length > 0) return true;
         const promptFiles = await findFiles(root, '.vscode/prompts/**/*.prompt.md');
         return promptFiles.length > 0;
@@ -52,8 +63,10 @@ export class CopilotAdapter implements IAgentAdapter {
         const adapterId = this.id();
         const adapterLabel = this.label();
 
-        const rootInstructions = await readTextIfExists(root, '.github/copilot-instructions.md');
-        const instructionFiles = await findFiles(root, '.github/instructions/**/*.instructions.md');
+        const path = await ConfigurationRegistry.getInstance()
+            .resolvePath(CopilotAdapter.CONFIG_KEY, root);
+        const rootInstructions = await readTextIfExists(root, `${path}/copilot-instructions.md`);
+        const instructionFiles = await findFiles(root, `${path}/instructions/**/*.instructions.md`);
         const promptFiles = await findFiles(root, '.vscode/prompts/**/*.prompt.md');
 
         const rootNodeId = `${adapterId}::root`;
@@ -77,7 +90,7 @@ export class CopilotAdapter implements IAgentAdapter {
                 },
                 adapterId,
                 adapterLabel,
-                rootInstructions ? '.github/copilot-instructions.md' : undefined
+                rootInstructions ? `${path}/copilot-instructions.md` : undefined
             )
         );
 

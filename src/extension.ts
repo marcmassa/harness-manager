@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { HarnessParser } from './harnessParser.js';
 import { HarnessWriter } from './harnessWriter.js';
+import { initConfigurationRegistry, disposeConfigurationRegistry } from './adapters/index.js';
 import type { MarkdownFileContent } from './types.js';
 type CustomUsesEdge = { source: string; target: string };
 const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
@@ -13,6 +14,11 @@ export function activate(context: vscode.ExtensionContext) {
     // OutputChannel with log:true — visible in Output > Harness Dashboard, supports severity filtering
     const log = vscode.window.createOutputChannel('Harness Dashboard', { log: true });
     context.subscriptions.push(log);
+
+    // Eagerly construct the ConfigurationRegistry singleton with
+    // the OutputChannel so R6 warnings land in the same channel
+    // as the rest of the extension's diagnostics.
+    initConfigurationRegistry(log);
 
     // T1 (R1, R4): pass context so provider can access workspaceState
     const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log);
@@ -330,4 +336,8 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             </body>
             </html>`;
     }
+}
+
+export function deactivate() {
+    disposeConfigurationRegistry();
 }

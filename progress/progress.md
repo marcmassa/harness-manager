@@ -112,6 +112,13 @@
 - **Traceability:** `progress/impl_node-position-persistence-and-pill-linking.md`.
 - **Reviewer:** typescript-implementer (PASSED)
 
+## [2026-06-14] FEAT-023: adapter-config-paths-and-kiro-and-whiteboard-polish (COMPLETED)
+- **Objective:** Three-part feature: (1) ConfigurationRegistry — let users override adapter detection paths via VS Code settings; (2) Kiro adapter — detect `.kiro/` files as the ConfigurationRegistry's first consumer; (3) whiteboard UX polish — no-overlap guarantee for dagre-positioned nodes + CSS-only node/edge animations.
+- **Outcome:** Part A — Created `ConfigurationRegistry.ts` singleton (lazy load, `onDidChangeConfiguration` cache invalidation, R6 fallback). Extended `IAgentAdapter` with `isPathConfigurable()`. Made 5 adapters configurable (ClaudeCode, Cursor, GeminiCli, Copilot, Windsurf); 2 canonical (HarnessSdd, OpenCode) return `false`. Added 6 `contributes.configuration` settings in `package.json`. Part B — Created `KiroAdapter.ts` (mirrors ClaudeCodeAdapter; reads from registry). Registered in `index.ts` + `allAdapters`. Added `kiro` entry to `frameworks.ts`. Fixture at `src/test/fixtures/kiro-minimal/.kiro/`. Part C — Implemented `detectAndFixOverlaps()` (4px tolerance, 8px stride, 5-iter cap). Added `fitView({ duration: 400, ease: 'ease-in-out' })` + `@keyframes nodeAppear` (200ms ease-out, scale 0.85→1) + `.node-enter` class + `prefers-reduced-motion: reduce` gate. Edge transitions 150ms.
+- **Tests:** 141 unit tests (11 files), 1 integration test (VS Code 1.124.2, 2.1s), `npm run build` clean, `./check.sh` 33 passes.
+- **Traceability:** `progress/impl_adapter-config-paths-and-kiro-and-whiteboard-polish.md` (R↔T↔test mapping), `docs/configuration.md` (long-form registry docs).
+- **Reviewer:** reviewer-vscode (PASSED)
+
 ## [2026-06-08] FEAT-015: universal-agent-reader (COMPLETED)
 - **Objective:** Implement universal multi-framework agent architecture parsing and visualization without breaking existing Harness behavior.
 - **Outcome:** Added adapter architecture (`IAgentAdapter`, `AdapterRegistry`, `HarnessSddAdapter`) plus adapters for Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCode, and Windsurf. Integrated parser/UI framework metadata (`detectedFrameworks`, `_framework`, `_frameworkLabel`) with framework badge, 4px node framework accent, and framework empty state. Extended file watching through adapter `watchGlobs()`.

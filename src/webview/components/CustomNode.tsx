@@ -62,15 +62,9 @@ export const HANDLE_ACCENT: Record<string, string> = {
 
 export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     const [showSkillPicker, setShowSkillPicker] = React.useState(false);
-    const [entered, setEntered] = React.useState(false);
     const [isHovered, setIsHovered] = React.useState(false);
     const nodeRef = React.useRef<HTMLDivElement>(null);
     const pickerRef = React.useRef<HTMLDivElement>(null);
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => setEntered(true), 50);
-        return () => clearTimeout(timer);
-    }, []);
 
     React.useEffect(() => {
         if (!showSkillPicker) return;
@@ -97,16 +91,13 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
         };
     }, [showSkillPicker]);
 
-    // Entrance animation
-    const entranceStyle: React.CSSProperties = entered ? {
-        opacity: 1,
-        transform: 'translateY(0)',
-        transition: `opacity 0.35s ${EASE_SMOOTH}, box-shadow 0.25s ${EASE_SMOOTH}`,
-    } : {
-        opacity: 0,
-        transform: 'translateY(12px)',
-        transition: `opacity 0.35s ${EASE_SMOOTH}`,
-    };
+    // FEAT-023 R19: node appear/disappear animation is a
+    // CSS-only keyframe (`nodeAppear`, 200ms ease-out) attached
+    // via the `.node-enter` class on the outer div. The class
+    // lives in `index.tsx` and includes a `prefers-reduced-motion`
+    // override that disables the animation. No JS state needed
+    // for the entrance — the keyframe runs once on mount and
+    // `forwards` keeps the final state.
 
     // Hover effect — WITHOUT transform to avoid handle displacement
     // Use outline + box-shadow instead of scale
@@ -184,7 +175,6 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
 
     const mergedStyle: React.CSSProperties = { 
         ...nodeStyles[type], 
-        ...entranceStyle, 
         ...hoverStyle,
         ...selectedStyle,
         ...dragHoverStyle,
@@ -281,7 +271,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     return (
         <div
             ref={nodeRef}
-            className="harness-node"
+            className="harness-node node-enter"
             data-type={type}
             style={mergedStyle}
             onMouseEnter={() => {

@@ -26,6 +26,10 @@ export class HarnessSddAdapter implements IAgentAdapter {
         return ['.agents/**', 'feature_list.json', 'progress/progress.md'];
     }
 
+    public isPathConfigurable(): boolean {
+        return false; // canonical framework entry point (`.agents/agentic.json`)
+    }
+
     public async detect(root: vscode.Uri): Promise<boolean> {
         return fileExists(root, '.agents/agentic.json');
     }

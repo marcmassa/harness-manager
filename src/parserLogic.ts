@@ -714,3 +714,136 @@ export function parseProgressMd(content: string, result: ParserResult) {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// No-overlap guarantee (FEAT-023, R16–R18)
+// ---------------------------------------------------------------------------
+
+/**
+ * Visual half-width of the smallest node type. Two nodes are
+ * considered "overlapping" if their `(x, y)` anchors are within
+ * this many pixels of each other. 4 px is the canonical value
+ * for the current CustomNode design (FEAT-023 R16).
+ */
+const OVERLAP_TOLERANCE_PX = 4;
+
+/**
+ * When an overlap is detected, the colliding node (or nodes)
+ * is offset by `N × STRIDE` pixels on each axis, where `N` is
+ * the collision index (1 for the second node, 2 for the
+ * third, etc.). The first colliding node stays put so that any
+ * manually-set anchor (e.g., the root agent) is preserved.
+ */
+const OVERLAP_OFFSET_STRIDE_PX = 8;
+
+/**
+ * Safety bound for the iterative offset pass. After 5 passes
+ * any cascading overlaps are very unlikely (each pass pushes
+ * nodes 8 px further apart on both axes). The cap exists to
+ * prevent infinite loops in pathological inputs.
+ */
+const MAX_ITERATIONS = 5;
+
+interface NodePosition { x: number; y: number; }
+
+function readNodePosition(node: { metadata: Record<string, any> }): NodePosition | null {
+    const candidate = node.metadata?._position;
+    if (
+        candidate &&
+        typeof candidate === 'object' &&
+        Number.isFinite(candidate.x) &&
+        Number.isFinite(candidate.y)
+    ) {
+        return { x: candidate.x, y: candidate.y };
+    }
+    return null;
+}
+
+function binKey(x: number, y: number): string {
+    return `${Math.round(x / OVERLAP_TOLERANCE_PX)}:${Math.round(y / OVERLAP_TOLERANCE_PX)}`;
+}
+
+function pushOverlapError(
+    result: ParserResult,
+    nodeA: { id: string; metadata: Record<string, any> },
+    nodeB: { id: string; metadata: Record<string, any> },
+    x: number,
+    y: number
+): void {
+    const adapterId = String(nodeA.metadata?._framework ?? 'parser');
+    result.errors.push({
+        file: adapterId,
+        message: `Node ${nodeA.id} and ${nodeB.id} overlap at (${Math.round(x)}, ${Math.round(y)})`,
+    });
+}
+
+/**
+ * Detect and fix overlapping node positions in a
+ * `ParserResult`.
+ *
+ * The function looks at `node.metadata._position` on each
+ * node (set by the dagre auto-layout in the webview, or by
+ * the user via manual position persistence). If two or more
+ * nodes share a `(x, y)` to within `OVERLAP_TOLERANCE_PX`
+ * pixels, the function:
+ *
+ *   1. Emits a non-fatal `ParserError` for each colliding pair.
+ *   2. Applies a deterministic offset `(x + N × STRIDE,
+ *      y + N × STRIDE)` to the colliding node(s), where `N`
+ *      is the collision index (1, 2, 3, ...). The first
+ *      colliding node stays put so that any manually-set
+ *      anchor is preserved.
+ *   3. Iterates up to `MAX_ITERATIONS` to handle cascading
+ *      overlaps.
+ *
+ * The function returns the same `ParserResult` (mutated in
+ * place for performance and so the caller can keep its
+ * reference). The return value is provided for convenience
+ * and matches the spec's API.
+ *
+ * At parse time no positions are set on the nodes, so the
+ * function is a no-op. The intended caller is the webview
+ * layout code, which calls this function after dagre layout
+ * and before the manual-position merge (per R17/R18).
+ */
+export function detectAndFixOverlaps(result: ParserResult): ParserResult {
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
+        const buckets = new Map<string, Array<{ id: string; metadata: Record<string, any> }>>();
+        let anyCollision = false;
+
+        for (const node of result.graph.nodes) {
+            const position = readNodePosition(node);
+            if (!position) continue;
+            const key = binKey(position.x, position.y);
+            const bucket = buckets.get(key) ?? [];
+            bucket.push(node);
+            buckets.set(key, bucket);
+        }
+
+        for (const [, bucket] of buckets) {
+            if (bucket.length <= 1) continue;
+            anyCollision = true;
+
+            // First node stays put. Subsequent nodes get the
+            // deterministic N × STRIDE offset (N = 1, 2, ...).
+            for (let i = 1; i < bucket.length; i += 1) {
+                const nodeA = bucket[0];
+                const nodeB = bucket[i];
+                const position = readNodePosition(nodeB);
+                if (!position) continue;
+                pushOverlapError(result, nodeA, nodeB, position.x, position.y);
+                const offset = i * OVERLAP_OFFSET_STRIDE_PX;
+                nodeB.metadata._position = {
+                    x: position.x + offset,
+                    y: position.y + offset,
+                };
+            }
+        }
+
+        // If no collisions were found in this pass, the layout
+        // is now overlap-free. Bail out.
+        if (!anyCollision) break;
+    }
+
+    return result;
+}
