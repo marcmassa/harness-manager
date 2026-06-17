@@ -3,10 +3,18 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
+
+---
+
+## Screenshots
+
+| Whiteboard | SDD Panel |
+|---|---|
+| ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](media/screenshots/sdd-panel.png) |
 
 ---
 
@@ -37,6 +45,23 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | ⏸ **Toggle connections** | Disable/enable skill connections persistently |
 | 🚫 **Dismiss suggestions** | Permanently hide unwanted suggestions (persisted across reloads) |
 | 📅 **Progress timeline** | Visualize SDD feature lifecycle (pending → done) |
+| 🧭 **Steering & Hooks nodes** | Visualise steering files and hook scripts on the whiteboard, with relationship edges to subagents and agents |
+| 📐 **SDD Management Panel** | Browse and edit spec files (requirements, design, tasks) per feature, with AI-assisted spec generation |
+| 🔄 **Cross-framework discovery** | Find hooks and steering files from any agentic framework (Harness, Kiro, Claude Code, etc.) |
+| 🤖 **Universal AI Provider** | Provider chain (`vscode.lm` → OpenAI-compatible API fallback) works in any IDE without Copilot |
+
+---
+
+## What's new in 0.4.0
+
+| Area | What changed |
+|------|-------------|
+| **AI Provider** | New provider chain falls back to OpenAI-compatible API when `vscode.lm` is unavailable. Check diagnostics via `Harness Dashboard: Check AI Provider Status` command. 3 settings: `apiKey`, `endpoint`, `model`. |
+| **SDD Panel** | Dedicated panel alongside the whiteboard for browsing, editing, and AI-generating spec files per feature. |
+| **Steering & Hooks** | Two new node types on the whiteboard (`steering`, `hook`) with relationship edges to subagents and agents. |
+| **Cross-framework** | Hooks and steering files discovered automatically from any agentic framework root and the project root. |
+
+For the full list of changes, see the [CHANGELOG](./CHANGELOG.md).
 
 ---
 
@@ -78,9 +103,9 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 State (dismissed suggestions, disabled connections) is persisted automatically per workspace via VS Code's `workspaceState`.
 
-The extension also exposes optional per-adapter path overrides under `harness-dashboard.adapters.<id>.path`. The defaults match each framework's canonical detection directory; override them when your project places its agent files in a non-standard location. Currently configurable: `claude-code`, `cursor`, `gemini-cli`, `copilot`, `windsurf`, `kiro`. **Not** configurable: `harness-sdd` (canonical, `.agents/agentic.json`) and `opencode` (canonical, `opencode.json`/`opencode.jsonc`) — changing the path would break the framework's own tooling.
+### Adapter path overrides
 
-Example (workspace-scoped override, add to `.vscode/settings.json`):
+Per-adapter detection path overrides under `harness-dashboard.adapters.<id>.path`. The defaults match each framework's canonical detection directory; override them when your project places its agent files in a non-standard location. Configurable: `claude-code`, `cursor`, `gemini-cli`, `copilot`, `windsurf`, `kiro`. **Not** configurable: `harness-sdd` (canonical, `.agents/agentic.json`) and `opencode` (canonical, `opencode.json`/`opencode.jsonc`) — changing the path would break the framework's own tooling.
 
 ```json
 {
@@ -89,6 +114,17 @@ Example (workspace-scoped override, add to `.vscode/settings.json`):
 ```
 
 If a configured path is invalid (does not exist or is not a directory), the extension logs a one-line warning to the **Harness Dashboard** output channel and falls back to the framework's default. See [`docs/configuration.md`](docs/configuration.md) for the long-form ConfigurationRegistry reference.
+
+### AI provider settings
+
+Configure the OpenAI-compatible fallback provider to help define new specs with the specs panel:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `harness-dashboard.ai.apiKey` | `""` | API key for fallback provider. Empty = fallback disabled. |
+| `harness-dashboard.ai.endpoint` | `https://api.openai.com/v1/chat/completions` | Base URL for the API. Change for Ollama, Azure, LM Studio, etc. |
+| `harness-dashboard.ai.model` | `gpt-4o-mini` | Model identifier sent in the request body. |
+
 
 ---
 
@@ -120,5 +156,5 @@ to keep the repository name as `harness-manager` (rather than
 rename it to `harness-dashboard`) is recorded in
 [`ADR-002`](./progress/decisions.md#adr-002-accept-the-github-repository-name-harness-manager-and-document-the-mismatch).
 A future maintainer may choose to perform the rename at a
-project milestone (e.g., v0.2.0 or v1.0.0); until then, the
+project milestone (e.g., v0.4.0 or v1.0.0); until then, the
 two names refer to the same project.

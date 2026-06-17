@@ -12,6 +12,72 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.4.0] — 2026-06-17
+
+> Adds 5 new features bringing the total to 28 done. FEAT-028 (Universal AI Provider) is the headline feature — AI spec generation works in Kiro and other IDEs without Copilot via configurable provider chain. FEAT-027 (KISS + DRY code quality hooks) enforces architectural principles on every save. FEAT-024/025/026 extend the whiteboard with steering, hooks, SDD management panel, and cross-framework discovery.
+
+### Added
+
+#### FEAT-028 — Universal AI Provider (provider chain)
+
+- **Provider chain (Chain of Responsibility)**: `[vscodeLmProvider, createOpenAiCompatibleProvider]` — tries `vscode.lm` first, falls back to OpenAI-compatible API.
+- **`AiProvider` interface** — `name`, `tryGenerate(prompt, options?)` — any provider is one `AiProvider` object.
+- **`createOpenAiCompatibleProvider(defaults)`** — zero-dependency factory using Node.js built-in `https`. Configurable endpoint, model, API key.
+- **`createProviderChain(providers, options)`** — tries providers in order; first success wins; last error if all fail.
+- **`generateText(prompt, log?, options?)`** — backward-compatible entry point, unchanged signature.
+- **3 settings** (`ai.apiKey`, `ai.endpoint`, `ai.model`) — fallback disabled by default (empty apiKey).
+- **`harness-dashboard.checkLM` command** — diagnoses LM availability + runs a test generation; results shown in info/warning message with "View Output" action.
+- **Settings gear button** — ⚙️ icon in the toolbar opens VS Code settings filtered to `@ext:marcmassacapo.harness-dashboard-vscode`.
+- **Zero new npm dependencies** — `https` module used directly.
+- **23 unit tests** covering all providers, chain logic, HTTP errors, and backward compatibility.
+- **Traceability**: `progress/impl_universal-ai-provider.md` documents R<n>↔test mapping.
+
+#### FEAT-027 — Code Quality On-Save Hooks (KISS + DRY)
+
+- **KISS hook** (`hooks/kiss_check.py`) — checks for overengineering: long files >400 lines, long functions >80 lines, deep nesting >4 levels, unused parameters, excessive swallowed exceptions.
+- **DRY hook** (`hooks/dry_check.py`) — checks for duplication: repeated string literals (>=12 chars, 3+ times), magic numbers, near-duplicate functions (Jaccard >= 0.85), duplicate interface/type definitions.
+- **Two bash hooks** (`hooks/on-file-saved-kiss-check.sh`, `hooks/on-file-saved-dry-check.sh`) — triggered on TypeScript save in `src/`.
+- **`hooks/code-quality-checks.json`** — JSON catalog listing all rules (runtime form of steering principles).
+- **Registered in `agentic.json#hooks[]`** under events `on_file_saved_kiss` and `on_file_saved_dry`.
+- **5 settings** (`verifyOnSave`, `blockOnSave`, `kissEnabled`, `dryEnabled`, `severity`).
+- **`harness-dashboard.verifyCodeQuality` command** — manual verify of any chosen file.
+- Reports issues to VS Code's Problems panel and an OutputChannel.
+
+#### FEAT-025 — Enhanced SDD Panel
+
+- **Dedicated SDD management panel** alongside the whiteboard — shows spec files (`requirements.md`, `design.md`, `tasks.md`) per feature.
+- **Visual state badges** — feature chronology and status at a glance.
+- **Inline spec editor** — edit spec files directly from the panel.
+- **AI-assisted spec initiation** — integrate with the provider chain (vscode.lm → fallback) to generate EARS requirements, design decisions, or task lists with one click.
+
+#### FEAT-024 — Steering & Hooks Observability
+
+- **`steering` node type** — parses `agentic.json#steering[]`, reads steering markdown files, shows `steering → subagent` edges based on `applies_to`.
+- **`hook` node type** — parses `agentic.json#hooks[]`, reads hook scripts, shows `hook → agent` edges.
+- **Distinct visual styles** — steering files and hook scripts each get their own icon, colour, and shape.
+
+#### FEAT-026 — Cross-framework hooks & steering discovery
+
+- **Discovery layer** — scans both framework-specific roots (`.kiro/hooks/`, `.claude/hooks/`, etc.) and workspace root (`hooks/`, `steering/`) for hook/steering files.
+- **Deduplication** — files found in both locations are shown once.
+- **Per-adapter settings** — `hooksPath`, `steeringPath`, `discoverHooks`, `discoverSteering`.
+- **Global settings** — `rootHooks`, `rootSteering` to control root-level discovery.
+- **Backward-compatible** — FEAT-024's Harness-SDD handling unchanged.
+
+### Changed
+
+- **README.md** — version badge updated to 0.4.0; new features added to table; "What's new in 0.4.0" section; screenshot placeholders added.
+- **`harness-dashboard.checkLM` command** — new command (category: "Harness Dashboard").
+- **`harness-dashboard.verifyCodeQuality` command** — new command.
+- **Settings gear button** added to the whiteboard toolbar.
+
+### Technical
+
+- Test suite: **228 unit tests** (Vitest, 16 files) — 87 new tests across 5 feature areas.
+- All 28 features in `feature_list.json` are `done`.
+- Lockfile regenerated with `npm install`; production dependency tree remains clean.
+- `./check.sh`: all checks pass (only pre-existing ⚠️ `py_compile` warnings).
+
 ## [0.3.0] — 2026-06-14
 
 > First published VSIX. FEAT-023 (configurable adapter paths + Kiro adapter + whiteboard polish) is the headline feature; backlog clearance and CI/CD hardening round out the release.

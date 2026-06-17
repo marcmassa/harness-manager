@@ -390,6 +390,107 @@ export function parseAgenticJson(content: string, result: ParserResult) {
                 }
             }
         }
+        // 4. Steering entries (R1, R6, R11)
+        if (data.steering) {
+            for (const entry of data.steering) {
+                const steeringId = `steering-${entry.name}`;
+                result.graph.nodes.push({
+                    id: steeringId,
+                    type: 'steering',
+                    label: entry.name,
+                    metadata: {
+                        name: entry.name,
+                        file: entry.file,
+                        description: entry.description,
+                        applies_to: entry.applies_to,
+                        _filePath: entry.file,
+                    }
+                });
+
+                // Create 'governs' edges to matching subagents (R6)
+                const subagentNodes = result.graph.nodes.filter(n => n.type === 'subagent');
+                const appliesToAll = Array.isArray(entry.applies_to) && entry.applies_to.includes('*');
+
+                if (appliesToAll) {
+                    for (const sa of subagentNodes) {
+                        if (!edgeExists(result, steeringId, sa.id, 'governs')) {
+                            result.graph.edges.push({
+                                id: `edge-${steeringId}-${sa.id}-governs`,
+                                source: steeringId,
+                                target: sa.id,
+                                label: 'governs'
+                            });
+                        }
+                    }
+                } else if (Array.isArray(entry.applies_to)) {
+                    for (const targetId of entry.applies_to) {
+                        const targetNode = result.graph.nodes.find(n => n.id === targetId && n.type === 'subagent');
+                        if (targetNode) {
+                            if (!edgeExists(result, steeringId, targetId, 'governs')) {
+                                result.graph.edges.push({
+                                    id: `edge-${steeringId}-${targetId}-governs`,
+                                    source: steeringId,
+                                    target: targetId,
+                                    label: 'governs'
+                                });
+                            }
+                        } else {
+                            // R11: Warning if applies_to subagent does not exist
+                            result.errors.push({
+                                file: '.agents/agentic.json',
+                                message: `Steering '${entry.name}' applies_to subagent '${targetId}' which does not exist`
+                            });
+                        }
+                    }
+                }
+
+                // R11: Warning if no edges were created
+                if (!appliesToAll && (!Array.isArray(entry.applies_to) || entry.applies_to.length === 0)) {
+                    result.errors.push({
+                        file: '.agents/agentic.json',
+                        message: `Steering '${entry.name}' has no applicable subagents (applies_to is empty)`
+                    });
+                }
+            }
+        }
+
+        // 5. Hook entries (R2, R7, R11)
+        if (data.hooks) {
+            for (const entry of data.hooks) {
+                const hookId = `hook-${entry.event}`;
+                result.graph.nodes.push({
+                    id: hookId,
+                    type: 'hook',
+                    label: entry.event,
+                    metadata: {
+                        event: entry.event,
+                        script: entry.script,
+                        description: entry.description,
+                        on_failure: entry.on_failure,
+                        _filePath: entry.script,
+                    }
+                });
+
+                // Create 'triggers' edge to primary agent (R7)
+                const primaryAgent = result.graph.nodes.find(n => n.type === 'agent');
+                if (primaryAgent) {
+                    if (!edgeExists(result, hookId, primaryAgent.id, 'triggers')) {
+                        result.graph.edges.push({
+                            id: `edge-${hookId}-${primaryAgent.id}-triggers`,
+                            source: hookId,
+                            target: primaryAgent.id,
+                            label: 'triggers'
+                        });
+                    }
+                } else {
+                    // R11: Warning if no primary agent exists
+                    result.errors.push({
+                        file: '.agents/agentic.json',
+                        message: `Hook '${entry.event}' has no primary agent to trigger`
+                    });
+                }
+            }
+        }
     } catch (e: any) {
         result.errors.push({ file: '.agents/agentic.json', message: e.message });
     }
@@ -555,6 +656,46 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
         }
     } catch (e: any) {
         result.errors.push({ file: filePath.replace(/\\/g, '/'), message: e.message });
+    }
+}
+
+/**
+ * Enrich a steering node with content from its markdown file.
+ * Called by the adapter after file reading.
+ *
+ * @param filePath  - relative path to the steering file
+ * @param content   - file content, or null if the file doesn't exist
+ * @param node      - the steering node to enrich
+ * @param result    - the ParserResult to push errors into
+ */
+export function parseSteeringFile(filePath: string, content: string | null, node: { metadata: Record<string, any> }, result: ParserResult): void {
+    node.metadata._filePath = filePath;
+    if (content !== null) {
+        node.metadata._body = content;
+        node.metadata._fileMissing = false;
+    } else {
+        // R4: handle missing steering file gracefully
+        node.metadata._fileMissing = true;
+        result.errors.push({
+            file: filePath,
+            message: `Steering file '${filePath}' referenced in agentic.json does not exist`
+        });
+    }
+}
+
+/**
+ * Enrich a hook node with a preview of its script content.
+ * Called by the adapter after file reading.
+ *
+ * @param filePath  - relative path to the hook script
+ * @param content   - file content, or null if the file doesn't exist
+ * @param node      - the hook node to enrich
+ */
+export function parseHookFile(filePath: string, content: string | null, node: { metadata: Record<string, any> }): void {
+    node.metadata._filePath = filePath;
+    if (content !== null) {
+        // R5: store first 500 characters as preview
+        node.metadata._preview = content.substring(0, 500);
     }
 }
 

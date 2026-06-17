@@ -11,6 +11,7 @@ import {
 import { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { createDefaultAdapters } from './adapters/index.js';
 import { normalizePath } from './adapters/adapterUtils.js';
+import { selectFirstChatModel, sendChatRequest } from './lmUtils.js';
 
 export interface ParseOptions {
     dismissedSuggestions?: Set<string>;
@@ -141,21 +142,14 @@ export class HarnessParser {
     private _createLlmScorer(): (subagentDesc: string, skillDesc: string) => Promise<number> {
         return async (subagentDesc: string, skillDesc: string): Promise<number> => {
             try {
-                const models = await vscode.lm.selectChatModels();
-                if (!models || models.length === 0) return 0;
+                const model = await selectFirstChatModel();
+                if (!model) return 0;
 
-                const model = models[0];
-                const messages = [
-                    vscode.LanguageModelChatMessage.User(
-                        `Rate the relevance between these two descriptions on a scale of 0 to 10, where 0 means completely unrelated and 10 means perfectly matched. Respond with ONLY a number between 0 and 10, nothing else.\n\nDescription A: ${subagentDesc}\n\nDescription B: ${skillDesc}`
-                    ),
-                ];
-                const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
-                let result = '';
-                for await (const chunk of response.text) {
-                    result += chunk;
-                }
-                const parsed = parseFloat(result.trim());
+                const prompt = `Rate the relevance between these two descriptions on a scale of 0 to 10, where 0 means completely unrelated and 10 means perfectly matched. Respond with ONLY a number between 0 and 10, nothing else.\n\nDescription A: ${subagentDesc}\n\nDescription B: ${skillDesc}`;
+                const text = await sendChatRequest(model, prompt);
+                if (text === undefined) return 0;
+
+                const parsed = parseFloat(text.trim());
                 return Number.isNaN(parsed) ? 0 : Math.max(0, Math.min(1, parsed / 10));
             } catch {
                 return 0;

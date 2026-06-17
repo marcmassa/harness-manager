@@ -3,6 +3,7 @@ import * as logic from '../parserLogic.js';
 import { DiscoveryMethod, ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
+import type { HarnessConfig } from '../config/harnessConfig.js';
 import {
     createEmptyResult,
     fileExists,
@@ -23,8 +24,28 @@ export class HarnessSddAdapter implements IAgentAdapter {
     }
 
     public watchGlobs(): string[] {
-        return ['.agents/**', 'feature_list.json', 'progress/progress.md'];
+        const globs = ['.agents/**', 'feature_list.json', 'progress/progress.md'];
+        // R10: Include steering and hook file paths from agentic.json
+        if (this._steeringPaths) {
+            globs.push(...this._steeringPaths);
+        }
+        if (this._hookPaths) {
+            globs.push(...this._hookPaths);
+        }
+        return globs;
     }
+
+    // FEAT-026 R18: HarnessSddAdapter is NOT affected by the new
+    // discovery layer. Its `agentic.json` parser is the source of
+    // truth for steering/hook resources; the HarnessConfig is
+    // accepted but ignored.
+    public setHarnessConfig(_config: HarnessConfig | undefined): void {
+        // no-op
+    }
+
+    // Cache for file paths discovered during parse (for watchGlobs R10)
+    private _steeringPaths: string[] | null = null;
+    private _hookPaths: string[] | null = null;
 
     public isPathConfigurable(): boolean {
         return false; // canonical framework entry point (`.agents/agentic.json`)
@@ -43,6 +64,10 @@ export class HarnessSddAdapter implements IAgentAdapter {
         }
 
         logic.parseAgenticJson(agenticJson, result);
+
+        // T11: Read steering file content (R3, R4) and hook script preview (R5)
+        await this.parseSteeringFiles(root, result, agenticJson);
+        await this.parseHookFiles(root, result, agenticJson);
 
         const featureList = await readTextIfExists(root, 'feature_list.json');
         if (featureList) {
@@ -106,5 +131,45 @@ export class HarnessSddAdapter implements IAgentAdapter {
                 message: `Subagent '${node.id}' found on disk but not registered in agentic.json#subagents[] (orphan)`,
             });
         }
+    }
+
+    private async parseSteeringFiles(root: vscode.Uri, result: ParserResult, agenticJsonRaw: string): Promise<void> {
+        const data = JSON.parse(agenticJsonRaw);
+        if (!data.steering) return;
+
+        const paths: string[] = [];
+        for (const entry of data.steering) {
+            const steeringId = `steering-${entry.name}`;
+            const steeringNode = result.graph.nodes.find(n => n.id === steeringId);
+            if (!steeringNode) continue;
+
+            const filePath = typeof entry.file === 'string' ? entry.file : '';
+            if (!filePath) continue;
+
+            paths.push(filePath);
+            const content = await readTextIfExists(root, filePath);
+            logic.parseSteeringFile(filePath, content, steeringNode, result);
+        }
+        this._steeringPaths = paths.length > 0 ? paths : null;
+    }
+
+    private async parseHookFiles(root: vscode.Uri, result: ParserResult, agenticJsonRaw: string): Promise<void> {
+        const data = JSON.parse(agenticJsonRaw);
+        if (!data.hooks) return;
+
+        const paths: string[] = [];
+        for (const entry of data.hooks) {
+            const hookId = `hook-${entry.event}`;
+            const hookNode = result.graph.nodes.find(n => n.id === hookId);
+            if (!hookNode) continue;
+
+            const scriptPath = typeof entry.script === 'string' ? entry.script : '';
+            if (!scriptPath) continue;
+
+            paths.push(scriptPath);
+            const content = await readTextIfExists(root, scriptPath);
+            logic.parseHookFile(scriptPath, content, hookNode);
+        }
+        this._hookPaths = paths.length > 0 ? paths : null;
     }
 }

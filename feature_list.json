@@ -284,6 +284,66 @@
   "priority": "P1",
   "agent": "typescript-implementer",
   "sprint": "Current"
+  },
+  {
+    "id": "FEAT-024",
+    "name": "steering-and-hooks-observability",
+    "title": "Steering & Hooks Observability — visualise agent/file relationships on the whiteboard",
+    "description": "Add 'steering' and 'hook' as new node types on the whiteboard. Parse agentic.json#steering[] and agentic.json#hooks[] resources, read the actual steering markdown files and hook scripts, and create edges showing their relationships: steering → subagent (based on applies_to), hook → agent. Each steering file and hook script gets a distinct visual style (icon, colour, shape) so users can see their full agentic workflow at a glance.",
+    "type": "feat",
+    "status": "done",
+    "sdd": true,
+    "priority": "P1",
+    "agent": "typescript-implementer",
+    "sprint": "Next"
+  },
+  {
+    "id": "FEAT-025",
+    "name": "enhanced-sdd-panel",
+    "title": "Enhanced SDD Panel — spec viewer, editor, and AI-assisted feature initiation",
+    "description": "Create a dedicated SDD management panel alongside the whiteboard. Display spec files (requirements.md, design.md, tasks.md) for each feature in feature_list.json, show their chronology/status with visual state badges, allow editing spec files inline, and support initiating new specs directly from the panel. Integrate with the VS Code LLM API (vscode.lm) to assist in writing spec content — similar to how the Git extension generates commit messages — so users can generate EARS requirements, design decisions, or task lists with one click.",
+    "type": "feat",
+    "status": "done",
+    "sdd": true,
+    "priority": "P1",
+    "agent": "typescript-implementer",
+    "sprint": "Next"
+  },
+  {
+    "id": "FEAT-026",
+    "name": "cross-framework-hooks-steering",
+    "title": "Cross-framework hooks & steering discovery (Kiro, Claude Code, etc.)",
+    "description": "Closes the FEAT-024 gap: projects that use Kiro, Claude Code, Cursor, Gemini, Copilot, or Windsurf — without Harness SDD's agentic.json — can have hooks and steering files under their framework root (e.g., .kiro/hooks/) or even the project root (e.g., hooks/). Add a discovery layer that scans both locations, deduplicates, creates hook/steering nodes, and wires them to the adapter's root agent and subagents. Per-adapter settings (hooksPath, steeringPath, discoverHooks, discoverSteering) and global settings (rootHooks, rootSteering) make the behaviour fully configurable. Backward-compatible with FEAT-024's Harness-SDD handling.",
+    "type": "feat",
+    "status": "done",
+    "sdd": true,
+    "priority": "P1",
+    "agent": "typescript-implementer",
+    "sprint": "Next"
+  },
+  {
+    "id": "FEAT-027",
+    "name": "code-quality-on-save-hooks",
+    "title": "Code Quality On-Save Hooks (KISS + DRY) — enforce principles from the steering files",
+    "description": "Two hooks that run on every TypeScript save in src/ and enforce the KISS and DRY principles documented in steering/kiss-principle.md and steering/dry-principle.md. The KISS hook checks for overengineering: long files (>400 lines), long functions (>80 lines), deep nesting (>4 levels), unused parameters, and excessive swallowed exceptions. The DRY hook checks for duplication: repeated string literals (>=12 chars, 3+ times), repeated magic numbers, near-duplicate functions (Jaccard >= 0.85), and duplicate interface/type definitions. Each hook is its own bash + python3 script, registered in agentic.json#hooks[] under events on_file_saved_kiss and on_file_saved_dry, and reports issues to VS Code's Problems panel and an OutputChannel. A single JSON catalog (hooks/code-quality-checks.json) lists the rules and serves as the runtime form of the steering principles. Configurable via 5 settings: verifyOnSave, blockOnSave, kissEnabled, dryEnabled, severity. Plus a manual command to verify a chosen file.",
+    "type": "feat",
+    "status": "done",
+    "sdd": true,
+    "priority": "P1",
+    "agent": "typescript-implementer",
+    "sprint": "Current"
+  },
+  {
+    "id": "FEAT-028",
+    "name": "universal-ai-provider",
+    "title": "Universal AI Provider — configurable LM fallback for any IDE",
+    "description": "Extends the AI generation system with a provider chain: vscode.lm first, then a configurable OpenAI-compatible API as fallback. Makes AI features work in any IDE (VS Code + Copilot, Kiro, VS Code without Copilot) without changing the webview. Adds harness-dashboard.checkLM command for diagnostics and 3 new settings (apiKey, endpoint, model). Zero new npm dependencies.",
+    "type": "feat",
+    "status": "done",
+    "sdd": true,
+    "priority": "P1",
+    "agent": "typescript-implementer",
+    "sprint": "Next"
   }
   ]
 }

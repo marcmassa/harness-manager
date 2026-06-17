@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { HarnessEdge, HarnessNode, Milestone, ParserError, ParserResult } from '../types.js';
+import type { HarnessConfig } from '../config/harnessConfig.js';
 
 export interface IAgentAdapter {
     id(): string;
@@ -24,6 +25,15 @@ export interface IAgentAdapter {
      * and the registry skips the id.
      */
     isPathConfigurable(): boolean;
+
+    /**
+     * FEAT-026: inject the shared HarnessConfig instance. Adapters
+     * that opt in (isPathConfigurable() === true) use it to read
+     * per-adapter overrides and extras from
+     * `<workspace>/.harness-dashboard/config.json`. Adapters that
+     * opt out may implement this as a no-op or ignore it.
+     */
+    setHarnessConfig(config: HarnessConfig | undefined): void;
 }
 
 export function mergeResults(results: Partial<ParserResult>[]): ParserResult {

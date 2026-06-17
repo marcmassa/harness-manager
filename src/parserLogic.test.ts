@@ -539,6 +539,203 @@ describe('FEAT-013 — enrichWithIdoneity returns IdoneityMatrix (T17)', () => {
     });
 });
 
+// ===== FEAT-024 Tests =====
+
+describe('FEAT-024 — Steering & Hooks Observability', () => {
+    // T16: parseAgenticJson with steering[] + hooks[] entries (R1, R2)
+    it('T16: parseAgenticJson creates steering and hook nodes from agentic.json', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        // Pre-add two subagent nodes so steering can target them
+        result.graph.nodes.push({ id: 'sub1', type: 'subagent', label: 'Sub1', metadata: {} });
+        result.graph.nodes.push({ id: 'sub2', type: 'subagent', label: 'Sub2', metadata: {} });
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Agent',
+            subagents: [
+                { name: 'sub1', description: 'Sub 1' },
+                { name: 'sub2', description: 'Sub 2' }
+            ],
+            steering: [
+                {
+                    name: 'test-steering',
+                    file: 'steering/test.md',
+                    description: 'Test steering file',
+                    applies_to: ['sub1']
+                }
+            ],
+            hooks: [
+                {
+                    event: 'on_test',
+                    script: 'hooks/test.sh',
+                    description: 'Test hook',
+                    on_failure: 'warn'
+                }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        // Should have: primary agent + 2 subagents + 1 steering + 1 hook = 5 nodes
+        expect(result.graph.nodes.length).toBeGreaterThanOrEqual(5);
+
+        const steeringNode = result.graph.nodes.find(n => n.type === 'steering');
+        expect(steeringNode).toBeDefined();
+        expect(steeringNode!.id).toBe('steering-test-steering');
+        expect(steeringNode!.label).toBe('test-steering');
+        expect(steeringNode!.metadata.name).toBe('test-steering');
+        expect(steeringNode!.metadata.file).toBe('steering/test.md');
+        expect(steeringNode!.metadata.description).toBe('Test steering file');
+        expect(steeringNode!.metadata.applies_to).toEqual(['sub1']);
+        expect(steeringNode!.metadata._filePath).toBe('steering/test.md');
+
+        const hookNode = result.graph.nodes.find(n => n.type === 'hook');
+        expect(hookNode).toBeDefined();
+        expect(hookNode!.id).toBe('hook-on_test');
+        expect(hookNode!.label).toBe('on_test');
+        expect(hookNode!.metadata.event).toBe('on_test');
+        expect(hookNode!.metadata.script).toBe('hooks/test.sh');
+        expect(hookNode!.metadata.description).toBe('Test hook');
+        expect(hookNode!.metadata.on_failure).toBe('warn');
+        expect(hookNode!.metadata._filePath).toBe('hooks/test.sh');
+    });
+
+    // T17: applies_to ["*"] creates governs edges to all subagents (R6)
+    it('T17: applies_to ["*"] creates governs edges to all subagents', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({ id: 'sub-a', type: 'subagent', label: 'A', metadata: {} });
+        result.graph.nodes.push({ id: 'sub-b', type: 'subagent', label: 'B', metadata: {} });
+        result.graph.nodes.push({ id: 'sub-c', type: 'subagent', label: 'C', metadata: {} });
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Agent',
+            subagents: [
+                { name: 'sub-a', description: 'A' },
+                { name: 'sub-b', description: 'B' },
+                { name: 'sub-c', description: 'C' }
+            ],
+            steering: [
+                { name: 'global', file: 'steering/global.md', description: 'Global', applies_to: ['*'] }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        const governsEdges = result.graph.edges.filter(e => e.label === 'governs');
+        // Should have 3 governs edges (one to each subagent)
+        expect(governsEdges).toHaveLength(3);
+        const targets = governsEdges.map(e => e.target).sort();
+        expect(targets).toEqual(['sub-a', 'sub-b', 'sub-c']);
+        // All should originate from the steering node
+        expect(governsEdges.every(e => e.source === 'steering-global')).toBe(true);
+    });
+
+    // T18: parseSteeringFile with existing and missing files (R3, R4)
+    it('T18: parseSteeringFile stores body when file exists', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        const node = { id: 'steering-test', type: 'steering' as const, label: 'test', metadata: {} };
+        logic.parseSteeringFile('steering/test.md', '# Test\n\nThis is steering content.', node, result);
+        expect(node.metadata._body).toBe('# Test\n\nThis is steering content.');
+        expect(node.metadata._fileMissing).toBe(false);
+        expect(node.metadata._filePath).toBe('steering/test.md');
+        expect(result.errors).toHaveLength(0);
+    });
+
+    it('T18: parseSteeringFile sets _fileMissing when file is null', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        const node = { id: 'steering-test', type: 'steering' as const, label: 'test', metadata: {} };
+        logic.parseSteeringFile('steering/missing.md', null, node, result);
+        expect(node.metadata._fileMissing).toBe(true);
+        expect(node.metadata._filePath).toBe('steering/missing.md');
+        expect(result.errors).toHaveLength(1);
+        expect(result.errors[0].message).toContain('does not exist');
+    });
+
+    // T19: parseHookFile stores preview (R5)
+    it('T19: parseHookFile stores first 500 chars as preview', () => {
+        const node = { id: 'hook-test', type: 'hook' as const, label: 'test', metadata: {} };
+        const content = '#!/bin/bash\necho "Hello World"\n# Some long script\n'.repeat(20);
+        logic.parseHookFile('hooks/test.sh', content, node);
+        expect(node.metadata._preview).toBeDefined();
+        expect(node.metadata._preview!.length).toBeLessThanOrEqual(500);
+        expect(node.metadata._preview).toContain('#!/bin/bash');
+        expect(node.metadata._filePath).toBe('hooks/test.sh');
+    });
+
+    it('T19: parseHookFile handles null content gracefully', () => {
+        const node = { id: 'hook-test', type: 'hook' as const, label: 'test', metadata: {} };
+        logic.parseHookFile('hooks/missing.sh', null, node);
+        expect(node.metadata._preview).toBeUndefined();
+        expect(node.metadata._filePath).toBe('hooks/missing.sh');
+    });
+
+    // T21: hook node has triggers edge to primary agent (R7)
+    it('T21: hook node has triggers edge to primary agent', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Agent',
+            hooks: [
+                { event: 'on_test', script: 'hooks/test.sh', description: 'Test hook', on_failure: 'warn' }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        const triggersEdge = result.graph.edges.find(e => e.label === 'triggers');
+        expect(triggersEdge).toBeDefined();
+        expect(triggersEdge!.source).toBe('hook-on_test');
+        expect(triggersEdge!.target).toBe('primary');
+    });
+
+    // T23: parser warning when steering applies_to subagent does not exist (R11)
+    it('T23: parser warning when steering applies_to subagent does not exist', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({ id: 'sub1', type: 'subagent', label: 'Sub1', metadata: {} });
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Agent',
+            subagents: [
+                { name: 'sub1', description: 'Sub 1' }
+            ],
+            steering: [
+                { name: 'test', file: 'steering/test.md', description: 'Test', applies_to: ['non-existent-sub'] }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        const warning = result.errors.find(e => e.message.includes('non-existent-sub'));
+        expect(warning).toBeDefined();
+        expect(warning!.message).toContain('does not exist');
+    });
+
+    // T23 variant: empty applies_to warning (R11)
+    it('T23: parser warning when steering has empty applies_to', () => {
+        const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };
+        result.graph.nodes.push({ id: 'sub1', type: 'subagent', label: 'Sub1', metadata: {} });
+
+        const content = JSON.stringify({
+            default_agent: 'primary',
+            description: 'Agent',
+            subagents: [
+                { name: 'sub1', description: 'Sub 1' }
+            ],
+            steering: [
+                { name: 'test', file: 'steering/test.md', description: 'Test', applies_to: [] }
+            ]
+        });
+
+        logic.parseAgenticJson(content, result);
+
+        const warning = result.errors.find(e => e.message.includes('no applicable subagents'));
+        expect(warning).toBeDefined();
+    });
+});
+
 describe('FEAT-023 — detectAndFixOverlaps (R16, R17, R18, R22)', () => {
     function buildGraphWithPositions(nodePositions: Array<{ id: string; x: number; y: number }>): ParserResult {
         const result: ParserResult = { graph: { nodes: [], edges: [] }, milestones: [], errors: [] };

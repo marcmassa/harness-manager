@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
+import type { HarnessConfig } from '../config/harnessConfig.js';
 import {
     createEmptyResult,
     fileExists,
@@ -23,6 +24,13 @@ export class OpenCodeAdapter implements IAgentAdapter {
 
     public watchGlobs(): string[] {
         return ['opencode.json', 'opencode.jsonc'];
+    }
+
+    // FEAT-026 R19: OpenCodeAdapter is NOT affected by the new
+    // discovery layer (isPathConfigurable() === false). The
+    // HarnessConfig is accepted but ignored.
+    public setHarnessConfig(_config: HarnessConfig | undefined): void {
+        // no-op
     }
 
     public isPathConfigurable(): boolean {

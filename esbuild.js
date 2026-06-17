@@ -15,16 +15,24 @@ async function main() {
     outfile: "dist/extension.cjs",
   });
 
-  const webviewCtx = await esbuild.context({
-    entryPoints: ["src/webview/index.tsx"],
-    bundle: true,
-    format: "esm",
-    minify: !watch,
-    sourcemap: watch,
-    platform: "browser",
-    outfile: "dist/webview.js",
-    loader: { ".css": "css" },
-  });
+  const webviewEntryPoints = [
+    { in: "src/webview/index.tsx", out: "webview.js" },
+  ];
+
+  const webviewContexts = await Promise.all(
+    webviewEntryPoints.map((ep) =>
+      esbuild.context({
+        entryPoints: [ep.in],
+        bundle: true,
+        format: "esm",
+        minify: !watch,
+        sourcemap: watch,
+        platform: "browser",
+        outfile: `dist/${ep.out}`,
+        loader: { ".css": "css" },
+      })
+    )
+  );
 
   // FEAT-021: integration test entry points (Mocha-based, run by
   // @vscode/test-electron). Compiled to CJS in out/ (not dist/) so
@@ -95,22 +103,24 @@ async function main() {
 
   if (watch) {
     await extensionCtx.watch();
-    await webviewCtx.watch();
+    for (const ctx of webviewContexts) {
+      await ctx.watch();
+    }
     for (const ctx of integrationContexts) {
       await ctx.watch();
     }
     console.log("Watching for changes...");
   } else {
     await extensionCtx.rebuild();
-    await webviewCtx.rebuild();
-    for (const ctx of integrationContexts) {
+    for (const ctx of webviewContexts) {
       await ctx.rebuild();
-    }
-    await extensionCtx.dispose();
-    await webviewCtx.dispose();
-    for (const ctx of integrationContexts) {
       await ctx.dispose();
     }
+    for (const ctx of integrationContexts) {
+      await ctx.rebuild();
+      await ctx.dispose();
+    }
+    await extensionCtx.dispose();
     console.log("Build complete.");
   }
 }
