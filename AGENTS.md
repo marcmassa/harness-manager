@@ -199,6 +199,8 @@ add Terraform, a `src/App.tsx`, a `notebooks/` folder, etc.). Run
 | `AGENTS.md` | This file (entry point, framework bootstrap) | Every new session — §0 is mandatory |
 | `DESIGN.md` | High-level architecture and global principles | For architectural context |
 | `feature_list.json` | Feature list with status (pending/spec_ready/in_progress/done/blocked) | At the start of every session |
+| `hooks/` | Lifecycle hook scripts (on_spec_created, on_feature_done, etc.). Declared in `agentic.json#hooks[]`. Runner at `hooks/run-hooks.sh`. | When customizing SDD workflow automation |
+| `steering/` | Steering files that direct agent behavior (global and per-role). Declared in `agentic.json#steering[]`. | When customizing agent directives |
 | `progress/current.md` | Current session state | At the start of every session |
 | `progress/history.md` | Append-only log of previous sessions | If historical context is needed |
 | `.agents/agentic.json` | **Canonical CLI-agnostic manifest** (single source of truth for agents/skills/commands) | When regenerating adapters or adding capabilities |

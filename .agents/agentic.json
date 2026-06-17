@@ -82,6 +82,40 @@
       }
     }
   ],
+  "steering": [
+    {
+      "name": "global-conventions",
+      "file": "steering/global-conventions.md",
+      "description": "Convenciones globales: sub-agentes, reglas obligatorias, referencias ADR",
+      "applies_to": ["*"]
+    },
+    {
+      "name": "typescript-implementer-conventions",
+      "file": "steering/typescript-implementer.md",
+      "description": "Convenciones TypeScript: VS Code extension host, React Flow webview, testing, anti-patterns",
+      "applies_to": ["typescript-implementer"]
+    }
+  ],
+  "hooks": [
+    {
+      "event": "on_spec_created",
+      "script": "hooks/on-spec-created_validate.sh",
+      "description": "Verifica que specs/<feature>/ contiene 3 .md con requisitos EARS",
+      "on_failure": "warn"
+    },
+    {
+      "event": "on_feature_done",
+      "script": "hooks/on-feature-done_notify.sh",
+      "description": "Imprime resumen del feature completado para integraciones externas",
+      "on_failure": "ignore"
+    },
+    {
+      "event": "on_check_pass",
+      "script": "hooks/on-check-pass_ci.sh",
+      "description": "Registra timestamp del último check.sh exitoso en progreso CI",
+      "on_failure": "ignore"
+    }
+  ],
   "commands": [
     {
       "name": "init",

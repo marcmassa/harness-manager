@@ -61,7 +61,9 @@ charts/**/charts/*.tgz
 /CLAUDE.md
 /.claude/
 /agy.config*
-.agents/*
+# Only ignore transient CLI-agnostic artifacts; agentic.json, subagents/,
+# commands/, skills/, and adapters/ are tracked as source of truth.
+.agents/.tmp_skills/
 
 # --- Local progress ---
 progress/archive/*.bak
