@@ -359,6 +359,81 @@ for t in test_cli_adapter_parity test_agent_template_placeholders; do
 	fi
 done
 
+# ── Steering Validation ────────────────────────
+section "Steering Validation"
+if [ -f ".agents/agentic.json" ]; then
+    python3 /dev/stdin <<'PYEOF' 2>/dev/null || true
+import json, os, sys
+with open('.agents/agentic.json') as f:
+    m = json.load(f)
+steering = m.get('steering', [])
+errors = []
+warnings = []
+for s in steering:
+    fpath = s.get('file', '')
+    name = s.get('name', '?')
+    if not os.path.isfile(fpath):
+        errors.append(f"steering '{name}': file '{fpath}' not found")
+    else:
+        with open(fpath) as sf:
+            content = sf.read()
+        if not content.startswith('---'):
+            warnings.append(f"steering '{name}': missing YAML frontmatter")
+if os.path.isdir('steering'):
+    declared = {s['file'] for s in steering}
+    for f in os.listdir('steering'):
+        fpath = f"steering/{f}"
+        if fpath not in declared and f.endswith('.md'):
+            warnings.append(f"file '{fpath}' not declared in agentic.json#steering[]")
+for e in errors:
+    print(f"[ERROR] {e}")
+for w in warnings:
+    print(f"[WARN]  {w}")
+if errors:
+    sys.exit(1)
+if not steering:
+    print("[OK]    No steering files registered (idle)")
+else:
+    print(f"[OK]    {len(steering)} steering file(s) valid")
+PYEOF
+    if [ $? -eq 0 ]; then pass "Steering validation"; else fail "Steering errors found"; fi
+fi
+
+# ── Hooks Validation ─────────────────────────────
+section "Hooks Validation"
+if [ -f ".agents/agentic.json" ]; then
+    python3 /dev/stdin <<'PYEOF' 2>/dev/null || true
+import json, os, sys
+with open('.agents/agentic.json') as f:
+    m = json.load(f)
+hooks = m.get('hooks', [])
+errors = []
+warnings = []
+if not os.path.isfile('hooks/run-hooks.sh'):
+    errors.append("hooks/run-hooks.sh not found")
+elif not os.access('hooks/run-hooks.sh', os.X_OK):
+    errors.append("hooks/run-hooks.sh is not executable")
+for h in hooks:
+    script = h.get('script', '')
+    event = h.get('event', '?')
+    if not os.path.isfile(script):
+        errors.append(f"hook script '{script}' (event={event}) not found")
+    elif not os.access(script, os.X_OK):
+        warnings.append(f"hook script '{script}' is not executable")
+for e in errors:
+    print(f"[ERROR] {e}")
+for w in warnings:
+    print(f"[WARN]  {w}")
+if errors:
+    sys.exit(1)
+if not hooks:
+    print("[OK]    No hooks registered (idle)")
+else:
+    print(f"[OK]    {len(hooks)} hook(s) registered")
+PYEOF
+    if [ $? -eq 0 ]; then pass "Hooks validation"; else fail "Hooks errors found"; fi
+fi
+
 # ── Governance Documents check (FEAT-019 R16, R17) ───────
 # Fails if any governance document still contains a recognised
 # template placeholder, or if the backlog references a feature whose
