@@ -14,7 +14,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { CustomNode } from './components/CustomNode.js';
 import { EdgeContextMenu } from './components/EdgeContextMenu.js';
-import { getLayoutedElements } from './layoutUtils.js';
+import { getLayoutedElementsByProvider, type ProviderGroup } from './layoutUtils.js';
 import type { EdgeLabel } from '../types.js';
 import { HarnessGraph } from '../types.js';
 import { ManualPositionMap, isValidNodePosition, mergeLayoutedNodesWithManualPositions } from './nodePositionUtils.js';
@@ -23,7 +23,9 @@ const nodeTypes = {
     agent: CustomNode,
     subagent: CustomNode,
     skill: CustomNode,
-    feature: CustomNode
+    feature: CustomNode,
+    steering: CustomNode,
+    hook: CustomNode,
 };
 
 // ===== EDGE VISUAL STYLES — maximum contrast & visibility =====
@@ -82,6 +84,25 @@ const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolea
         animated: false,
         markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 12, color: '#d4a84a' },
     },
+    'governs': {
+        style: {
+            stroke: '#d4a84a',
+            strokeWidth: 3,
+            strokeLinecap: 'round',
+        },
+        animated: false,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 22, height: 16, color: '#d4a84a' },
+    },
+    'triggers': {
+        style: {
+            stroke: '#6c6c8a',
+            strokeWidth: 2.5,
+            strokeDasharray: '8,6',
+            strokeLinecap: 'round',
+        },
+        animated: false,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 14, color: '#6c6c8a' },
+    },
 };
 
 const defaultEdgeCfg = {
@@ -96,6 +117,8 @@ export const EDGE_TYPE_ROUTING: Record<string, string> = {
     executing: 'default',
     discovered: 'straight',
     suggested: 'smoothstep',
+    governs: 'smoothstep',
+    triggers: 'smoothstep',
 };
 
 interface Props {
@@ -131,6 +154,11 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
 
     // FEAT-011: Idoneity dialog state (R7)
     const [idoneityDialog, setIdoneityDialog] = React.useState<{ subagentId: string; skills: { skillId: string; score: number }[] } | null>(null);
+
+    // Provider groups (layout by provider + area overlay + nav dropdown)
+    const [providerGroups, setProviderGroups] = React.useState<ProviderGroup[]>([]);
+    const [focusedProvider, setFocusedProvider] = React.useState<string | null>(null);
+    const [viewport, setViewport] = React.useState({ x: 0, y: 0, zoom: 1 });
 
     // Compute which skills are explicitly linked (uses) per node
     const connectedSkills = React.useMemo(() => {
@@ -518,7 +546,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             };
         });
 
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        const { nodes: layoutedNodes, edges: layoutedEdges, groups: providerGroups } = getLayoutedElementsByProvider(
             initialNodes,
             initialEdges
         );
@@ -530,6 +558,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
 
         setNodes([...mergedNodes]);
         setEdges([...layoutedEdges]);
+        setProviderGroups(providerGroups);
 
         const nodeSignature = mergedNodes.map((node) => node.id).sort().join('|');
         const shouldFitView = !hasInitialFitRef.current || nodeSignature !== previousNodeSignatureRef.current;
@@ -791,6 +820,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
                     style: { transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' },
                 }}
                 deleteKeyCode={null} // We handle delete ourselves via keyboard listener
+                onMove={(_, vp) => setViewport({ x: vp.x, y: vp.y, zoom: vp.zoom })}
             >
                 <Background 
                     gap={20} 
@@ -799,6 +829,111 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
                 />
                 <Controls />
             </ReactFlow>
+
+            {/* Provider area overlay — SVG sibling of ReactFlow, transformed
+                by the viewport. This avoids custom node types (which crash
+                React Flow 11.11.4) and useStore (which also crashes). */}
+            {providerGroups.length > 0 && (
+                <svg
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                    }}
+                >
+                    <g transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.zoom})`}>
+                        {providerGroups.map((g) => {
+                            const focused = focusedProvider === null || focusedProvider === g.id;
+                            return (
+                                <g key={g.id} opacity={focused ? 1 : 0.3}>
+                                    <rect
+                                        x={g.x}
+                                        y={g.y}
+                                        width={g.width}
+                                        height={g.height}
+                                        rx={14}
+                                        ry={14}
+                                        fill={g.tint}
+                                        stroke={g.border}
+                                        strokeWidth={1.5}
+                                        strokeDasharray="6,4"
+                                    />
+                                    <text
+                                        x={g.x + 14}
+                                        y={g.y + 28}
+                                        fill={g.border}
+                                        fontSize={13}
+                                        fontWeight={700}
+                                        letterSpacing="1.2"
+                                    >
+                                        {g.label.toUpperCase()} · {g.count}
+                                    </text>
+                                </g>
+                            );
+                        })}
+                    </g>
+                </svg>
+            )}
+
+            {/* Provider navigation bar (top-right) */}
+            {providerGroups.length > 1 && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: 'var(--vscode-editorWidget-background)',
+                        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
+                        borderRadius: 8,
+                        padding: '4px 8px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+                        fontSize: '0.75em',
+                        zIndex: 25,
+                    }}
+                >
+                    <span style={{ opacity: 0.65, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '0.85em' }}>
+                        Provider
+                    </span>
+                    <select
+                        value={focusedProvider ?? '__all__'}
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setFocusedProvider(v === '__all__' ? null : v);
+                            if (v === '__all__') {
+                                fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' });
+                            } else {
+                                const nodeIds = nodes
+                                    .filter((n: any) => (n.data as any)?.metadata?._framework === v)
+                                    .map((n: any) => n.id);
+                                if (nodeIds.length > 0) {
+                                    fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400, ease: 'ease-in-out' });
+                                }
+                            }
+                        }}
+                        style={{
+                            background: 'var(--vscode-dropdown-background)',
+                            color: 'var(--vscode-dropdown-foreground)',
+                            border: '1px solid var(--vscode-dropdown-border)',
+                            borderRadius: 4,
+                            padding: '2px 6px',
+                            fontSize: '1em',
+                        }}
+                    >
+                        <option value="__all__">All ({providerGroups.reduce((acc, g) => acc + g.count, 0)})</option>
+                        {providerGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {g.label} ({g.count})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             {/* Edge Context Menu (R1, R9, R5) */}
             {contextMenuEdge && (

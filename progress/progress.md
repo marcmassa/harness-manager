@@ -1,5 +1,39 @@
 # Progress Log
 
+## [2026-06-17] FEAT-026: cross-framework-hooks-steering (COMPLETED)
+
+- **Objective:** Closes the FEAT-024 gap. A project that uses Kiro, Claude Code, Cursor, Gemini, Copilot, or Windsurf — *without* Harness SDD's `agentic.json` — can have hooks and steering files under their framework root (e.g., `.kiro/hooks/`) or even the project root (e.g., `hooks/`). The whiteboard must discover these and show them as first-class nodes.
+- **Outcome:** 12 spec tasks (T1–T12) all completed. 24 new unit tests added (189 total, all passing). Build clean (esbuild), `./check.sh` green.
+- **Key design points** (3 global settings, 1 local file, 1 command, 2 modules, 6 adapters wired, 2 adapters left untouched):
+  - **Settings** (R1): `harness-dashboard.adapters.<id>.discovery` (×6, default `true`) + `harness-dashboard.discovery.root` (default `true`). The existing `<id>.path` settings from FEAT-023 are unchanged.
+  - **Local file** (R2, R4): `<workspace>/.harness-dashboard/config.json` with schema `{ adapters: { <id>: { hooksPath?, steeringPath? } }, extraPaths: { <id>: { hooks?: string[], steering?: string[] } } }`. Empty/missing → empty config. Malformed JSON → warning on the OutputChannel + empty config fallback.
+  - **Command** (R3): `Harness Dashboard: Open Local Configuration` — opens the file in the editor, creating `.harness-dashboard/` + `config.json` with the empty schema on first use.
+  - **`src/config/harnessConfig.ts`**: `HarnessConfig` class with `async read(root)`, file-watcher-driven cache invalidation, `onDidChange(listener)` for invalidation events. `EMPTY_HARNESS_CONFIG` constant.
+  - **`src/discovery/hooksAndSteering.ts`**: single `discover()` function that returns `{ nodes, edges, resolvedGlobs }`. Honours R5–R17 (default scan, overrides, extras, project-root scan with toggle, filename-based event inference, H1 description fallback, applies_to inference, deduplication via `Set<absolutePath>`, `_filePath` for the Edit button).
+  - **Wired into 6 configurable adapters**: `KiroAdapter`, `ClaudeCodeAdapter`, `CursorAdapter`, `GeminiCliAdapter`, `CopilotAdapter`, `WindsurfAdapter`. Each calls `discover()` at the end of `parse()` and includes the resolved globs in `watchGlobs()` (R5, R17).
+  - **Left untouched** (R18, R19): `HarnessSddAdapter` and `OpenCodeAdapter`. Both implement the new `IAgentAdapter.setHarnessConfig()` as a no-op. The harness-sdd parser continues to be the source of truth for steering/hook resources declared in `agentic.json`.
+  - **`IAgentAdapter` interface**: added `setHarnessConfig(config: HarnessConfig | undefined): void`. `extension.ts` calls `configureAdaptersWithHarnessConfig(harnessConfig)` after `initConfigurationRegistry`, which plumbs the singleton into every configurable adapter via the structural type-check.
+- **Implementation notes (worth recording):**
+  1. **`HarnessConfig.read()` is async, not sync as the design sketch showed.** The sketch showed `read(root): HarnessDashboardConfig` (sync), but VS Code's `workspace.fs.readFile` is async-only. The async signature is the only practical option; production code (each adapter's `parse()`) is already async, so this is a non-breaking refinement. The `getInstance` pattern from `ConfigurationRegistry` was NOT followed — one `HarnessConfig` instance is created per extension activation, not a process-wide singleton, because the file is workspace-specific.
+  2. **Each adapter gets its own `_harnessConfig` field + a `setHarnessConfig` setter**, rather than reading from a module-level constant. This is structurally clean: the extension owns one `HarnessConfig` and injects it into all six adapters. Tests can pass a different one or none.
+  3. **The applies_to filename match is against the subagent's *name* (the segment after `<adapter>::`), not the full prefixed id.** The user names a steering file like `typescript-implementer.md`; the subagent id is `kiro::typescript-implementer`. Comparing the stem to the full id would never match; comparing it to the last segment is the user-friendly behaviour. Tests for R15 (filename match) pass.
+  4. **The "framework wins" dedup is by absolute path** (a `Set<string>` of normalized fsPaths). When the local config lists the framework's hooks dir AGAIN as an extra path, the same file is matched twice; the `seen` set drops the second match before node creation. Tests for R13 pass.
+  5. **The test mock for `findFiles` had to learn brace expansion** (`{sh,js,ts}`). The existing tests in `KiroAdapter.test.ts` and `adapterRegistry.test.ts` only use single-extension globs, so the existing mock didn't expand braces. FEAT-026's hook discovery uses `*.{sh,js,ts}` so the mock was extended in `src/discovery/hooksAndSteering.test.ts` to support single-level brace expansion. The new test infrastructure is reusable for any future test that uses VS Code's brace-glob syntax.
+  6. **No new integration test was added.** The unit tests cover R5–R17 (algorithmic), R2/R4 (config reader), and R18/R19 (regression). A real-VS-Code integration test would verify that the watch globs fire on file changes, but this is already covered by the existing `src/test/integration/criticalPath.test.ts` pattern (which uses a fixture harness-sdd project). Adding another integration test is straightforward but not in the spec's T9–T12 unit-test list.
+- **Tests:** 24 new unit tests:
+  - `src/config/harnessConfig.test.ts` — 9 tests (R2: empty/missing/whitespace/valid; R4: malformed JSON warning; cache hit + watcher-driven invalidation; `onDidChange` events; `dispose`).
+  - `src/discovery/hooksAndSteering.test.ts` — 13 tests (R5: default scan under `<adapter-path>/hooks/` + `/steering/`; R11: filename event inference + frontmatter override; R12: H1 description fallback + frontmatter override; R14: hook→root agent edge; R15: applies_to inference with filename match + wildcard fallback; R16: `_filePath`; R6: per-adapter override; R7: extras; R8: project-root scan; R9: per-adapter kill switch; R10: project-root kill switch; R13: dedup; R17: resolved globs returned).
+  - `src/adapters/adapterRegistry.test.ts` — 2 regression tests added (R18: HarnessSddAdapter ignores `.harness-dashboard/config.json`; R19: OpenCodeAdapter ignores it). The existing 8 tests still pass.
+- **Files touched (15 files):**
+  - **Created**: `src/config/harnessConfig.ts`, `src/config/harnessConfig.test.ts`, `src/discovery/hooksAndSteering.ts`, `src/discovery/hooksAndSteering.test.ts`
+  - **Modified (6 adapters)**: `src/adapters/KiroAdapter.ts`, `ClaudeCodeAdapter.ts`, `CursorAdapter.ts`, `GeminiCliAdapter.ts`, `CopilotAdapter.ts`, `WindsurfAdapter.ts` — each: added `_harnessConfig` field + `setHarnessConfig` setter + `_isAdapterDiscoveryEnabled`/`_isRootDiscoveryEnabled` helpers, extended `watchGlobs()` with hook/steering globs, appended `discover()` call to end of `parse()`.
+  - **Modified (2 unaffected adapters)**: `src/adapters/HarnessSddAdapter.ts`, `OpenCodeAdapter.ts` — each: added the `setHarnessConfig` no-op method to satisfy the updated `IAgentAdapter` interface.
+  - **Modified (interface + tests)**: `src/adapters/IAgentAdapter.ts` (added `setHarnessConfig`); `src/adapters/adapterRegistry.test.ts` (added 2 regression tests + `setHarnessConfig` to 4 inline test mocks).
+  - **Modified (extension + manifest)**: `src/extension.ts` (constructed `HarnessConfig`, wired it into adapters, registered `openLocalConfig` command); `package.json` (added 7 new settings, 1 new command).
+  - **Governance**: `feature_list.json` (status → done), `progress/current.md` + `progress/progress.md` (this entry).
+  - **No new dependencies** added.
+- **No commit created** (per the session rule, only documented the change). When the maintainer is ready, the conventional-commits message is `feat(discovery): cross-framework hooks & steering for Kiro, Claude Code, Cursor, Gemini, Copilot, Windsurf (FEAT-026)`.
+
 ## [2026-06-11] FEAT-022: repo-rename-decision (COMPLETED)
 - **Objective:** Record the maintainer's decision about the GitHub repository name as ADR-002. The maintainer chose the **"accept the mismatch and document it"** branch of the spec (the rename option is not chosen; it remains available as a future option at a project milestone such as v0.2.0 or v1.0.0). Closes the last P0 item in the backlog written by FEAT-019.
 - **Outcome:**
@@ -216,6 +250,16 @@
 - **Outcome:** Stored full body in `metadata._fullBody` (kept `metadata.body` at 500 chars for display). Added `scanCrossReferences()` for markdown/wiki-link detection → generates `suggested` edges with `🔗` prefix. Added `extractNameTokens()` for name-boost (R4: 1.2x cosine multiplier, R5: +0.05 per name token cap +0.2). Added `nGramSize` parameter for bigram support. Orphan subagent detection flags SUBAGENT.md files not in agentic.json with dashed/grayscale style + Activate button. Fix: edge deletion was broken by idoneity score in labels — stored `originalLabel` in edge `data`. All 88 tests pass.
 - **Traceability:** R1-R10 verified via 29 new tests across `parserLogic.test.ts` (16) and `semanticMatcher.test.ts` (15).
 - **Reviewer:** reviewer-vscode (PASSED)
+
+## [2026-06-17] v0.4.0 — Documentation & VSIX Release
+
+- **Objective:** Update all documentation for the 5 new features (FEAT-024 through FEAT-028), add screenshots to README, and generate the v0.4.0 VSIX.
+- **Outcome:**
+  - **CHANGELOG.md** — Added 0.4.0 entry covering all 5 features: Universal AI Provider (FEAT-028), Code quality hooks (FEAT-027), SDD panel (FEAT-025), Steering & Hooks observability (FEAT-024), Cross-framework discovery (FEAT-026). 87 new tests (228 total). All 28 features done.
+  - **README.md** — Version badge updated to 0.4.0. Features table expanded from 9 to 14 entries. New "What's new in 0.4.0" section with 5-row changelog table. Expanded settings documentation with AI provider (3 settings) and code quality (5 settings) tables. Screenshot placeholders added for whiteboard, SDD panel, checkLM output, and code quality hooks.
+  - **media/screenshots/** — Directory created for README screenshots.
+  - **VSIX** — `harness-dashboard-vscode-0.4.0.vsix` built with `vsce package --no-dependencies`.
+- **Files touched:** `README.md`, `CHANGELOG.md`, `progress/current.md`, `progress/progress.md`, `media/screenshots/` (new dir).
 
 # MVP Summary
 The Harness Manager Visualizer MVP is now complete and refined. 

@@ -16,6 +16,8 @@ import {
     workspaceName,
     withFrameworkMetadata,
 } from './adapterUtils.js';
+import { discover } from '../discovery/hooksAndSteering.js';
+import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
 
 export class ClaudeCodeAdapter implements IAgentAdapter {
     private static readonly CONFIG_KEY = 'claude-code';
@@ -31,7 +33,15 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
     public watchGlobs(): string[] {
         const path = ConfigurationRegistry.getInstance()
             .getPathFor(ClaudeCodeAdapter.CONFIG_KEY);
-        return ['CLAUDE.md', `${path}/agents/**/*.md`];
+        // FEAT-026 T8: include the resolved hook/steering globs.
+        return [
+            'CLAUDE.md',
+            `${path}/agents/**/*.md`,
+            `${path}/hooks/**/*.{sh,js,ts}`,
+            `${path}/steering/**/*.md`,
+            'hooks/**/*.{sh,js,ts}',
+            'steering/**/*.md',
+        ];
     }
 
     public isPathConfigurable(): boolean {
@@ -119,6 +129,54 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
             });
         }
 
+        // FEAT-026 T7: append hook/steering nodes discovered under
+        // `.claude/hooks/`, `.claude/steering/`, and (when enabled) the
+        // project root. Honours the local config overrides/extras and
+        // the kill switches.
+        const localConfig = this._harnessConfig
+            ? await this._harnessConfig.read(root)
+            : EMPTY_HARNESS_CONFIG;
+        const subagentIds = result.graph.nodes
+            .filter((n) => n.type === 'subagent')
+            .map((n) => n.id);
+        const discovery = await discover(
+            adapterId,
+            root,
+            localConfig,
+            this._isAdapterDiscoveryEnabled(),
+            this._isRootDiscoveryEnabled(),
+            rootNodeId,
+            subagentIds,
+        );
+        result.graph.nodes.push(...discovery.nodes);
+        result.graph.edges.push(...discovery.edges);
+
         return result;
+    }
+
+    // ----- FEAT-026 wiring helpers -----
+
+    private _harnessConfig?: HarnessConfig;
+
+    public setHarnessConfig(config: HarnessConfig | undefined): void {
+        this._harnessConfig = config;
+    }
+
+    private _isAdapterDiscoveryEnabled(): boolean {
+        return this._getBool(`adapters.${ClaudeCodeAdapter.CONFIG_KEY}.discovery`, true);
+    }
+
+    private _isRootDiscoveryEnabled(): boolean {
+        return this._getBool('discovery.root', true);
+    }
+
+    private _getBool(key: string, fallback: boolean): boolean {
+        try {
+            return vscode.workspace
+                .getConfiguration('harness-dashboard')
+                .get<boolean>(key, fallback);
+        } catch {
+            return fallback;
+        }
     }
 }

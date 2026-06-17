@@ -14,6 +14,8 @@ import {
     toRelativePath,
     withFrameworkMetadata,
 } from './adapterUtils.js';
+import { discover } from '../discovery/hooksAndSteering.js';
+import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
 
 function hasGlobs(value: unknown): boolean {
     if (Array.isArray(value)) return value.length > 0;
@@ -34,7 +36,15 @@ export class CursorAdapter implements IAgentAdapter {
     public watchGlobs(): string[] {
         const path = ConfigurationRegistry.getInstance()
             .getPathFor(CursorAdapter.CONFIG_KEY);
-        return ['.cursorrules', `${path}/rules/**/*.mdc`];
+        // FEAT-026 T8: include the resolved hook/steering globs.
+        return [
+            '.cursorrules',
+            `${path}/rules/**/*.mdc`,
+            `${path}/hooks/**/*.{sh,js,ts}`,
+            `${path}/steering/**/*.md`,
+            'hooks/**/*.{sh,js,ts}',
+            'steering/**/*.md',
+        ];
     }
 
     public isPathConfigurable(): boolean {
@@ -112,6 +122,54 @@ export class CursorAdapter implements IAgentAdapter {
             );
         }
 
+        // FEAT-026 T7: append hook/steering nodes discovered under
+        // `.cursor/hooks/`, `.cursor/steering/`, and (when enabled)
+        // the project root.
+        const rootNodeId = `${adapterId}::root`;
+        const localConfig = this._harnessConfig
+            ? await this._harnessConfig.read(root)
+            : EMPTY_HARNESS_CONFIG;
+        const subagentIds = result.graph.nodes
+            .filter((n) => n.type === 'subagent')
+            .map((n) => n.id);
+        const discovery = await discover(
+            adapterId,
+            root,
+            localConfig,
+            this._isAdapterDiscoveryEnabled(),
+            this._isRootDiscoveryEnabled(),
+            rootNodeId,
+            subagentIds,
+        );
+        result.graph.nodes.push(...discovery.nodes);
+        result.graph.edges.push(...discovery.edges);
+
         return result;
+    }
+
+    // ----- FEAT-026 wiring helpers -----
+
+    private _harnessConfig?: HarnessConfig;
+
+    public setHarnessConfig(config: HarnessConfig | undefined): void {
+        this._harnessConfig = config;
+    }
+
+    private _isAdapterDiscoveryEnabled(): boolean {
+        return this._getBool(`adapters.${CursorAdapter.CONFIG_KEY}.discovery`, true);
+    }
+
+    private _isRootDiscoveryEnabled(): boolean {
+        return this._getBool('discovery.root', true);
+    }
+
+    private _getBool(key: string, fallback: boolean): boolean {
+        try {
+            return vscode.workspace
+                .getConfiguration('harness-dashboard')
+                .get<boolean>(key, fallback);
+        } catch {
+            return fallback;
+        }
     }
 }

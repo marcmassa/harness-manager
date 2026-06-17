@@ -279,6 +279,7 @@ describe('AdapterRegistry behavior', () => {
             }),
             watchGlobs: () => [],
             isPathConfigurable: () => false,
+            setHarnessConfig: () => { /* no-op for the test stub */ },
         };
         const second: IAgentAdapter = {
             id: () => 'second',
@@ -294,6 +295,7 @@ describe('AdapterRegistry behavior', () => {
             }),
             watchGlobs: () => [],
             isPathConfigurable: () => false,
+            setHarnessConfig: () => { /* no-op for the test stub */ },
         };
 
         const registry = new AdapterRegistry([first, second]);
@@ -315,6 +317,7 @@ describe('AdapterRegistry behavior', () => {
             },
             watchGlobs: () => ['broken.json'],
             isPathConfigurable: () => false,
+            setHarnessConfig: () => { /* no-op for the test stub */ },
         };
         const healthy: IAgentAdapter = {
             id: () => 'ok',
@@ -330,6 +333,7 @@ describe('AdapterRegistry behavior', () => {
             }),
             watchGlobs: () => ['ok.json'],
             isPathConfigurable: () => false,
+            setHarnessConfig: () => { /* no-op for the test stub */ },
         };
 
         const registry = new AdapterRegistry([failing, healthy], { warn });
@@ -338,5 +342,65 @@ describe('AdapterRegistry behavior', () => {
         expect(warn).toHaveBeenCalled();
         expect(parsed.graph.nodes.some((node) => node.id === 'ok::root')).toBe(true);
         expect(parsed.detectedFrameworks).toEqual(['Healthy']);
+    });
+});
+
+describe('FEAT-026 — R18 / R19 — non-configurable adapters skip discovery', () => {
+    it('(R18) HarnessSddAdapter is unaffected by .harness-dashboard/config.json (no hook/steering nodes from discovery)', async () => {
+        // Seed BOTH a full Harness-SDD agentic.json AND a malicious
+        // local config that would try to enable discovery. The SDD
+        // adapter must continue to behave exactly as in FEAT-024 —
+        // it does not consult the local config file, it does not
+        // scan .harness/hooks/ or .harness/steering/, and it does
+        // not create hook/steering nodes.
+        seedWorkspace({
+            '.agents/agentic.json': JSON.stringify({
+                default_agent: 'harness',
+                description: 'Main',
+                subagents: [{ name: 'implementer', description: 'Does work', skills: ['linting'] }],
+                steering: [{ name: 'kiss', file: '.agents/steering/kiss.md', applies_to: ['implementer'] }],
+                hooks: [{ event: 'on_spec_created', script: 'hooks/on-spec-created_validate.sh' }],
+            }),
+            '.agents/steering/kiss.md': '# KISS\nKeep it simple',
+            'hooks/on-spec-created_validate.sh': '#!/bin/bash\necho ok',
+            '.agents/skills/linting/SKILL.md': `---\nname: linting\ndescription: lint tooling\n---`,
+            '.agents/subagents/implementer/SUBAGENT.md': `---\nname: implementer\n---`,
+            // The local config (must be ignored by HarnessSddAdapter)
+            '.harness-dashboard/config.json': JSON.stringify({
+                adapters: { 'harness-sdd': { hooksPath: 'malicious-hooks' } },
+                extraPaths: { 'harness-sdd': { hooks: ['evil/hooks'], steering: ['evil/steering'] } },
+            }),
+            'malicious-hooks/should-not-appear.sh': '#!/bin/bash\necho malicious',
+            'evil/hooks/should-not-appear.sh': '#!/bin/bash\necho evil',
+        });
+        const adapter = new HarnessSddAdapter();
+        const parsed = await adapter.parse(rootUri());
+        const nodes = parsed.graph?.nodes ?? [];
+        // No nodes from the malicious paths
+        const eventNames = nodes.filter((n) => n.type === 'hook').map((n) => n.metadata.event);
+        expect(eventNames).toEqual(['on_spec_created']); // only the FEAT-024 entry
+        const steeringNames = nodes.filter((n) => n.type === 'steering').map((n) => n.metadata.name);
+        expect(steeringNames).toEqual(['kiss']); // only the FEAT-024 entry
+    });
+
+    it('(R19) OpenCodeAdapter is unaffected by .harness-dashboard/config.json (no discovery at all)', async () => {
+        seedWorkspace({
+            'opencode.jsonc': JSON.stringify({ name: 'sample', subagents: [{ name: 'builder' }] }),
+            // The local config (must be ignored by OpenCodeAdapter)
+            '.harness-dashboard/config.json': JSON.stringify({
+                adapters: { 'opencode': { hooksPath: 'malicious-hooks' } },
+                extraPaths: { 'opencode': { hooks: ['evil/hooks'], steering: ['evil/steering'] } },
+            }),
+            'malicious-hooks/should-not-appear.sh': '#!/bin/bash\necho malicious',
+            'evil/hooks/should-not-appear.sh': '#!/bin/bash\necho evil',
+        });
+        const adapter = new OpenCodeAdapter();
+        const parsed = await adapter.parse(rootUri());
+        const nodes = parsed.graph?.nodes ?? [];
+        // No hook/steering nodes from the malicious paths
+        expect(nodes.some((n) => n.type === 'hook')).toBe(false);
+        expect(nodes.some((n) => n.type === 'steering')).toBe(false);
+        // Existing FEAT-015 behaviour is preserved
+        expect(nodes.some((n) => n.id === 'opencode::builder' && n.type === 'subagent')).toBe(true);
     });
 });

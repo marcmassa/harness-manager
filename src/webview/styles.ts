@@ -58,11 +58,32 @@ export const NODE_STYLES: Record<string, CSSProperties> = {
     feature: {
         background: 'linear-gradient(135deg, var(--vscode-activityBarBadge-background), color-mix(in srgb, var(--vscode-activityBarBadge-background) 80%, black))',
         color: 'var(--vscode-activityBarBadge-foreground)',
-        padding: '12px 16px',
-        borderRadius: SPACE.xs,
+        padding: '6px 12px',
+        borderRadius: '20px',
         border: '1.5px solid color-mix(in srgb, var(--vscode-activityBarBadge-background) 60%, transparent)',
-        minWidth: '160px',
+        minWidth: '100px',
+        maxWidth: '220px',
         boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+        fontSize: '0.85em',
+    },
+    steering: {
+        background: 'linear-gradient(135deg, rgba(212, 168, 74, 0.13), rgba(212, 168, 74, 0.05))',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.sm,
+        border: '2px solid #d4a84a',
+        minWidth: '160px',
+        boxShadow: '0 2px 8px rgba(212, 168, 74, 0.15)',
+        transform: 'skewX(-2deg)',
+    },
+    hook: {
+        background: 'linear-gradient(135deg, rgba(108, 108, 138, 0.13), rgba(108, 108, 138, 0.05))',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.md,
+        border: '2px dashed #6c6c8a',
+        minWidth: '160px',
+        boxShadow: '0 2px 8px rgba(108, 108, 138, 0.15)',
     },
 };
 
@@ -74,6 +95,8 @@ export const HANDLE_ACCENT: Record<string, string> = {
     subagent: '#4a7dff',
     skill:    '#2aa198',
     feature:  '#888888',
+    steering: '#d4a84a',
+    hook:     '#6c6c8a',
 };
 
 // ===== EDGE GLOW COLOUR TOKENS (RGB only, no alpha) =====
@@ -85,6 +108,8 @@ export const EDGE_GLOW_RGB: Record<string, string> = {
     executing:  '232, 111, 74',
     discovered: '108, 108, 138',
     suggested:  '212, 168, 74',
+    governs:    '212, 168, 74',
+    triggers:   '108, 108, 138',
     fallback:   '136, 136, 136',
 };
 
@@ -208,3 +233,17 @@ export function edgeGlowCSS(edgeType: string, rgb: string, dashScroll = false): 
     }
     return css;
 }
+
+// ===== SDD MANAGER STYLE TOKENS (FEAT-025) =====
+
+export const SDD_MANAGER = {
+    SIDEBAR_WIDTH: '240px',
+    TAB_STRIP_HEIGHT: '32px',
+    STATUS_BADGE_COLOURS: {
+        pending: '#6c6c8a',
+        spec_ready: '#d4a84a',
+        in_progress: '#4a90d4',
+        done: '#2aa198',
+        blocked: '#c14a4a',
+    },
+} as const;

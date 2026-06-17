@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 export interface EntityFormData {
-    entityType: 'subagent' | 'skill';
+    entityType: 'subagent' | 'skill' | 'steering' | 'hook';
     name: string;
     description: string;
     // Skill-only fields (Agent Skills spec)
@@ -11,6 +11,12 @@ export interface EntityFormData {
     version?: string;
     // Subagent-only fields
     permissionPreset?: 'read-only' | 'read-write' | 'custom';
+    // Steering-only fields
+    steeringContent?: string;
+    steeringAppliesTo?: string;
+    // Hook-only fields
+    hookScript?: string;
+    hookTrigger?: string;
 }
 
 interface EntitySidePanelProps {
@@ -25,7 +31,7 @@ const EASE_SMOOTH = 'cubic-bezier(0.4, 0, 0.2, 1)';
 const KEBAB_CASE_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySidePanelProps) => {
-    const [entityType, setEntityType] = React.useState<'subagent' | 'skill'>('subagent');
+    const [entityType, setEntityType] = React.useState<'subagent' | 'skill' | 'steering' | 'hook'>('subagent');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [license, setLicense] = React.useState('');
@@ -33,6 +39,10 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
     const [author, setAuthor] = React.useState('');
     const [version, setVersion] = React.useState('');
     const [permissionPreset, setPermissionPreset] = React.useState<string>('read-only');
+    const [steeringContent, setSteeringContent] = React.useState('');
+    const [steeringAppliesTo, setSteeringAppliesTo] = React.useState('');
+    const [hookScript, setHookScript] = React.useState('');
+    const [hookTrigger, setHookTrigger] = React.useState('');
     const [errors, setErrors] = React.useState<Record<string, string>>({});
 
     // Reset form on open/close
@@ -46,6 +56,10 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
             setAuthor('');
             setVersion('');
             setPermissionPreset('read-only');
+            setSteeringContent('');
+            setSteeringAppliesTo('');
+            setHookScript('');
+            setHookTrigger('');
             setErrors({});
         }
     }, [isOpen]);
@@ -62,11 +76,28 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
             newErrors.name = 'Max 64 characters';
         }
 
-        // Description validation
-        if (!description.trim()) {
-            newErrors.description = 'Description is required';
-        } else if (description.trim().length > 1024) {
-            newErrors.description = 'Max 1024 characters';
+        // Description validation (not required for steering/hook)
+        if (entityType !== 'steering' && entityType !== 'hook') {
+            if (!description.trim()) {
+                newErrors.description = 'Description is required';
+            } else if (description.trim().length > 1024) {
+                newErrors.description = 'Max 1024 characters';
+            }
+        }
+
+        // Steering-specific validations
+        if (entityType === 'steering' && !steeringContent.trim()) {
+            newErrors.steeringContent = 'Steering content is required';
+        }
+
+        // Hook-specific validations
+        if (entityType === 'hook') {
+            if (!hookTrigger.trim()) {
+                newErrors.hookTrigger = 'Trigger event is required';
+            }
+            if (!hookScript.trim()) {
+                newErrors.hookScript = 'Script content is required';
+            }
         }
 
         setErrors(newErrors);
@@ -76,19 +107,31 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
     const handleSubmit = () => {
         if (!validate()) return;
 
-        onCreateEntity({
+        const base = {
             entityType,
             name: name.trim(),
             description: description.trim(),
+        };
+
+        const data: EntityFormData = {
+            ...base,
             ...(entityType === 'skill' ? {
                 license: license.trim() || undefined,
                 compatibility: compatibility.trim() || undefined,
                 author: author.trim() || undefined,
                 version: version.trim() || undefined,
-            } : {
+            } : entityType === 'subagent' ? {
                 permissionPreset: permissionPreset as 'read-only' | 'read-write' | 'custom',
+            } : entityType === 'steering' ? {
+                steeringContent: steeringContent.trim(),
+                steeringAppliesTo: steeringAppliesTo.trim() || '*',
+            } : {
+                hookScript: hookScript.trim(),
+                hookTrigger: hookTrigger.trim(),
             }),
-        });
+        };
+
+        onCreateEntity(data);
     };
 
     if (!isOpen) return null;
@@ -162,20 +205,34 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
                         <label style={{ fontSize: '0.8em', opacity: 0.7, marginBottom: SPACE.xs, display: 'block' }}>
                             Entity Type <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
                         </label>
-                        <div style={{ display: 'flex', gap: SPACE.sm }}>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: SPACE.sm,
+                        }}>
                             <vscode-button 
                                 appearance={entityType === 'subagent' ? 'primary' : 'secondary'}
                                 onClick={() => setEntityType('subagent')}
-                                style={{ flex: 1 }}
                             >
                                 Sub-agent
                             </vscode-button>
                             <vscode-button 
                                 appearance={entityType === 'skill' ? 'primary' : 'secondary'}
                                 onClick={() => setEntityType('skill')}
-                                style={{ flex: 1 }}
                             >
                                 Skill
+                            </vscode-button>
+                            <vscode-button 
+                                appearance={entityType === 'steering' ? 'primary' : 'secondary'}
+                                onClick={() => setEntityType('steering')}
+                            >
+                                Steering
+                            </vscode-button>
+                            <vscode-button 
+                                appearance={entityType === 'hook' ? 'primary' : 'secondary'}
+                                onClick={() => setEntityType('hook')}
+                            >
+                                Hook
                             </vscode-button>
                         </div>
                     </div>
@@ -316,6 +373,91 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
                             </div>
                         </>
                     )}
+
+                    {/* Steering-specific fields */}
+                    {entityType === 'steering' && (
+                        <>
+                            <div>
+                                <label style={{ fontSize: '0.8em', opacity: 0.7, marginBottom: SPACE.xs, display: 'block' }}>
+                                    Applies To
+                                </label>
+                                <vscode-text-field
+                                    placeholder="* (all agents) or agent-name"
+                                    value={steeringAppliesTo}
+                                    onInput={(e: any) => setSteeringAppliesTo(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
+                                <div style={{ fontSize: '0.7em', opacity: 0.4, marginTop: '2px' }}>
+                                    Use * for global steering, or a specific agent name.
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.8em', opacity: 0.7, marginBottom: SPACE.xs, display: 'block' }}>
+                                    Steering Content <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                </label>
+                                <vscode-text-area
+                                    placeholder="Write the steering directive in markdown..."
+                                    value={steeringContent}
+                                    onInput={(e: any) => setSteeringContent(e.target.value)}
+                                    rows={6}
+                                    style={{ width: '100%' }}
+                                />
+                                {errors.steeringContent && (
+                                    <div style={{ fontSize: '0.75em', color: 'var(--vscode-errorForeground)', marginTop: SPACE.xs }}>
+                                        {errors.steeringContent}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {/* Hook-specific fields */}
+                    {entityType === 'hook' && (
+                        <>
+                            <div>
+                                <label style={{ fontSize: '0.8em', opacity: 0.7, marginBottom: SPACE.xs, display: 'block' }}>
+                                    Trigger Event <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                </label>
+                                <vscode-dropdown 
+                                    value={hookTrigger} 
+                                    onChange={(e: any) => setHookTrigger(e.target.value)}
+                                    style={{ width: '100%' }}
+                                >
+                                    <vscode-option value="">Select trigger...</vscode-option>
+                                    <vscode-option value="on_spec_created">on_spec_created</vscode-option>
+                                    <vscode-option value="on_feature_done">on_feature_done</vscode-option>
+                                    <vscode-option value="on_session_start">on_session_start</vscode-option>
+                                    <vscode-option value="on_session_close">on_session_close</vscode-option>
+                                    <vscode-option value="on_approve">on_approve</vscode-option>
+                                </vscode-dropdown>
+                                {errors.hookTrigger && (
+                                    <div style={{ fontSize: '0.75em', color: 'var(--vscode-errorForeground)', marginTop: SPACE.xs }}>
+                                        {errors.hookTrigger}
+                                    </div>
+                                )}
+                                <div style={{ fontSize: '0.7em', opacity: 0.4, marginTop: '2px' }}>
+                                    When this hook should fire during the SDD workflow.
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: '0.8em', opacity: 0.7, marginBottom: SPACE.xs, display: 'block' }}>
+                                    Script Content <span style={{ color: 'var(--vscode-errorForeground)' }}>*</span>
+                                </label>
+                                <vscode-text-area
+                                    placeholder="#!/usr/bin/env bash&#10;echo 'Hook executed'"
+                                    value={hookScript}
+                                    onInput={(e: any) => setHookScript(e.target.value)}
+                                    rows={6}
+                                    style={{ width: '100%' }}
+                                />
+                                {errors.hookScript && (
+                                    <div style={{ fontSize: '0.75em', color: 'var(--vscode-errorForeground)', marginTop: SPACE.xs }}>
+                                        {errors.hookScript}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Footer with action buttons */}
@@ -330,7 +472,7 @@ export const EntitySidePanel = ({ isOpen, onClose, onCreateEntity }: EntitySideP
                         Cancel
                     </vscode-button>
                     <vscode-button onClick={handleSubmit}>
-                        Create {entityType === 'skill' ? 'Skill' : 'Sub-agent'}
+                        Create {entityType === 'skill' ? 'Skill' : entityType === 'steering' ? 'Steering' : entityType === 'hook' ? 'Hook' : 'Sub-agent'}
                     </vscode-button>
                 </div>
             </div>

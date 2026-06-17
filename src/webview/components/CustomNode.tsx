@@ -79,6 +79,70 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
         animation: 'mismatchPulse 2s ease-in-out infinite',
     } : {};
 
+    // FEAT node: compact mode — show only FEAT-ID + label, no handles, no badges.
+    // The node is purely a navigational shortcut to the Specs Manager tab.
+    const isFeatureNode = type === 'feature';
+    const featId = isFeatureNode ? (id || data.id || '') : '';
+
+    // For feature nodes, render a minimal compact node
+    if (isFeatureNode) {
+        return (
+            <div
+                ref={nodeRef}
+                className="harness-node node-enter"
+                data-type={type}
+                style={{
+                    ...NODE_STYLES[type],
+                    padding: '6px 12px',
+                    minWidth: '100px',
+                    maxWidth: '220px',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    ...hoverStyle,
+                    ...selectedStyle,
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                onContextMenu={data.onContextMenu}
+                title={`Click to open ${featId} in Specs Manager`}
+            >
+                {/* FEAT ID badge */}
+                <span style={{
+                    fontSize: '0.6em',
+                    fontWeight: 800,
+                    letterSpacing: '0.5px',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: 'rgba(255,255,255,0.15)',
+                    color: 'inherit',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                }}>
+                    {featId}
+                </span>
+                {/* Feature title */}
+                <span style={{
+                    fontSize: '0.8em',
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    opacity: 0.92,
+                }}>
+                    {data.label}
+                </span>
+                {/* Hidden handles for edge anchoring only (no visual) */}
+                <Handle type="target" position={Position.Top} style={HIDDEN_HANDLE_STYLE} isConnectable={false} />
+                <Handle type="source" position={Position.Bottom} style={HIDDEN_HANDLE_STYLE} isConnectable={false} />
+            </div>
+        );
+    }
+
     // FEAT-012 R7: Orphan node style — dashed border, muted
     const isOrphan = data.metadata?._orphan === true || data.metadata?._discovery === 'orphan';
     const orphanStyle: React.CSSProperties = isOrphan ? {
@@ -277,7 +341,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                     letterSpacing: '1.5px',
                     fontWeight: 700,
                 }}>
-                    {type === 'agent' ? '⚡ Agent' : type === 'subagent' ? '▸ Subagent' : type === 'skill' ? '◆ Skill' : '▣ Feature'}
+                    {type === 'agent' ? '⚡ Agent' : type === 'subagent' ? '▸ Subagent' : type === 'skill' ? '◆ Skill' : type === 'feature' ? '▣ Feature' : type === 'steering' ? '⚙️ Steering' : '🔌 Hook'}
                 </div>
                 {typeof data.metadata?._frameworkLabel === 'string' && (
                     <div style={{

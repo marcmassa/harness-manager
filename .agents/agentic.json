@@ -94,6 +94,18 @@
       "file": "steering/typescript-implementer.md",
       "description": "Convenciones TypeScript: VS Code extension host, React Flow webview, testing, anti-patterns",
       "applies_to": ["typescript-implementer"]
+    },
+    {
+      "name": "kiss-principle",
+      "file": "steering/kiss-principle.md",
+      "description": "Principio KISS: preferencia por soluciones simples, evitar abstracciones prematuras",
+      "applies_to": ["*"]
+    },
+    {
+      "name": "dry-principle",
+      "file": "steering/dry-principle.md",
+      "description": "Principio DRY: cada pieza de conocimiento tiene una representación única, autoritativa",
+      "applies_to": ["*"]
     }
   ],
   "hooks": [
@@ -113,6 +125,18 @@
       "event": "on_check_pass",
       "script": "hooks/on-check-pass_ci.sh",
       "description": "Registra timestamp del último check.sh exitoso en progreso CI",
+      "on_failure": "ignore"
+    },
+    {
+      "event": "on_file_saved_kiss",
+      "script": "hooks/on-file-saved-kiss-check.sh",
+      "description": "KISS checks (anti-overengineering) on every saved TS/TSX file",
+      "on_failure": "ignore"
+    },
+    {
+      "event": "on_file_saved_dry",
+      "script": "hooks/on-file-saved-dry-check.sh",
+      "description": "DRY checks (anti-duplication) on every saved TS/TSX file",
       "on_failure": "ignore"
     }
   ],

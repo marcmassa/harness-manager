@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -66,6 +66,20 @@
       {
         "command": "harness-dashboard.openDashboard",
         "title": "Harness: Open Dashboard"
+      },
+      {
+        "command": "harness-dashboard.openLocalConfig",
+        "title": "Harness Dashboard: Open Local Configuration",
+        "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.verifyCodeQuality",
+        "title": "Harness: Verify Code Quality"
+      },
+      {
+        "command": "harness-dashboard.checkLM",
+        "title": "Harness Dashboard: Check AI Provider Status",
+        "category": "Harness Dashboard"
       }
     ],
     "configuration": {
@@ -77,11 +91,23 @@
           "default": ".claude",
           "description": "Path to the Claude Code agent configuration directory (relative to workspace root)."
         },
+        "harness-dashboard.adapters.claude-code.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Claude Code adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+        },
         "harness-dashboard.adapters.cursor.path": {
           "type": "string",
           "scope": "resource",
           "default": ".cursor",
           "description": "Path to the Cursor agent configuration directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.cursor.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Cursor adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.gemini-cli.path": {
           "type": "string",
@@ -89,11 +115,23 @@
           "default": ".gemini",
           "description": "Path to the Gemini CLI agent configuration directory (relative to workspace root)."
         },
+        "harness-dashboard.adapters.gemini-cli.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Gemini CLI adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+        },
         "harness-dashboard.adapters.copilot.path": {
           "type": "string",
           "scope": "resource",
           "default": ".github",
           "description": "Path to the GitHub Copilot instructions directory (relative to workspace root). The .vscode/prompts/ directory is unaffected by this setting."
+        },
+        "harness-dashboard.adapters.copilot.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Copilot adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.windsurf.path": {
           "type": "string",
@@ -101,11 +139,77 @@
           "default": ".windsurf",
           "description": "Path to the Windsurf rules directory (relative to workspace root)."
         },
+        "harness-dashboard.adapters.windsurf.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Windsurf adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+        },
         "harness-dashboard.adapters.kiro.path": {
           "type": "string",
           "scope": "resource",
           "default": ".kiro",
           "description": "Path to the Kiro agent configuration directory (relative to workspace root)."
+        },
+        "harness-dashboard.adapters.kiro.discovery": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Auto-discover hook and steering files for the Kiro adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+        },
+        "harness-dashboard.discovery.root": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Scan <workspace-root>/hooks/ and <workspace-root>/steering/ for hook/steering files regardless of which adapters are detected (R8, R10). Disable if you keep your hooks/steering only under framework-specific roots."
+        },
+        "harness-dashboard.codeQuality.verifyOnSave": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Run the KISS and DRY hooks on every save of a TS/TSX file under src/."
+        },
+        "harness-dashboard.codeQuality.blockOnSave": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": false,
+          "description": "Cancel the save if the verifier reports any error-severity issue."
+        },
+        "harness-dashboard.codeQuality.kissEnabled": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Enable the KISS (anti-overengineering) hook."
+        },
+        "harness-dashboard.codeQuality.dryEnabled": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Enable the DRY (anti-duplication) hook."
+        },
+        "harness-dashboard.codeQuality.severity": {
+          "type": "string",
+          "enum": ["warning", "error"],
+          "default": "warning",
+          "description": "Severity for all reported issues. 'error' promotes all warnings to errors."
+        },
+        "harness-dashboard.ai.apiKey": {
+          "type": "string",
+          "scope": "resource",
+          "default": "",
+          "description": "API key for the OpenAI-compatible fallback provider (R5). When empty, the fallback is disabled and only vscode.lm is tried."
+        },
+        "harness-dashboard.ai.endpoint": {
+          "type": "string",
+          "scope": "resource",
+          "default": "https://api.openai.com/v1/chat/completions",
+          "description": "Base URL for the OpenAI-compatible chat completions API (R5). Change to use a different provider (e.g. Ollama, LM Studio, Azure OpenAI)."
+        },
+        "harness-dashboard.ai.model": {
+          "type": "string",
+          "scope": "resource",
+          "default": "gpt-4o-mini",
+          "description": "Model identifier for the OpenAI-compatible API (R5). Sent as the 'model' field in the request body."
         }
       }
     }

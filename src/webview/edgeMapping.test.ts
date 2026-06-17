@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { EDGE_TYPE_ROUTING } from './WhiteboardCanvas.js';
-import { HANDLE_ACCENT } from './styles.js';
+import { HANDLE_ACCENT, NODE_STYLES, EDGE_GLOW_RGB } from './styles.js';
 
 // ─── T13 ─────────────────────────────────────────────────────────────────────
 describe('EDGE_TYPE_ROUTING (R1)', () => {
@@ -113,5 +113,34 @@ describe('HANDLE_ACCENT (R7)', () => {
 
     it('returns neutral grey for feature', () => {
         expect(HANDLE_ACCENT['feature']).toBe('#888888');
+    });
+
+    it('returns amber for steering', () => {
+        expect(HANDLE_ACCENT['steering']).toBe('#d4a84a');
+    });
+
+    it('returns muted purple for hook', () => {
+        expect(HANDLE_ACCENT['hook']).toBe('#6c6c8a');
+    });
+});
+
+// ─── FEAT-024 T20 ──────────────────────────────────────────────────────────────
+describe('FEAT-024 — NODE_STYLES and EDGE_GLOW_RGB entries (T20, R8)', () => {
+    it('NODE_STYLES contains steering entry', () => {
+        expect(NODE_STYLES['steering']).toBeDefined();
+        expect(NODE_STYLES['steering'].border).toContain('#d4a84a');
+    });
+
+    it('NODE_STYLES contains hook entry', () => {
+        expect(NODE_STYLES['hook']).toBeDefined();
+        expect(NODE_STYLES['hook'].border).toContain('#6c6c8a');
+    });
+
+    it('EDGE_GLOW_RGB contains governs entry (amber)', () => {
+        expect(EDGE_GLOW_RGB['governs']).toBe('212, 168, 74');
+    });
+
+    it('EDGE_GLOW_RGB contains triggers entry (muted purple)', () => {
+        expect(EDGE_GLOW_RGB['triggers']).toBe('108, 108, 138');
     });
 });

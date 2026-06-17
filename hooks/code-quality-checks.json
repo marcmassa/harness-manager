@@ -1,0 +1,70 @@
+{
+    "version": 1,
+    "_comment": "Runtime form of the rules documented in steering/kiss-principle.md and steering/dry-principle.md. The steering files describe the *why*; this catalog describes the *what*. When a steering is updated, this file MUST be updated by hand. Reviewers should diff both files in the same PR.",
+    "kiss": {
+        "label": "KISS — anti-overengineering",
+        "source": "steering/kiss-principle.md",
+        "rules": [
+            {
+                "id": "kiss-long-file",
+                "severity": "warning",
+                "description": "File exceeds 400 lines; consider splitting",
+                "steering_section": "Anti-Patrones"
+            },
+            {
+                "id": "kiss-long-function",
+                "severity": "warning",
+                "description": "Function exceeds 80 lines",
+                "steering_section": "Anti-Patrones"
+            },
+            {
+                "id": "kiss-deep-nesting",
+                "severity": "warning",
+                "description": "Nesting exceeds 4 levels; consider early-return or extraction",
+                "steering_section": "Anti-Patrones"
+            },
+            {
+                "id": "kiss-unused-param",
+                "severity": "warning",
+                "description": "Parameter is unused and does not start with underscore",
+                "steering_section": "Cuándo NO Aplicar"
+            },
+            {
+                "id": "kiss-swallow-error",
+                "severity": "warning",
+                "description": "3+ try/catch blocks with empty or rethrow-only catch bodies",
+                "steering_section": "Anti-Patrones"
+            }
+        ]
+    },
+    "dry": {
+        "label": "DRY — anti-duplication",
+        "source": "steering/dry-principle.md",
+        "rules": [
+            {
+                "id": "dry-repeated-string",
+                "severity": "warning",
+                "description": "Same string literal (>=12 chars) appears 3+ times",
+                "steering_section": "Anti-Patrones"
+            },
+            {
+                "id": "dry-magic-number",
+                "severity": "warning",
+                "description": "Magic number (not 0/1/-1/2) appears 3+ times",
+                "steering_section": "Heurísticas Prácticas"
+            },
+            {
+                "id": "dry-duplicate-function",
+                "severity": "warning",
+                "description": "Two functions have Jaccard token similarity >= 0.85",
+                "steering_section": "Heurísticas Prácticas"
+            },
+            {
+                "id": "dry-duplicate-type",
+                "severity": "warning",
+                "description": "Duplicate interface or type definition",
+                "steering_section": "Anti-Patrones"
+            }
+        ]
+    }
+}

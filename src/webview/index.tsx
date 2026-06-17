@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
 import { ReactFlowProvider } from 'reactflow';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
-import { TimelineView } from './TimelineView.js';
+import { FeatureSpecPanel } from './FeatureSpecPanel.js';
 import { EntitySidePanel } from './components/EntitySidePanel.js';
 import { MDViewer } from './components/MDViewer.js';
 import type { EntityFormData } from './components/EntitySidePanel.js';
@@ -65,6 +65,30 @@ const IconClose = () => (
         <path d="M4 4l8 8" />
         <path d="M12 4L4 12" />
     </PanelActionIcon>
+);
+
+const IconGear = () => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <circle cx="8" cy="8" r="2" />
+        <path d="M8 1v2" />
+        <path d="M8 13v2" />
+        <path d="M2 8H0" />
+        <path d="M16 8h-2" />
+        <path d="M4.5 4.5l1 1" />
+        <path d="M10.5 10.5l1 1" />
+        <path d="M11.5 4.5l-1 1" />
+        <path d="M5.5 10.5l-1 1" />
+    </svg>
 );
 
 const PanelActionButton = ({
@@ -225,9 +249,8 @@ const App = () => {
     const [data, setData] = React.useState<DashboardData | null>(null);
     const [selectedNode, setSelectedNode] = React.useState<any>(null);
     const [activeTab, setActiveTab] = React.useState('whiteboard');
-    const [showSpecs, setShowSpecs] = React.useState(false);
-    // T15 (R3): global suggestion edge visibility toggle (session-only)
-    const [showSuggestions, setShowSuggestions] = React.useState(false);
+    const [startWizard, setStartWizard] = React.useState(0); // increment to trigger wizard in Specs Manager
+    const [timelineTargetFeature, setTimelineTargetFeature] = React.useState<string | null>(null); // FEAT node click → select in timeline
     
     // Side panel state (replaces inline isCreating form)
     const [isSidePanelOpen, setIsSidePanelOpen] = React.useState(false);
@@ -286,17 +309,18 @@ const App = () => {
         const baseNodes = data.graph.nodes;
         const baseEdges = data.graph.edges;
 
-        const nodes = showSpecs ? baseNodes : baseNodes.filter(n => n.type !== 'feature');
+        // Always show all node types (specs always visible)
+        const nodes = baseNodes;
         const nodeIds = new Set(nodes.map(n => n.id));
         const edges = baseEdges.filter(e => {
             if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) return false;
-            // T15 (R3): hide suggested edges when showSuggestions is false
-            if (!showSuggestions && e.label === 'suggested') return false;
+            // Suggested edges hidden by default (no longer toggled by checkbox)
+            if (e.label === 'suggested') return false;
             return true;
         });
 
         return { nodes, edges };
-    }, [data, showSpecs, showSuggestions]);
+    }, [data]);
 
     const detectedFrameworks = React.useMemo(() => {
         if (!data) return [] as string[];
@@ -317,6 +341,18 @@ const App = () => {
     }, [data]);
     const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph.nodes.length === 0;
 
+    // Handle node selection from whiteboard — FEAT nodes navigate to Specs Manager
+    const handleNodeSelect = React.useCallback((node: any) => {
+        if (node?.type === 'feature') {
+            // Navigate to Specs Manager tab + select this feature
+            // Don't set selectedNode so no stale detail panel shows on Whiteboard return
+            setActiveTab('timeline');
+            setTimelineTargetFeature(node.id); // e.g. "FEAT-001"
+            return;
+        }
+        setSelectedNode(node);
+    }, []);
+
     // Handle entity creation from side panel
     const handleCreateEntity = React.useCallback((formData: EntityFormData) => {
         if (formData.entityType === 'subagent') {
@@ -326,7 +362,7 @@ const App = () => {
                 name: formData.name, 
                 description: formData.description,
             });
-        } else {
+        } else if (formData.entityType === 'skill') {
             vscode.postMessage({ 
                 type: 'createNode', 
                 nodeType: 'skill', 
@@ -336,6 +372,22 @@ const App = () => {
                 compatibility: formData.compatibility,
                 author: formData.author,
                 version: formData.version,
+            });
+        } else if (formData.entityType === 'steering') {
+            vscode.postMessage({ 
+                type: 'createSteering', 
+                name: formData.name, 
+                description: formData.description,
+                content: formData.steeringContent || '',
+                appliesTo: formData.steeringAppliesTo || '*',
+            });
+        } else if (formData.entityType === 'hook') {
+            vscode.postMessage({ 
+                type: 'createHook', 
+                name: formData.name, 
+                description: formData.description,
+                scriptContent: formData.hookScript || '',
+                triggerEvent: formData.hookTrigger || '',
             });
         }
         setIsSidePanelOpen(false);
@@ -371,42 +423,60 @@ const App = () => {
                         Harness <span style={{ opacity: 0.6 }}>Manager</span>
                     </h2>
                     <div style={{ display: 'flex', gap: SPACE.sm, alignItems: 'center' }}>
-                        <vscode-checkbox checked={showSpecs} onChange={(e: any) => setShowSpecs(e.target.checked)}>Specs</vscode-checkbox>
-                        <vscode-checkbox checked={showSuggestions} onChange={(e: any) => setShowSuggestions(e.target.checked)}>Suggestions</vscode-checkbox>
                         <FrameworkBadge frameworks={detectedFrameworks} />
+                        <vscode-button
+                            onClick={() => {
+                                setActiveTab('timeline');
+                                setStartWizard(n => n + 1);
+                            }}
+                        >
+                            Generate Spec
+                        </vscode-button>
                         <vscode-button onClick={() => setIsSidePanelOpen(true)}>Add Entity</vscode-button>
+                        <button
+                            type="button"
+                            className="harness-settings-button"
+                            title="Extension Settings"
+                            aria-label="Extension Settings"
+                            onClick={() => vscode.postMessage?.({ type: 'openSettings', query: '@ext:marcmassacapo.harness-dashboard-vscode' })}
+                        >
+                            <IconGear />
+                        </button>
                     </div>
                 </div>
                 
                 <div style={{ display: 'flex', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {(['whiteboard', 'timeline'] as const).map(tab => (
-                        <div
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            style={{
-                                padding: `${SPACE.sm} ${SPACE.md}`,
-                                cursor: 'pointer',
-                                fontSize: '0.75em',
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                                fontWeight: activeTab === tab ? 700 : 500,
-                                opacity: 1,
-                                // BLOCKER-2 fix: tab-activeForeground is the semantic token for
-                                // tab text (Dark+ = #fff = 15.3:1 AAA; Light+ = #333 = AAA).
-                                // focusBorder (#007fd4) is a focus-ring token, not a text token.
-                                color: activeTab === tab
-                                    ? 'var(--vscode-tab-activeForeground)'
-                                    : 'var(--vscode-tab-inactiveForeground, var(--vscode-descriptionForeground))',
-                                borderBottom: activeTab === tab
-                                    ? '2px solid var(--vscode-focusBorder)'
-                                    : '2px solid transparent',
-                                transition: 'color 0.2s ease, opacity 0.2s ease, border-color 0.2s ease',
-                                userSelect: 'none',
-                            }}
-                        >
-                            {tab.toUpperCase()}
-                        </div>
-                    ))}
+                    {(['whiteboard', 'timeline'] as const).map(tab => {
+                        const label = tab === 'timeline' ? 'Specs Manager' : 'Whiteboard';
+                        return (
+                            <div
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                style={{
+                                    padding: `${SPACE.sm} ${SPACE.md}`,
+                                    cursor: 'pointer',
+                                    fontSize: '0.75em',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    fontWeight: activeTab === tab ? 700 : 500,
+                                    opacity: 1,
+                                    // BLOCKER-2 fix: tab-activeForeground is the semantic token for
+                                    // tab text (Dark+ = #fff = 15.3:1 AAA; Light+ = #333 = AAA).
+                                    // focusBorder (#007fd4) is a focus-ring token, not a text token.
+                                    color: activeTab === tab
+                                        ? 'var(--vscode-tab-activeForeground)'
+                                        : 'var(--vscode-tab-inactiveForeground, var(--vscode-descriptionForeground))',
+                                    borderBottom: activeTab === tab
+                                        ? '2px solid var(--vscode-focusBorder)'
+                                        : '2px solid transparent',
+                                    transition: 'color 0.2s ease, opacity 0.2s ease, border-color 0.2s ease',
+                                    userSelect: 'none',
+                                }}
+                            >
+                                {label}
+                            </div>
+                        );
+                    })}
                 </div>
             </header>
 
@@ -434,18 +504,20 @@ const App = () => {
                     <EmptyState />
                 ) : (
                     <ReactFlowProvider>
-                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={setSelectedNode} selectedNodeId={selectedNode?.id} />
+                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={handleNodeSelect} selectedNodeId={selectedNode?.id} />
                     </ReactFlowProvider>
                 )}
             </section>
 
             <section style={{ 
                 flex: 1, 
-                overflowY: 'auto', 
-                display: activeTab === 'timeline' ? 'block' : 'none',
+                display: activeTab === 'timeline' ? 'flex' : 'none',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                minHeight: 0,
                 animation: activeTab === 'timeline' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <TimelineView milestones={data.milestones} />
+                <FeatureSpecPanel milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} />
             </section>
             </div>{/* end left column */}
 
@@ -485,7 +557,7 @@ const App = () => {
                         )}
                         <div style={{ display: 'flex', gap: SPACE.xs, alignItems: 'center', justifyContent: isDetailPanelCollapsed ? 'center' : 'flex-end', flex: isDetailPanelCollapsed ? 1 : undefined }}>
                             {/* R1, R2 (FEAT-014): Edit File button — visible text, only for skill/subagent */}
-                            {!isDetailPanelCollapsed && (selectedNode.type === 'skill' || selectedNode.type === 'subagent') && (
+                            {!isDetailPanelCollapsed && (selectedNode.type === 'skill' || selectedNode.type === 'subagent' || selectedNode.type === 'steering' || selectedNode.type === 'hook') && (
                                 <PanelActionButton
                                     title="Open in VS Code editor for editing"
                                     onClick={() => {
@@ -662,7 +734,67 @@ const App = () => {
                                         </vscode-button>
                                     </div>
                                 )}
-                                
+
+                                {/* FEAT-024 R1, R2: Show steering/hook-specific metadata */}
+                                {selectedNode.type === 'steering' && (
+                                    <div style={{
+                                        marginTop: SPACE.md,
+                                        padding: SPACE.sm,
+                                        background: 'rgba(212, 168, 74, 0.08)',
+                                        borderLeft: '3px solid #d4a84a',
+                                        borderRadius: '0 4px 4px 0',
+                                    }}>
+                                        <div style={{
+                                            fontSize: '0.7em',
+                                            fontWeight: 600,
+                                            opacity: 0.5,
+                                            letterSpacing: '0.5px',
+                                            textTransform: 'uppercase',
+                                            marginBottom: '4px',
+                                        }}>
+                                            Steering — Applies To
+                                        </div>
+                                        <div style={{ fontSize: '0.85em' }}>
+                                            {Array.isArray(selectedNode.data.metadata?.applies_to)
+                                                ? selectedNode.data.metadata.applies_to.join(', ')
+                                                : 'All subagents'}
+                                        </div>
+                                        {selectedNode.data.metadata?._fileMissing && (
+                                            <div style={{ color: '#e86f4a', fontSize: '0.8em', marginTop: '4px', fontWeight: 600 }}>
+                                                ⚠️ Steering file missing
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {selectedNode.type === 'hook' && (
+                                    <div style={{
+                                        marginTop: SPACE.md,
+                                        padding: SPACE.sm,
+                                        background: 'rgba(108, 108, 138, 0.08)',
+                                        borderLeft: '3px solid #6c6c8a',
+                                        borderRadius: '0 4px 4px 0',
+                                    }}>
+                                        <div style={{
+                                            fontSize: '0.7em',
+                                            fontWeight: 600,
+                                            opacity: 0.5,
+                                            letterSpacing: '0.5px',
+                                            textTransform: 'uppercase',
+                                            marginBottom: '4px',
+                                        }}>
+                                            Hook — {selectedNode.data.metadata?.event || 'unknown'}
+                                        </div>
+                                        <div style={{ fontSize: '0.85em' }}>
+                                            Script: <code>{selectedNode.data.metadata?.script || 'N/A'}</code>
+                                        </div>
+                                        {selectedNode.data.metadata?.on_failure && (
+                                            <div style={{ fontSize: '0.8em', marginTop: '2px', opacity: 0.7 }}>
+                                                On failure: {selectedNode.data.metadata.on_failure}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Show idoneity info for skill nodes (FEAT-011 R4) */}
                                 {selectedNode.type === 'skill' && selectedNode.data.metadata?._bestOwner && (
                                     <div style={{
@@ -774,6 +906,33 @@ const App = () => {
                     border-color: var(--vscode-errorForeground, #e86f4a);
                 }
                 .harness-panel-action-button:focus-visible {
+                    outline: 2px solid var(--vscode-focusBorder);
+                    outline-offset: 1px;
+                }
+
+                /* Settings gear button in the header toolbar */
+                .harness-settings-button {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 4px;
+                    border: none;
+                    background: transparent;
+                    color: var(--vscode-foreground, var(--vscode-sideBar-foreground));
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    padding: 0;
+                    transition: background 0.16s ease, color 0.16s ease;
+                }
+                .harness-settings-button:hover {
+                    background: var(--vscode-toolbar-hoverBackground, color-mix(in srgb, var(--vscode-sideBar-background) 80%, var(--vscode-editor-background)));
+                    color: var(--vscode-foreground);
+                }
+                .harness-settings-button:active {
+                    transform: scale(0.92);
+                }
+                .harness-settings-button:focus-visible {
                     outline: 2px solid var(--vscode-focusBorder);
                     outline-offset: 1px;
                 }
@@ -975,6 +1134,32 @@ const App = () => {
                 }
                 .harness-edge--suggested.selected .react-flow__edge-path {
                     filter: drop-shadow(0 0 10px rgba(212, 168, 74, 0.70));
+                    stroke-width: 4 !important;
+                }
+
+                /* governs (amber, solid) */
+                .harness-edge--governs .react-flow__edge-path {
+                    filter: drop-shadow(0 0 3px rgba(212, 168, 74, 0.30));
+                }
+                .harness-edge--governs:hover .react-flow__edge-path {
+                    filter: drop-shadow(0 0 6px rgba(212, 168, 74, 0.50));
+                    stroke-width: 4.5 !important;
+                }
+                .harness-edge--governs.selected .react-flow__edge-path {
+                    filter: drop-shadow(0 0 10px rgba(212, 168, 74, 0.70));
+                    stroke-width: 4.5 !important;
+                }
+
+                /* triggers (muted purple, dashed) */
+                .harness-edge--triggers .react-flow__edge-path {
+                    filter: drop-shadow(0 0 3px rgba(108, 108, 138, 0.30));
+                }
+                .harness-edge--triggers:hover .react-flow__edge-path {
+                    filter: drop-shadow(0 0 6px rgba(108, 108, 138, 0.50));
+                    stroke-width: 4 !important;
+                }
+                .harness-edge--triggers.selected .react-flow__edge-path {
+                    filter: drop-shadow(0 0 10px rgba(108, 108, 138, 0.70));
                     stroke-width: 4 !important;
                 }
 

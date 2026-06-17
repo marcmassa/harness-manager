@@ -1,6 +1,6 @@
-export type NodeType = 'agent' | 'subagent' | 'skill' | 'feature';
+export type NodeType = 'agent' | 'subagent' | 'skill' | 'feature' | 'steering' | 'hook';
 
-export type EdgeLabel = 'manages' | 'uses' | 'executing' | 'discovered' | 'suggested';
+export type EdgeLabel = 'manages' | 'uses' | 'executing' | 'discovered' | 'suggested' | 'governs' | 'triggers';
 
 /**
  * Cómo fue descubierta una skill según el mecanismo de Progressive Disclosure (agentskills.io):
