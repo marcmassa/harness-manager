@@ -14,14 +14,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.4.1] — 2026-06-18
 
-> Patch release: whiteboard layout overhaul and specs discovery fix. No new features.
+> Patch release: whiteboard layout overhaul and specs discovery fix. Feature chips remain visible but are now separated from the architectural hierarchy and rendered in a compact grid. No new features.
 
 ### Changed
 
 #### Whiteboard layout — architectural hierarchy, no more horizontal overflow
 
-- **Feature nodes removed from the whiteboard.** Specs/features belong in the SDD panel; showing them on the architecture canvas obscured the core value of the extension and caused the sector to grow uncontrollably. The `executing` edges are also excluded. Feature nodes are still rendered in the SDD Manager tab.
-- **TB hierarchy with row-wrap.** The layout engine now positions `agent → subagent → skill/steering/hook` in a strict top-to-bottom hierarchy without dagre. Each rank is laid out manually with a `MAX_NODES_PER_ROW = 4` cap: when a rank has more than 4 nodes they wrap into additional rows instead of extending horizontally. Sector width is now bounded and predictable regardless of how many subagents or skills a provider has.
+- **Feature nodes repositioned.** Feature/spec nodes are now rendered as compact chips in a grid below the architectural graph, visually separated from the agent hierarchy. They no longer participate in the dagre layout and no longer inflate the sector horizontally. The `executing` edges (agent → feature) are excluded from the whiteboard graph so they do not contribute to layout width — features remain accessible via the SDD panel.
+- **TB hierarchy with row-wrap.** The layout engine positions `agent → subagent → skill/steering/hook` in a strict top-to-bottom hierarchy without dagre. Each rank is laid out manually with a `MAX_NODES_PER_ROW = 4` cap: when a rank has more than 4 nodes they wrap into additional rows instead of extending horizontally. Sector width is now bounded and predictable regardless of how many subagents or skills a provider has.
 - **`dagre` removed from the layout path.** `layoutUtils.ts` no longer imports dagre for the whiteboard layout. The dagre dependency remains in `package.json` for potential future use.
 - **Node handle positions corrected** — structural nodes use `top`/`bottom` handles (TB flow).
 
