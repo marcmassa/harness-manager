@@ -12,6 +12,8 @@ out/**
 .claude/
 .gemini/
 .vscode/
+.kiro/
+.github/
 
 # ===== AGENT & FRAMEWORK FILES =====
 AGENTS.md
