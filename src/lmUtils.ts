@@ -248,8 +248,20 @@ export async function generateText(
         options,
     );
     const result = await chain.tryGenerate(prompt);
-    if (!result.ok && log) {
-        log.warn(`[lmUtils] generateText failed: ${result.error}`);
+    if (!result.ok) {
+        // R4: when no provider is available and no API key is configured,
+        // return a diagnostic error with an actionable suggestion.
+        const hasApiKey = Boolean(options?.apiKey);
+        if (!hasApiKey) {
+            const diagnosticError =
+                'No AI provider available. ' +
+                'Configure harness-dashboard.ai.apiKey to use an OpenAI-compatible endpoint, ' +
+                'or install GitHub Copilot (vscode.lm). ' +
+                `Diagnostic: ${result.error}`;
+            if (log) log.warn(`[lmUtils] generateText failed: ${diagnosticError}`);
+            return { ok: false, error: diagnosticError };
+        }
+        if (log) log.warn(`[lmUtils] generateText failed: ${result.error}`);
     }
     return result;
 }

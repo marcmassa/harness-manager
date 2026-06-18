@@ -10,6 +10,7 @@ import {
     findFiles,
     readTextFromUri,
     readTextIfExists,
+    readTextMultiBase,
     toRelativePath,
     withFrameworkMetadata,
 } from './adapterUtils.js';
@@ -69,12 +70,12 @@ export class HarnessSddAdapter implements IAgentAdapter {
         await this.parseSteeringFiles(root, result, agenticJson);
         await this.parseHookFiles(root, result, agenticJson);
 
-        const featureList = await readTextIfExists(root, 'feature_list.json');
+        const featureList = await readTextMultiBase(root, 'feature_list.json');
         if (featureList) {
             logic.parseFeatureList(featureList, result);
         }
 
-        const progressMd = await readTextIfExists(root, 'progress/progress.md');
+        const progressMd = await readTextMultiBase(root, 'progress/progress.md');
         if (progressMd) {
             logic.parseProgressMd(progressMd, result);
         }

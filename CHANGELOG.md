@@ -12,7 +12,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [0.4.0] — 2026-06-17
+## [0.4.1] — 2026-06-18
+
+> Patch release: whiteboard layout overhaul and specs discovery fix. No new features.
+
+### Changed
+
+#### Whiteboard layout — architectural hierarchy, no more horizontal overflow
+
+- **Feature nodes removed from the whiteboard.** Specs/features belong in the SDD panel; showing them on the architecture canvas obscured the core value of the extension and caused the sector to grow uncontrollably. The `executing` edges are also excluded. Feature nodes are still rendered in the SDD Manager tab.
+- **TB hierarchy with row-wrap.** The layout engine now positions `agent → subagent → skill/steering/hook` in a strict top-to-bottom hierarchy without dagre. Each rank is laid out manually with a `MAX_NODES_PER_ROW = 4` cap: when a rank has more than 4 nodes they wrap into additional rows instead of extending horizontally. Sector width is now bounded and predictable regardless of how many subagents or skills a provider has.
+- **`dagre` removed from the layout path.** `layoutUtils.ts` no longer imports dagre for the whiteboard layout. The dagre dependency remains in `package.json` for potential future use.
+- **Node handle positions corrected** — structural nodes use `top`/`bottom` handles (TB flow).
+
+#### Specs discovery — recursive, not hardcoded
+
+- **`findSpecsRoot`** replaces the hardcoded `WORKSPACE_BASES = ['.', '.kiro']` list. Uses `vscode.workspace.findFiles('**/specs/FEATURE/requirements.md')` to locate the `specs/` directory anywhere in the workspace tree, regardless of nesting.
+- **`invalidateSpecsRootCache`** — exported so callers can reset the cache after the first spec is written (first-create scenario).
+- **`HarnessSddAdapter`** now uses `readTextMultiBase` (added in 0.4.0) for `feature_list.json` and `progress/progress.md`, picking up files under `.kiro/` automatically.
+
+#### Code quality hooks — path migration
+
+- KISS and DRY hook scripts (`on-file-saved-kiss-check.sh`, `on-file-saved-dry-check.sh`) moved from `hooks/` to `.kiro/hooks/` together with `kiss_check.py` and `dry_check.py`.
+- `codeQualityRunner.ts` `HOOK_SCRIPTS` map updated to `.kiro/hooks/` paths.
+- `agentic.json#hooks[]` `script` fields updated; `kiro_hook` field added pointing to the corresponding Kiro v1 JSON hook file.
+- Five Kiro v1 hook files created under `.kiro/hooks/` (`kiss-check.json`, `dry-check.json`, `spec-created-validate.json`, `feature-done-notify.json`, `check-pass-timestamp.json`).
+
+#### R4 diagnostic message (FEAT-028)
+
+- `generateText` now returns a user-actionable error when no AI provider is available and no API key is configured: `"No AI provider available. Configure harness-dashboard.ai.apiKey … or install GitHub Copilot (vscode.lm). Diagnostic: <last error>"`.
+- Unit test updated to assert the three parts of the message (`No AI provider available`, `harness-dashboard.ai.apiKey`, `GitHub Copilot`).
+
+### Technical
+
+- Test suite: **228 unit tests** (16 files) — unchanged count, all pass.
+- Build: `npm run build` clean, no errors.
+- `dagre` import removed from `layoutUtils.ts` (the dependency itself is retained).
 
 > Adds 5 new features bringing the total to 28 done. FEAT-028 (Universal AI Provider) is the headline feature — AI spec generation works in Kiro and other IDEs without Copilot via configurable provider chain. FEAT-027 (KISS + DRY code quality hooks) enforces architectural principles on every save. FEAT-024/025/026 extend the whiteboard with steering, hooks, SDD management panel, and cross-framework discovery.
 

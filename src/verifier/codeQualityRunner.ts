@@ -4,7 +4,7 @@
 //
 // Implements FEAT-027 T8: `runCodeQualityHooks(filePath, root, options)`
 // returns the merged list of hook reports. Each report has the same shape
-// the python scripts emit (see hooks/kiss_check.py and hooks/dry_check.py).
+// the python scripts emit (see .kiro/hooks/kiss_check.py and .kiro/hooks/dry_check.py).
 // ============================================================================
 
 import { spawn } from 'child_process';
@@ -35,8 +35,8 @@ export interface RunCodeQualityOptions {
 }
 
 const HOOK_SCRIPTS = {
-    'harness-kiss': 'hooks/on-file-saved-kiss-check.sh',
-    'harness-dry': 'hooks/on-file-saved-dry-check.sh',
+    'harness-kiss': '.kiro/hooks/on-file-saved-kiss-check.sh',
+    'harness-dry': '.kiro/hooks/on-file-saved-dry-check.sh',
 } as const;
 
 type HookId = keyof typeof HOOK_SCRIPTS;

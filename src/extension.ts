@@ -7,7 +7,7 @@ import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from 
 import type { MarkdownFileContent } from './types.js';
 import { openFileInEditor } from './fileUtils.js';
 import { generateText, diagnoseLmAvailability } from './lmUtils.js';
-import { getFallbackTemplate, buildAIPrompt, tryReadInWorkspace, resolveInWorkspace, detectSpecsBase } from './sddManagerProvider.js';
+import { getFallbackTemplate, buildAIPrompt, tryReadInWorkspace, resolveInWorkspace, detectSpecsBase, invalidateSpecsRootCache } from './sddManagerProvider.js';
 type CustomUsesEdge = { source: string; target: string };
 const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
 
@@ -639,17 +639,20 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         file: 'requirements' | 'design' | 'tasks',
         content: string,
     ): Promise<{ ok: boolean; error?: string }> {
-        const base = await detectSpecsBase(this._workspaceRoot);
+        // detectSpecsBase returns a path relative to workspaceRoot (e.g. '.' or '.kiro')
+        // or the result of the recursive discovery.  We join it to build the final URI.
+        const baseRel = await detectSpecsBase(this._workspaceRoot);
+        const baseUri = baseRel === '.'
+            ? this._workspaceRoot
+            : vscode.Uri.joinPath(this._workspaceRoot, baseRel);
         const specPath = `specs/${featureName}/${file}.md`;
-        const uri = base === '.'
-            ? vscode.Uri.joinPath(this._workspaceRoot, specPath)
-            : vscode.Uri.joinPath(this._workspaceRoot, base, specPath);
+        const uri = vscode.Uri.joinPath(baseUri, specPath);
         try {
-            const dir = base === '.'
-                ? vscode.Uri.joinPath(this._workspaceRoot, 'specs', featureName)
-                : vscode.Uri.joinPath(this._workspaceRoot, base, 'specs', featureName);
+            const dir = vscode.Uri.joinPath(baseUri, 'specs', featureName);
             await vscode.workspace.fs.createDirectory(dir);
             await vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf8'));
+            // Invalidate the cache so the next read picks up the newly created specs/
+            invalidateSpecsRootCache(this._workspaceRoot);
             return { ok: true };
         } catch (e: any) {
             return { ok: false, error: e?.message ?? String(e) };

@@ -487,8 +487,10 @@ describe('FEAT-028 — generateText (backward compat)', () => {
         const result = await generateText('test prompt', undefined, { apiKey: '' });
         expect(result.ok).toBe(false);
         if (!result.ok) {
-            // Should say something about all providers failing
-            expect(result.error).toBeTruthy();
+            // R4: error must include the diagnostic and an actionable suggestion
+            expect(result.error).toContain('No AI provider available');
+            expect(result.error).toContain('harness-dashboard.ai.apiKey');
+            expect(result.error).toContain('GitHub Copilot');
         }
     });
 

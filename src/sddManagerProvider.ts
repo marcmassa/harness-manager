@@ -142,21 +142,95 @@ Return only the markdown body, no preamble. Follow the template's structure exac
     return prompt;
 }
 
-// ===== Multi-base file resolution =====
-
-/** Known workspace-relative base directories to search for project files. */
-export const WORKSPACE_BASES = ['.', '.kiro'];
+// ===== Specs root discovery =====
 
 /**
- * Try to read a file relative to the workspace root, searching across
- * multiple known base directories (root, .kiro/, etc.).
- * Returns the content + the base where it was found, or null.
+ * Find the directory that contains the specs/ folder by scanning the
+ * workspace recursively. Uses a glob anchor (specs/FEATURE/requirements.md)
+ * to locate any existing spec, then extracts the parent path.
+ *
+ * The result is cached per workspaceRoot for the lifetime of the process
+ * so repeated calls within a session are free.
+ *
+ * Returns the URI of the specs/ parent directory (i.e. the base from
+ * which specs/<feature>/file.md paths are resolved), or null when no
+ * specs exist yet (first creation).
+ */
+const _specsRootCache = new Map<string, vscode.Uri | null>();
+
+export async function findSpecsRoot(workspaceRoot: vscode.Uri): Promise<vscode.Uri | null> {
+    const cacheKey = workspaceRoot.toString();
+    if (_specsRootCache.has(cacheKey)) {
+        return _specsRootCache.get(cacheKey)!;
+    }
+
+    // Search for any requirements.md inside any specs/<feature>/ subtree,
+    // regardless of where specs/ lives (root, .kiro/, etc.)
+    const pattern = new vscode.RelativePattern(workspaceRoot, '**/specs/*/requirements.md');
+    const hits = await vscode.workspace.findFiles(pattern, '**/node_modules/**', 1);
+
+    let result: vscode.Uri | null = null;
+    if (hits.length > 0) {
+        // hits[0] is  <root>/[prefix/]specs/<feature>/requirements.md
+        // Walk up 3 levels: requirements.md → <feature>/ → specs/ → base
+        const featureDir = vscode.Uri.joinPath(hits[0], '..'); // <feature>/
+        const specsDir   = vscode.Uri.joinPath(featureDir, '..'); // specs/
+        result           = vscode.Uri.joinPath(specsDir, '..'); // base (parent of specs/)
+    }
+
+    _specsRootCache.set(cacheKey, result);
+    return result;
+}
+
+/**
+ * Invalidate the specs-root cache for a workspace. Call this after a spec
+ * is created for the first time so the next read picks up the new location.
+ */
+export function invalidateSpecsRootCache(workspaceRoot: vscode.Uri): void {
+    _specsRootCache.delete(workspaceRoot.toString());
+}
+
+/**
+ * Resolve a specs-relative path (specs/<feature>/<file>.md) against the
+ * discovered specs root. Falls back to the workspace root if no specs
+ * directory has been found yet.
+ */
+async function resolveSpecUri(
+    workspaceRoot: vscode.Uri,
+    specRelPath: string,
+): Promise<vscode.Uri> {
+    const base = await findSpecsRoot(workspaceRoot) ?? workspaceRoot;
+    return vscode.Uri.joinPath(base, specRelPath);
+}
+
+/**
+ * Try to read a workspace file using the discovered specs root for
+ * specs/... paths, and a fixed fallback list for everything else
+ * (feature_list.json, progress/, templates/).
+ *
+ * Returns { content, base } on success, null on failure.
  */
 export async function tryReadInWorkspace(
     workspaceRoot: vscode.Uri,
     relativePath: string,
 ): Promise<{ content: string; base: string } | null> {
-    for (const base of WORKSPACE_BASES) {
+    // For specs paths, use the discovered root
+    if (relativePath.startsWith('specs/')) {
+        const uri = await resolveSpecUri(workspaceRoot, relativePath);
+        try {
+            const buf = await vscode.workspace.fs.readFile(uri);
+            const base = vscode.workspace.asRelativePath(
+                vscode.Uri.joinPath(uri, '..', '..', '..'),
+                false,
+            );
+            return { content: buf.toString(), base };
+        } catch {
+            return null;
+        }
+    }
+
+    // For everything else search in root then .kiro/
+    for (const base of ['.', '.kiro']) {
         const uri = base === '.'
             ? vscode.Uri.joinPath(workspaceRoot, relativePath)
             : vscode.Uri.joinPath(workspaceRoot, base, relativePath);
@@ -171,14 +245,24 @@ export async function tryReadInWorkspace(
 }
 
 /**
- * Resolve the full URI for a workspace-relative path, searching across
- * multiple known base directories. Returns the first that exists.
+ * Resolve the full URI for a workspace-relative path.
+ * Uses specs-root discovery for specs/... paths.
  */
 export async function resolveInWorkspace(
     workspaceRoot: vscode.Uri,
     relativePath: string,
 ): Promise<vscode.Uri | null> {
-    for (const base of WORKSPACE_BASES) {
+    if (relativePath.startsWith('specs/')) {
+        const uri = await resolveSpecUri(workspaceRoot, relativePath);
+        try {
+            await vscode.workspace.fs.stat(uri);
+            return uri;
+        } catch {
+            return null;
+        }
+    }
+
+    for (const base of ['.', '.kiro']) {
         const uri = base === '.'
             ? vscode.Uri.joinPath(workspaceRoot, relativePath)
             : vscode.Uri.joinPath(workspaceRoot, base, relativePath);
@@ -193,22 +277,18 @@ export async function resolveInWorkspace(
 }
 
 /**
- * Detect which base directory has a `specs/` folder (for writes).
- * Prefers .kiro/ if both exist, finally falls back to root.
+ * Return the base URI under which specs/ should be written.
+ * Uses the discovered specs root when it already exists; falls back
+ * to the workspace root (creates at root on first write).
  */
 export async function detectSpecsBase(workspaceRoot: vscode.Uri): Promise<string> {
-    for (const base of WORKSPACE_BASES) {
-        const uri = base === '.'
-            ? vscode.Uri.joinPath(workspaceRoot, 'specs')
-            : vscode.Uri.joinPath(workspaceRoot, base, 'specs');
-        try {
-            await vscode.workspace.fs.stat(uri);
-            return base;
-        } catch {
-            // try next base
-        }
+    const base = await findSpecsRoot(workspaceRoot);
+    if (base) {
+        // Return path relative to workspaceRoot so callers can use it as-is
+        const rel = vscode.workspace.asRelativePath(base, false);
+        return rel === '' ? '.' : rel;
     }
-    return '.'; // fallback — create at root
+    return '.'; // no specs yet — create at root
 }
 
 // ===== Spec template reader =====
