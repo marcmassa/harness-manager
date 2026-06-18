@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -22,7 +22,7 @@
 
 Harness Dashboard reads your workspace and renders an interactive graph of your AI agent setup:
 
-- **Nodes** — Agents, Subagents, Skills and Features
+- **Nodes** — Agents, Subagents, Skills (architectural hierarchy) and Features (compact grid, below the agent graph)
 - **Edges** — `manages`, `uses`, `suggested`, `discovered` relationships with semantic coloring
 - **Semantic suggestions** — TF-IDF cosine similarity recommends missing skill connections
 - **Detail panel** — click any node to read its description and Markdown file inline
@@ -52,14 +52,14 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ---
 
-## What's new in 0.4.0
+## What's new in 0.4.1
 
 | Area | What changed |
 |------|-------------|
-| **AI Provider** | New provider chain falls back to OpenAI-compatible API when `vscode.lm` is unavailable. Check diagnostics via `Harness Dashboard: Check AI Provider Status` command. 3 settings: `apiKey`, `endpoint`, `model`. |
-| **SDD Panel** | Dedicated panel alongside the whiteboard for browsing, editing, and AI-generating spec files per feature. |
-| **Steering & Hooks** | Two new node types on the whiteboard (`steering`, `hook`) with relationship edges to subagents and agents. |
-| **Cross-framework** | Hooks and steering files discovered automatically from any agentic framework root and the project root. |
+| **Whiteboard layout** | Agent → Subagent → Skill/Steering/Hook rendered in a strict TB hierarchy. Nodes in the same rank wrap into multiple rows (max 4 per row) instead of extending horizontally. Feature chips appear in a compact grid below the architectural graph, well-separated from the agent hierarchy. |
+| **Specs discovery** | `specs/` directory is now found by recursive glob instead of a hardcoded list of bases — works whether specs live at the root, under `.kiro/`, or anywhere else. |
+| **AI no-provider message** | When no provider is available and no API key is set, the error message now includes an actionable suggestion (`harness-dashboard.ai.apiKey` / GitHub Copilot). |
+| **Hooks path** | KISS + DRY hook scripts moved to `.kiro/hooks/`; Kiro v1 JSON hook files created for all five lifecycle hooks. |
 
 For the full list of changes, see the [CHANGELOG](./CHANGELOG.md).
 
