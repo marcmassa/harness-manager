@@ -39,6 +39,31 @@ export async function readTextIfExists(root: vscode.Uri, relativePath: string): 
     }
 }
 
+/**
+ * Like readTextIfExists but searches multiple base directories in order:
+ * root first, then .kiro/. Returns the content of the first match, or null.
+ * Used by adapters that need to find files that may live at the project root
+ * or inside a IDE-specific subdirectory (e.g. Kiro places files in .kiro/).
+ */
+export async function readTextMultiBase(
+    root: vscode.Uri,
+    relativePath: string,
+    bases: string[] = ['.', '.kiro'],
+): Promise<string | null> {
+    for (const base of bases) {
+        const uri = base === '.'
+            ? vscode.Uri.joinPath(root, relativePath)
+            : vscode.Uri.joinPath(root, base, relativePath);
+        try {
+            const bytes = await vscode.workspace.fs.readFile(uri);
+            return Buffer.from(bytes).toString('utf8');
+        } catch {
+            // try next base
+        }
+    }
+    return null;
+}
+
 export async function readTextFromUri(file: vscode.Uri): Promise<string | null> {
     try {
         const bytes = await vscode.workspace.fs.readFile(file);

@@ -122,7 +122,7 @@ process on their own machine.
 | **Adapters** | Detect + parse agent architectures from non-Harness sources (Claude Code, Gemini CLI, Cursor, Copilot, OpenCode, and the deprecated Windsurf) into the common graph model | `src/adapters/*.ts` | pattern: `IAgentAdapter` + 7 implementations (one of which — `WindsurfAdapter` — is retained for legacy workspaces; see ADR-003) |
 | **Semantic Layer** | TF-IDF vectorizer, cosine similarity, name-boost, n-gram tokenization | `src/semanticMatcher.ts` | pure functions, no I/O |
 | **Idoneity Layer** | Bidirectional semantic idoneity matrix, best-owner-by-skill, mismatch detection | `src/idoneity.ts` | reuses `semanticMatcher.ts` |
-| **Webview UI** | React Flow whiteboard, node types (agent/subagent/skill/feature), per-type edge styling, timeline view, detail panel, side panel, context menus | `src/webview/*` | React 18, React Flow 11, `@vscode/webview-ui-toolkit` |
+| **Webview UI** | React Flow whiteboard, node types (agent/subagent/skill/steering/hook — features are in the SDD panel, not the canvas), per-type edge styling, timeline view, detail panel, side panel, context menus | `src/webview/*` | React 18, React Flow 11, `@vscode/webview-ui-toolkit` |
 | **Persistence** | Per-workspace state (dismissed suggestions, disabled connections, manual node positions) | `context.workspaceState` | VS Code API |
 | **Output Channel** | Diagnostic logs visible in *Output > Harness Dashboard*, severity-filtered | `vscode.LogOutputChannel` | built-in |
 | **CI Workflow** | Re-runs `npm ci && build && test && check.sh` on every push and PR to `main` | `.github/workflows/ci.yml` | GitHub Actions, ubuntu-latest, Node 20.x |
@@ -184,8 +184,10 @@ models via `vscode.lm`.
   - Node 20.x in CI (matches `engines.vscode ^1.85.0`).
   - esbuild for bundling (not Webpack, not Rollup).
   - Vitest for unit tests (not Jest, not Mocha).
-  - `gray-matter` for YAML frontmatter; `dagre` for auto-layout;
-    no custom parser, no custom layout engine.
+  - `gray-matter` for YAML frontmatter; `dagre` bundled as dependency
+    (not used in the main whiteboard layout path since 0.4.1 — layout
+    uses a manual TB hierarchy with row-wrap in `layoutUtils.ts`);
+    no custom parser.
 
 - **VS Code engine**: `^1.85.0` (declared in `package.json#engines`).
 
@@ -209,7 +211,7 @@ models via `vscode.lm`.
   - Activation time < 500 ms (surgical `onView` activation event,
     lazy import of webview bundle).
   - All disposables registered in `context.subscriptions`.
-  - Vitest unit-test suite: 126 tests in < 500 ms.
+  - Vitest unit-test suite: 228 tests in < 1 s.
 
 - **Harness SDD invariants** (enforced by `./check.sh`):
   - At most one feature `in_progress` at a time.

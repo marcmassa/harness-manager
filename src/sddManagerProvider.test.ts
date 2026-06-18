@@ -10,7 +10,7 @@
 // ============================================================================
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildAIPrompt, getFallbackTemplate } from './sddManagerProvider.js';
+import { buildAIPrompt, getFallbackTemplate, invalidateSpecsRootCache } from './sddManagerProvider.js';
 
 // ===== Hoisted shared state for vscode mock =====
 // vi.mock is hoisted above imports but vi.hoisted lets us create
@@ -48,9 +48,16 @@ vi.mock('vscode', () => {
             return { fsPath: joined, path: joined };
         },
     };
+
+    // RelativePattern stub — findSpecsRoot uses `new vscode.RelativePattern(root, glob)`
+    const RelativePattern = vi.fn(function (this: any, _base: any, pattern: string) {
+        this.pattern = pattern;
+    });
+
     return {
         default: {
             Uri: mockUri,
+            RelativePattern,
             workspace: {
                 fs: {
                     readFile: mockVscodeFsReadFile,
@@ -65,6 +72,12 @@ vi.mock('vscode', () => {
                         return { type: 1 };
                     }),
                 },
+                // findFiles used by findSpecsRoot — return empty so tests use the
+                // direct readFile path (mocked files are already set at absolute paths)
+                findFiles: vi.fn(async () => []),
+                asRelativePath: vi.fn((uri: any, _includeWorkspace?: boolean) => {
+                    return typeof uri === 'string' ? uri : (uri?.fsPath || '');
+                }),
             },
             window: {
                 showWarningMessage: vi.fn(),
@@ -82,12 +95,17 @@ vi.mock('vscode', () => {
             })),
         },
         Uri: mockUri,
+        RelativePattern,
         workspace: {
             fs: {
                 readFile: mockVscodeFsReadFile,
                 writeFile: mockVscodeFsWriteFile,
                 createDirectory: vi.fn(),
             },
+            findFiles: vi.fn(async () => []),
+            asRelativePath: vi.fn((uri: any, _includeWorkspace?: boolean) => {
+                return typeof uri === 'string' ? uri : (uri?.fsPath || '');
+            }),
         },
         window: {
             showWarningMessage: vi.fn(),
@@ -206,6 +224,8 @@ describe('FEAT-025 — getFallbackTemplate', () => {
 describe('FEAT-025 — SDDManagerProvider', () => {
     beforeEach(() => {
         clearMockFiles();
+        // Reset the specs-root discovery cache so each test starts clean
+        invalidateSpecsRootCache({ fsPath: '/workspace', toString: () => 'file:///workspace' } as any);
     });
 
     describe('getFeatureList (T8)', () => {

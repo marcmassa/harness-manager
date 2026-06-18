@@ -93,15 +93,8 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                 data-type={type}
                 style={{
                     ...NODE_STYLES[type],
-                    padding: '6px 12px',
-                    minWidth: '100px',
-                    maxWidth: '220px',
-                    borderRadius: '20px',
                     cursor: 'pointer',
                     position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
                     ...hoverStyle,
                     ...selectedStyle,
                 }}
@@ -112,10 +105,10 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
             >
                 {/* FEAT ID badge */}
                 <span style={{
-                    fontSize: '0.6em',
+                    fontSize: '0.62em',
                     fontWeight: 800,
-                    letterSpacing: '0.5px',
-                    padding: '2px 8px',
+                    letterSpacing: '0.4px',
+                    padding: '1px 6px',
                     borderRadius: '999px',
                     background: 'rgba(255,255,255,0.15)',
                     color: 'inherit',
@@ -126,13 +119,14 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                 </span>
                 {/* Feature title */}
                 <span style={{
-                    fontSize: '0.8em',
+                    fontSize: '0.78em',
                     fontWeight: 500,
                     lineHeight: 1.2,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    opacity: 0.92,
+                    opacity: 0.88,
+                    marginLeft: '6px',
                 }}>
                     {data.label}
                 </span>

@@ -117,7 +117,7 @@ describe('FEAT-027 — codeQualityRunner', () => {
             try {
                 // Lay out a minimal harness-style project so the hook
                 // finds its scripts via the canonical paths.
-                const hooksDir = path.join(tmpDir, 'hooks');
+                const hooksDir = path.join(tmpDir, '.kiro', 'hooks');
                 fs.mkdirSync(hooksDir, { recursive: true });
                 for (const name of [
                     'on-file-saved-kiss-check.sh',
@@ -126,7 +126,7 @@ describe('FEAT-027 — codeQualityRunner', () => {
                     'dry_check.py',
                 ]) {
                     fs.copyFileSync(
-                        path.join(process.cwd(), 'hooks', name),
+                        path.join(process.cwd(), '.kiro', 'hooks', name),
                         path.join(hooksDir, name),
                     );
                 }
@@ -186,7 +186,7 @@ describe('FEAT-027 — codeQualityRunner', () => {
  */
 function makeFixtureWithLongFunction(): string {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cq-'));
-    const hooksDir = path.join(tmpDir, 'hooks');
+    const hooksDir = path.join(tmpDir, '.kiro', 'hooks');
     fs.mkdirSync(hooksDir, { recursive: true });
     for (const name of [
         'on-file-saved-kiss-check.sh',
@@ -195,7 +195,7 @@ function makeFixtureWithLongFunction(): string {
         'dry_check.py',
     ]) {
         fs.copyFileSync(
-            path.join(process.cwd(), 'hooks', name),
+            path.join(process.cwd(), '.kiro', 'hooks', name),
             path.join(hooksDir, name),
         );
     }

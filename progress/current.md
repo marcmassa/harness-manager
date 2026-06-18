@@ -1,32 +1,39 @@
 # Current Session State
 
 ## Active Feature
-- Documentation & release: v0.4.0
+- Maintenance / patch release v0.4.1
 
-## Completed This Session — v0.4.0 Documentation & VSIX Release
+## Completed This Session — v0.4.1 patch
 
 ### What was done
-- **CHANGELOG.md** — added 0.4.0 entry covering FEAT-024 through FEAT-028 (5 new features, 87 new tests).
-- **README.md** — updated version badge (0.4.0), expanded features table, added "What's new in 0.4.0" section, added screenshot placeholders, updated settings documentation with AI provider and code quality settings.
-- **`media/screenshots/`** — created directory for screenshots (placeholders for whiteboard, SDD panel, checkLM output, code quality hooks).
-- **VSIX** — built with `vsce package --no-dependencies`.
+
+**Whiteboard layout overhaul**
+- Feature nodes and `executing` edges removed from the whiteboard canvas. They belong in the SDD panel; keeping them on the architecture graph obscured the core value and caused sectors to grow uncontrollably.
+- Replaced dagre-based layout with a manual TB hierarchy + row-wrap algorithm in `layoutUtils.ts`. Each rank (agent → subagent → skill/steering/hook) wraps at `MAX_NODES_PER_ROW = 4`, keeping sector width bounded regardless of node count.
+- Removed `import dagre` from `layoutUtils.ts` (dependency kept in package.json).
+
+**Specs discovery — recursive glob**
+- Replaced `WORKSPACE_BASES` hardcoded list with `findSpecsRoot()`: uses `vscode.workspace.findFiles('**/specs/FEATURE/requirements.md')` to discover `specs/` wherever it lives in the workspace tree.
+- Added `invalidateSpecsRootCache()` exported for post-write cache reset.
+
+**Code quality hooks path migration**
+- Moved `hooks/` scripts to `.kiro/hooks/` (kiss_check.py, dry_check.py, .sh wrappers).
+- Updated `codeQualityRunner.ts` `HOOK_SCRIPTS`, `agentic.json#hooks[]`, and test fixtures.
+- Created five Kiro v1 hook JSON files under `.kiro/hooks/`.
+
+**FEAT-028 R4 diagnostic**
+- `generateText` returns actionable error with `harness-dashboard.ai.apiKey` and `GitHub Copilot` hint when no provider is available.
 
 ### Test results
 - **228 tests** (16 files) — all pass.
-- **`./check.sh`** — ✅ all checks passed.
-
-### Screenshots needed
-The README references four images in `media/screenshots/` that need to be captured from a real VS Code session:
-1. `whiteboard.png` — whiteboard showing agent graph with subagents, skills, steering/hook nodes
-2. `sdd-panel.png` — SDD management panel with feature list and spec files
-3. `check-lm.png` — output of the `Check AI Provider Status` command
-4. `code-quality.png` — KISS/DRY hooks reporting issues in the Problems panel
+- **`npm run build`** — clean.
 
 ## Previous Sessions
-- **FEAT-025 — FEAT-028 (Sprint "Next")**: Universal AI Provider, Code quality hooks, SDD panel, cross-framework discovery, steering/hooks observability.
-- **FEAT-023 (Configurable paths + Kiro + whiteboard polish)**: ConfigurationRegistry, Kiro adapter, overlap/animations.
-- **FEAT-001 — FEAT-022 (MVP through Next)**: Foundation, parser, whiteboard, graph editor, timeline, semantic analysis, CI, governance, E2E tests.
+- **v0.4.0**: FEAT-025–028 (SDD panel, code quality hooks, cross-framework discovery, universal AI provider).
+- **v0.3.0**: FEAT-023 (ConfigurationRegistry, Kiro adapter, whiteboard polish).
+- **v0.1.0–0.2.0**: Foundation through CI/governance/E2E tests.
 
 ## Next
-- Package is built at `harness-dashboard-vscode-0.4.0.vsix`.
-- Ready to publish or distribute.
+- `Cmd+Shift+P` → `Developer: Reload Window` to pick up layout changes.
+- Capture updated whiteboard screenshot for README (`media/screenshots/whiteboard.png`).
+- Tag `v0.4.1` and publish VSIX when ready.

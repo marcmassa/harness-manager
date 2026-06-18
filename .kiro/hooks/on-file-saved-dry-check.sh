@@ -34,4 +34,4 @@ case "$FILE" in
     *)  ABS_FILE="$ROOT_DIR/$FILE" ;;
 esac
 
-python3 "$ROOT_DIR/hooks/dry_check.py" "$ABS_FILE"
+python3 "$ROOT_DIR/.kiro/hooks/dry_check.py" "$ABS_FILE"
