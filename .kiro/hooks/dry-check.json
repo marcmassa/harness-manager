@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "DRY Check on Save",
+      "trigger": "PostFileSave",
+      "description": "Ejecuta dry_check.py sobre el archivo TS/TSX guardado. Detecta violaciones DRY: strings repetidos, números mágicos, funciones duplicadas, tipos duplicados.",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "python3 .kiro/hooks/dry_check.py \"$KIRO_FILE_PATH\""
+      }
+    }
+  ]
+}

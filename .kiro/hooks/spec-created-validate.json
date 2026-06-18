@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Validate Spec Structure on Create",
+      "trigger": "PostFileCreate",
+      "description": "Valida estructura EARS del spec recién creado: 3 .md presentes y al menos un requisito R<n> en requirements.md.",
+      "matcher": "specs/.*\\.md$",
+      "action": {
+        "type": "agent",
+        "prompt": "Se acaba de crear o modificar un spec. Verifica que el directorio specs/ correspondiente contiene exactamente 3 archivos .md (requirements.md, design.md, tasks.md). Comprueba que requirements.md tiene al menos un requisito EARS con el patrón `### R<n>`. Si falta algún archivo o los requisitos EARS están ausentes, notifícalo claramente con WARN y el path concreto. No modifiques ningún archivo."
+      }
+    }
+  ]
+}

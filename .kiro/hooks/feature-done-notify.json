@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Notify Feature Done",
+      "trigger": "PostTaskExec",
+      "description": "Cuando un spec task se completa, notifica resumen del feature: id, nombre, agente, timestamp. Placeholder para integraciones externas (Slack, Jira).",
+      "action": {
+        "type": "agent",
+        "prompt": "Una tarea del spec acaba de completarse. Imprime un resumen breve con: feature id, nombre del feature (léelo de feature_list.json buscando el que esté en estado in_progress), timestamp UTC, y el agente activo. Formato sugerido: `Feature done: <id> — <name> | <timestamp> | Agent: <agent>`. No modifiques ningún archivo. Este es un placeholder: en el futuro puede integrarse con Slack o Jira."
+      }
+    }
+  ]
+}

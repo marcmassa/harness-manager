@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "KISS Check on Save",
+      "trigger": "PostFileSave",
+      "description": "Ejecuta kiss_check.py sobre el archivo TS/TSX guardado. Detecta anti-patrones KISS: archivo largo, función larga, nesting profundo, parámetros no usados, errores tragados.",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "python3 .kiro/hooks/kiss_check.py \"$KIRO_FILE_PATH\""
+      }
+    }
+  ]
+}

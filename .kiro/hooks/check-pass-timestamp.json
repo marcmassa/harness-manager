@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Record Check Pass Timestamp",
+      "trigger": "PostTaskExec",
+      "description": "Registra timestamp UTC del último check.sh exitoso en progress/last-check-pass.txt. Se dispara al completar una tarea de spec.",
+      "action": {
+        "type": "command",
+        "command": "mkdir -p progress && date -u +\"%Y-%m-%dT%H:%M:%SZ\" > progress/last-check-pass.txt && echo \"CI timestamp recorded: $(cat progress/last-check-pass.txt)\""
+      }
+    }
+  ]
+}
