@@ -111,31 +111,36 @@
   "hooks": [
     {
       "event": "on_spec_created",
-      "script": "hooks/on-spec-created_validate.sh",
+      "script": ".kiro/hooks/on-spec-created_validate.sh",
+      "kiro_hook": ".kiro/hooks/spec-created-validate.json",
       "description": "Verifica que specs/<feature>/ contiene 3 .md con requisitos EARS",
       "on_failure": "warn"
     },
     {
       "event": "on_feature_done",
-      "script": "hooks/on-feature-done_notify.sh",
+      "script": ".kiro/hooks/on-feature-done_notify.sh",
+      "kiro_hook": ".kiro/hooks/feature-done-notify.json",
       "description": "Imprime resumen del feature completado para integraciones externas",
       "on_failure": "ignore"
     },
     {
       "event": "on_check_pass",
-      "script": "hooks/on-check-pass_ci.sh",
+      "script": ".kiro/hooks/on-check-pass_ci.sh",
+      "kiro_hook": ".kiro/hooks/check-pass-timestamp.json",
       "description": "Registra timestamp del último check.sh exitoso en progreso CI",
       "on_failure": "ignore"
     },
     {
       "event": "on_file_saved_kiss",
-      "script": "hooks/on-file-saved-kiss-check.sh",
+      "script": ".kiro/hooks/on-file-saved-kiss-check.sh",
+      "kiro_hook": ".kiro/hooks/kiss-check.json",
       "description": "KISS checks (anti-overengineering) on every saved TS/TSX file",
       "on_failure": "ignore"
     },
     {
       "event": "on_file_saved_dry",
-      "script": "hooks/on-file-saved-dry-check.sh",
+      "script": ".kiro/hooks/on-file-saved-dry-check.sh",
+      "kiro_hook": ".kiro/hooks/dry-check.json",
       "description": "DRY checks (anti-duplication) on every saved TS/TSX file",
       "on_failure": "ignore"
     }
