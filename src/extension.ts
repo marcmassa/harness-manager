@@ -7,7 +7,11 @@ import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from 
 import type { MarkdownFileContent } from './types.js';
 import { openFileInEditor } from './fileUtils.js';
 import { generateText, diagnoseLmAvailability } from './lmUtils.js';
-import { getFallbackTemplate, buildAIPrompt, tryReadInWorkspace, resolveInWorkspace, detectSpecsBase, invalidateSpecsRootCache } from './sddManagerProvider.js';
+import { getFallbackTemplate, buildAIPrompt, tryReadInWorkspace, resolveInWorkspace, detectSpecsBase, invalidateSpecsRootCache, discoverSpecsFromFilesystem } from './sddManagerProvider.js';
+import { AgenticDetector } from './agentic-detector/agenticDetector.js';
+import { AgenticDetectorProvider } from './agentic-detector/agenticDetectorProvider.js';
+import type { AgenticProfile } from './agentic-detector/types.js';
+import { scaffoldAgenticJson, scaffoldFeatureListJson } from './agentic-detector/scaffold.js';
 type CustomUsesEdge = { source: string; target: string };
 const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
 
@@ -63,6 +67,41 @@ export function activate(context: vscode.ExtensionContext) {
             })
         );
     }
+
+    // FEAT-029 Phase 4: Agentic Architecture Detector singleton
+    const agenticDetector = new AgenticDetector(root, log, context.workspaceState);
+    // T34: Give the provider access so the scaffold action can trigger re-scans.
+    provider.setAgenticDetector(agenticDetector);
+    const agenticProvider = new AgenticDetectorProvider(agenticDetector);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('harness-dashboard.agenticDetector', agenticProvider)
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
+            await agenticDetector.scan();
+        })
+    );
+
+    // FEAT-029: Open dashboard in a full-window editor panel
+    context.subscriptions.push(
+        vscode.commands.registerCommand('harness-dashboard.openInEditor', () => {
+            provider.openFullWindowPanel();
+        })
+    );
+
+    // Start watching for file changes
+    agenticDetector.startWatching();
+
+    // FEAT-029: Forward scan results to the dashboard webview's advisory panel
+    agenticDetector.on('scanComplete', (profile: AgenticProfile) => {
+        provider.sendAdvisoryProfile(profile);
+    });
+
+    // Run initial scan (don't await — let it complete in background)
+    agenticDetector.scan().catch(err => log.warn(`[AgenticDetector] Initial scan: ${err}`));
+
+    context.subscriptions.push({ dispose: () => agenticDetector.dispose() });
 
     // FEAT-028 T5: checkLM command — diagnostics + quick AI ping
     context.subscriptions.push(
@@ -122,6 +161,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private _writer: HarnessWriter;
     private readonly _log: vscode.LogOutputChannel;
     private readonly _harnessConfig: HarnessConfig;
+    private _agenticDetector?: AgenticDetector;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -154,250 +194,10 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
+        // Attach the shared message handler, routing responses to the sidebar webview
+        const sendToSidebar = (msg: any) => this._view?.webview.postMessage(msg);
         webviewView.webview.onDidReceiveMessage(async data => {
-            try {
-                switch (data.type) {
-                    case 'ready':
-                    case 'getData':
-                        this._sendData();
-                        break;
-                    case 'createNode':
-                        if (data.nodeType === 'subagent') {
-                            await this._writer.createSubagent(data.name, data.description);
-                        } else {
-                            await this._writer.createSkill(
-                                data.name, 
-                                data.description,
-                                {
-                                    license: data.license,
-                                    compatibility: data.compatibility,
-                                    author: data.author,
-                                    version: data.version,
-                                }
-                            );
-                        }
-                        this._sendData();
-                        break;
-                    case 'deleteNode':
-                        await this._writer.deleteNode(data.id, data.nodeType);
-                        this._sendData();
-                        break;
-                    case 'updateMetadata':
-                        await this._writer.updateMetadata(data.id, data.nodeType, data.metadata);
-                        this._sendData();
-                        break;
-                    case 'createEdge':
-                        try {
-                            await this._writer.createEdge(data.source, data.target);
-                        } catch (error: any) {
-                            if (this._shouldUseCustomEdgeFallback(error)) {
-                                await this._upsertCustomUsesEdge(data.source, data.target);
-                            } else {
-                                throw error;
-                            }
-                        }
-                        this._sendData();
-                        break;
-                    case 'getMarkdownContent':
-                        const mdContent: MarkdownFileContent = await this._parser.getMarkdownContent(data.nodeId, data.nodeType, data.filePath);
-                        this._view?.webview.postMessage({ type: 'markdownContent', content: mdContent });
-                        break;
-                    case 'deleteEdge':
-                        await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
-                        this._sendData();
-                        break;
-                    case 'confirmAndDeleteEdge':
-                        const result = await vscode.window.showWarningMessage(
-                            `Delete this relationship?`,
-                            { modal: true, detail: `This will remove the "${data.label || 'uses'}" connection between "${data.source}" and "${data.target}".` },
-                            'Yes, Delete'
-                        );
-                        if (result === 'Yes, Delete') {
-                            await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
-                            this._sendData();
-                        }
-                        break;
-                    case 'acceptSuggestion':
-                        await this._writer.acceptSuggestion(data.subagentId, data.skillId);
-                        this._sendData();
-                        break;
-                    case 'reassignSkill':
-                        await this._writer.reassignSkill(data.skillId, data.newOwner);
-                        this._sendData();
-                        break;
-                    case 'updateEdgeLabel':
-                        await this._writer.updateEdgeLabel(data.source, data.target, data.label);
-                        this._sendData();
-                        break;
-                    // T7 (R1): Persist dismissed suggestion pair to workspaceState
-                    case 'dismissSuggestion': {
-                        const saId = data.subagentId;
-                        const skId = data.skillId;
-                        if (saId && skId && typeof saId === 'string' && typeof skId === 'string') {
-                            const key = `${saId}::${skId}`;
-                            const current = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
-                            if (!current.includes(key)) {
-                                await this._context.workspaceState.update('harness-dashboard.dismissedSuggestions', [...current, key]);
-                            }
-                        }
-                        this._sendData();
-                        break;
-                    }
-                    // T7 (R4, R6): Toggle disabled state of a uses connection
-                    case 'toggleSkillConnection': {
-                        const src = data.source;
-                        const tgt = data.target;
-                        const disable = data.disabled;
-                        if (src && tgt && typeof src === 'string' && typeof tgt === 'string') {
-                            const key = `${src}::${tgt}`;
-                            const current = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
-                            let updated: string[];
-                            if (disable) {
-                                updated = current.includes(key) ? current : [...current, key];
-                            } else {
-                                updated = current.filter(k => k !== key);
-                            }
-                            await this._context.workspaceState.update('harness-dashboard.disabledConnections', updated);
-                        }
-                        this._sendData();
-                        break;
-                    }
-                    case 'openMarkdownFile':
-                        // Resolve the file path the same way as getMarkdownContent, then open in editor
-                        let relPath: string;
-                        if (typeof data.filePath === 'string' && data.filePath.trim().length > 0) {
-                            relPath = data.filePath;
-                        } else if (data.nodeType === 'skill') {
-                            relPath = `.agents/skills/${data.nodeId}/SKILL.md`;
-                        } else {
-                            relPath = `.agents/subagents/${data.nodeId}/SUBAGENT.md`;
-                        }
-                        await openFileInEditor(this._workspaceRoot, relPath);
-                        break;
-
-                    // ===== SDD Manager handlers (merged into Dashboard) =====
-                    case 'getFeatureList': {
-                        const features = await this._getSDDFeatureList();
-                        this._view?.webview.postMessage({ type: 'featureList', features });
-                        break;
-                    }
-                    case 'getSpecFile': {
-                        const sfg = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
-                        const sfgResult = await this._getSDDSpecFile(sfg.featureName, sfg.file);
-                        this._view?.webview.postMessage({
-                            type: 'specFile',
-                            ...sfgResult,
-                            file: sfg.file,
-                            featureName: sfg.featureName,
-                        });
-                        break;
-                    }
-                    case 'saveSpecFile': {
-                        const sfs = data as { featureName: string; file: 'requirements' | 'design' | 'tasks'; content: string };
-                        const sfsResult = await this._saveSDDSpecFile(sfs.featureName, sfs.file, sfs.content);
-                        this._view?.webview.postMessage({ type: 'saveResult', ...sfsResult, featureName: sfs.featureName, file: sfs.file });
-                        break;
-                    }
-                    case 'generateWithAI': {
-                        const gen = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
-                        const genResult = await this._generateSDDWithAI(gen.featureName, gen.file);
-                        this._view?.webview.postMessage({
-                            type: 'aiResult',
-                            ...genResult,
-                            file: gen.file,
-                            featureName: gen.featureName,
-                        });
-                        break;
-                    }
-                    case 'createSpecFile': {
-                        const cr = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
-                        // Read template (multi-base), create file, respond with specFile
-                        const tplPath = `specs/templates/${cr.file}.md`;
-                        const tplFound = await tryReadInWorkspace(this._workspaceRoot, tplPath);
-                        const templateContent = tplFound ? tplFound.content : getFallbackTemplate(cr.file);
-                        const saveOk = await this._saveSDDSpecFile(cr.featureName, cr.file, templateContent);
-                        if (saveOk.ok) {
-                            const content = await this._getSDDSpecFile(cr.featureName, cr.file);
-                            this._view?.webview.postMessage({
-                                type: 'specFile',
-                                ...content,
-                                file: cr.file,
-                                featureName: cr.featureName,
-                            });
-                        } else {
-                            this._view?.webview.postMessage({
-                                type: 'saveResult',
-                                ok: false,
-                                error: saveOk.error || 'Could not create spec file',
-                                featureName: cr.featureName,
-                                file: cr.file,
-                            });
-                        }
-                        break;
-                    }
-                    case 'generateSpecDraft': {
-                        const gd = data as { featureName: string; file: 'requirements' | 'design' | 'tasks'; userPrompt: string; contextContent?: string };
-                        const gdResult = await this._generateSDDSpecDraft(gd.featureName, gd.file, gd.userPrompt, gd.contextContent);
-                        this._view?.webview.postMessage({
-                            type: 'specDraftResult',
-                            ...gdResult,
-                            file: gd.file,
-                            featureName: gd.featureName,
-                        });
-                        break;
-                    }
-                    case 'openInEditor': {
-                        const resolved = await resolveInWorkspace(this._workspaceRoot, data.filePath);
-                        if (resolved) {
-                            await openFileInEditor(this._workspaceRoot, resolved.fsPath);
-                        } else {
-                            await openFileInEditor(this._workspaceRoot, data.filePath);
-                        }
-                        break;
-                    }
-                    case 'createFeature': {
-                        const newFeat = await this._createSDDFeature(data.title, data.description, data.priority || 'P2', data.sprint || '');
-                        this._view?.webview.postMessage({ type: 'featureCreated', feature: newFeat });
-                        break;
-                    }
-                    case 'generateFeatureDescription': {
-                        const title = data.title || '';
-                        const mode = data.mode || 'generate';
-                        const currentDescription = data.currentDescription || '';
-                        const target = data.target || 'createDescription';
-                        let prompt: string;
-                        if (mode === 'refine' && currentDescription) {
-                            prompt = `Refine and improve the following text. Keep it concise and professional.\n\nTitle: ${title}\n\nCurrent text:\n${currentDescription}\n\nReturn only the refined text, no preamble.`;
-                        } else if (target === 'wizardPrompt' && title) {
-                            prompt = `Write a detailed prompt (2-4 sentences) describing what to generate for a software feature titled "${title}". The prompt should describe the feature's purpose, key functionality, and expected outcomes. Return only the prompt text, no preamble.`;
-                        } else if (target === 'editContent' && currentDescription) {
-                            prompt = `Refine and improve the following specification content. Maintain the structure and markdown formatting. Improve clarity and completeness.\n\nTitle: ${title}\n\nCurrent content:\n${currentDescription}\n\nReturn only the refined content, no preamble.`;
-                        } else {
-                            prompt = `Write a concise, one-paragraph description (2-3 sentences) for a software feature titled "${title}". Return only the description text, no preamble.`;
-                        }
-                        const result = await generateText(prompt, this._log);
-                        this._view?.webview.postMessage({ type: 'featureDescriptionResult', ok: result.ok, text: result.text, error: result.error, target });
-                        break;
-                    }
-                    case 'deleteFeature': {
-                        const featId = data.featureId;
-                        const success = await this._deleteSDDFeature(featId);
-                        this._view?.webview.postMessage({ type: 'featureDeleted', ok: success, featureId: featId });
-                        // Refresh the feature list regardless
-                        const features = await this._getSDDFeatureList();
-                        this._view?.webview.postMessage({ type: 'featureList', features });
-                        break;
-                    }
-                    // FEAT-028: open VS Code settings filtered to the extension
-                    case 'openSettings': {
-                        const query = (data as { query?: string }).query ?? '@ext:marcmassacapo.harness-dashboard-vscode';
-                        vscode.commands.executeCommand('workbench.action.openSettings', query);
-                        break;
-                    }
-                }
-            } catch (e: any) {
-                vscode.window.showErrorMessage(`Harness Error: ${e.message}`);
-            }
+            await this._handleWebviewMessage(data, sendToSidebar);
         });
 
         const watchGlobs = this._parser.getWatchGlobs();
@@ -465,53 +265,393 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         await this._removeCustomUsesEdge(source, target);
     }
-    private async _sendData() {
-        if (this._view) {
-            this._log.info('Parsing project data…');
-            // T2 (R2): Read persisted state and pass to parser
-            const dismissedRaw = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
-            const disabledRaw = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
-            const result = await this._parser.parse({
-                dismissedSuggestions: new Set(dismissedRaw),
-                disabledConnections: new Set(disabledRaw),
-            });
-            const customUsesEdges = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
-            if (customUsesEdges.length > 0) {
-                const nodeIds = new Set(result.graph.nodes.map((node) => node.id));
-                const existingUses = new Set(
-                    result.graph.edges
-                        .filter((edge) => edge.label === 'uses')
-                        .map((edge) => `${edge.source}::${edge.target}`)
-                );
-                for (const edge of customUsesEdges) {
-                    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue;
-                    const key = `${edge.source}::${edge.target}`;
-                    if (existingUses.has(key)) continue;
-                    result.graph.edges.push({
-                        id: `custom-edge-${edge.source}-${edge.target}-uses`,
-                        source: edge.source,
-                        target: edge.target,
-                        label: 'uses',
-                        metadata: { custom: true },
+    /**
+     * Send dashboard data to a specific webview target.
+     * @param postMessage  Optional send function; defaults to the sidebar webview.
+     */
+    private async _sendDataTo(postMessage?: (msg: any) => Thenable<boolean> | void): Promise<void> {
+        const send = postMessage || this._view?.webview.postMessage.bind(this._view?.webview);
+        if (!send) return;
+
+        this._log.info('Parsing project data…');
+        // T2 (R2): Read persisted state and pass to parser
+        const dismissedRaw = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
+        const disabledRaw = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
+        const result = await this._parser.parse({
+            dismissedSuggestions: new Set(dismissedRaw),
+            disabledConnections: new Set(disabledRaw),
+        });
+        const customUsesEdges = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
+        if (customUsesEdges.length > 0) {
+            const nodeIds = new Set(result.graph.nodes.map((node) => node.id));
+            const existingUses = new Set(
+                result.graph.edges
+                    .filter((edge) => edge.label === 'uses')
+                    .map((edge) => `${edge.source}::${edge.target}`)
+            );
+            for (const edge of customUsesEdges) {
+                if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue;
+                const key = `${edge.source}::${edge.target}`;
+                if (existingUses.has(key)) continue;
+                result.graph.edges.push({
+                    id: `custom-edge-${edge.source}-${edge.target}-uses`,
+                    source: edge.source,
+                    target: edge.target,
+                    label: 'uses',
+                    metadata: { custom: true },
+                });
+                existingUses.add(key);
+            }
+        }
+
+        const nodeTypeCounts = result.graph.nodes.reduce((acc: Record<string, number>, n) => {
+            acc[n.type] = (acc[n.type] || 0) + 1; // T6 (R11): explicit type, no implicit any
+            return acc;
+        }, {});
+
+        this._log.info(`Sending data to Webview — nodes: ${JSON.stringify(nodeTypeCounts)}, milestones: ${result.milestones.length}`);
+
+        send({ type: 'init', data: result });
+    }
+
+    /** Backward-compatible: send data to the sidebar webview. */
+    private async _sendData(): Promise<void> {
+        return this._sendDataTo();
+    }
+
+    public sendAdvisoryProfile(profile: AgenticProfile): void {
+        this._view?.webview.postMessage({ type: 'advisoryProfile', profile });
+    }
+
+    /** T34: Provide the agentic detector so the scaffold action can trigger a re-scan. */
+    public setAgenticDetector(detector: AgenticDetector): void {
+        this._agenticDetector = detector;
+    }
+
+    /**
+     * Shared webview message handler — used by both the sidebar WebviewView and the
+     * full-window WebviewPanel.
+     *
+     * @param data         The message from the webview.
+     * @param postMessage  Function to send responses back to the originating webview.
+     */
+    private async _handleWebviewMessage(
+        data: any,
+        postMessage: (msg: any) => Thenable<boolean> | void,
+    ): Promise<void> {
+        try {
+            switch (data.type) {
+                case 'ready':
+                case 'getData':
+                    await this._sendDataTo(postMessage);
+                    // FEAT-029: Send cached advisory profile if available
+                    // (scan may have completed before the webview resolved)
+                    if (this._agenticDetector) {
+                        const profile = this._agenticDetector.getProfile();
+                        if (profile) {
+                            postMessage({ type: 'advisoryProfile', profile });
+                        }
+                    }
+                    break;
+                case 'createNode':
+                    if (data.nodeType === 'subagent') {
+                        await this._writer.createSubagent(data.name, data.description);
+                    } else {
+                        await this._writer.createSkill(
+                            data.name,
+                            data.description,
+                            {
+                                license: data.license,
+                                compatibility: data.compatibility,
+                                author: data.author,
+                                version: data.version,
+                            }
+                        );
+                    }
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'deleteNode':
+                    await this._writer.deleteNode(data.id, data.nodeType);
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'updateMetadata':
+                    await this._writer.updateMetadata(data.id, data.nodeType, data.metadata);
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'createEdge':
+                    try {
+                        await this._writer.createEdge(data.source, data.target);
+                    } catch (error: any) {
+                        if (this._shouldUseCustomEdgeFallback(error)) {
+                            await this._upsertCustomUsesEdge(data.source, data.target);
+                        } else {
+                            throw error;
+                        }
+                    }
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'getMarkdownContent': {
+                    const mdContent: MarkdownFileContent = await this._parser.getMarkdownContent(data.nodeId, data.nodeType, data.filePath);
+                    postMessage({ type: 'markdownContent', content: mdContent });
+                    break;
+                }
+                case 'deleteEdge':
+                    await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'confirmAndDeleteEdge': {
+                    const result = await vscode.window.showWarningMessage(
+                        `Delete this relationship?`,
+                        { modal: true, detail: `This will remove the "${data.label || 'uses'}" connection between "${data.source}" and "${data.target}".` },
+                        'Yes, Delete'
+                    );
+                    if (result === 'Yes, Delete') {
+                        await this._deleteEdgeWithFallback(data.source, data.target, data.label || 'uses');
+                        await this._sendDataTo(postMessage);
+                    }
+                    break;
+                }
+                case 'acceptSuggestion':
+                    await this._writer.acceptSuggestion(data.subagentId, data.skillId);
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'reassignSkill':
+                    await this._writer.reassignSkill(data.skillId, data.newOwner);
+                    await this._sendDataTo(postMessage);
+                    break;
+                case 'updateEdgeLabel':
+                    await this._writer.updateEdgeLabel(data.source, data.target, data.label);
+                    await this._sendDataTo(postMessage);
+                    break;
+                // T7 (R1): Persist dismissed suggestion pair to workspaceState
+                case 'dismissSuggestion': {
+                    const saId = data.subagentId;
+                    const skId = data.skillId;
+                    if (saId && skId && typeof saId === 'string' && typeof skId === 'string') {
+                        const key = `${saId}::${skId}`;
+                        const current = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
+                        if (!current.includes(key)) {
+                            await this._context.workspaceState.update('harness-dashboard.dismissedSuggestions', [...current, key]);
+                        }
+                    }
+                    await this._sendDataTo(postMessage);
+                    break;
+                }
+                // T7 (R4, R6): Toggle disabled state of a uses connection
+                case 'toggleSkillConnection': {
+                    const src = data.source;
+                    const tgt = data.target;
+                    const disable = data.disabled;
+                    if (src && tgt && typeof src === 'string' && typeof tgt === 'string') {
+                        const key = `${src}::${tgt}`;
+                        const current = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
+                        let updated: string[];
+                        if (disable) {
+                            updated = current.includes(key) ? current : [...current, key];
+                        } else {
+                            updated = current.filter(k => k !== key);
+                        }
+                        await this._context.workspaceState.update('harness-dashboard.disabledConnections', updated);
+                    }
+                    await this._sendDataTo(postMessage);
+                    break;
+                }
+                case 'openMarkdownFile': {
+                    let relPath: string;
+                    if (typeof data.filePath === 'string' && data.filePath.trim().length > 0) {
+                        relPath = data.filePath;
+                    } else if (data.nodeType === 'skill') {
+                        relPath = `.agents/skills/${data.nodeId}/SKILL.md`;
+                    } else {
+                        relPath = `.agents/subagents/${data.nodeId}/SUBAGENT.md`;
+                    }
+                    await openFileInEditor(this._workspaceRoot, relPath);
+                    break;
+                }
+
+                // ===== SDD Manager handlers (merged into Dashboard) =====
+                case 'getFeatureList': {
+                    // Merge features from feature_list.json with specs discovered
+                    // from the filesystem (specs/<name>/ directories).
+                    const jsonFeatures = await this._getSDDFeatureList();
+                    const discoveredMap = await discoverSpecsFromFilesystem(this._workspaceRoot);
+
+                    // Build a set of names already covered by JSON features
+                    const jsonNames = new Set(jsonFeatures.map((f: any) => f.name));
+
+                    // Filesystem-discovered specs not in JSON: create synthetic entries
+                    const fsFeatures: any[] = [];
+                    let discCounter = 0;
+                    for (const [name, entry] of discoveredMap) {
+                        if (jsonNames.has(name)) continue; // Already shown from JSON
+                        discCounter++;
+                        fsFeatures.push({
+                            id: `DISC-${String(discCounter).padStart(3, '0')}`,
+                            name,
+                            title: entry.title,
+                            description: '',
+                            type: 'feat',
+                            status: 'discovered',
+                            priority: 'P2',
+                            agent: '',
+                            sprint: '',
+                            sdd: false,
+                            source: 'filesystem',
+                        });
+                    }
+
+                    // Tag JSON features with source
+                    const taggedJson = jsonFeatures.map((f: any) => ({
+                        ...f,
+                        source: 'json' as const,
+                    }));
+
+                    postMessage({ type: 'featureList', features: [...taggedJson, ...fsFeatures] });
+                    break;
+                }
+                case 'getSpecFile': {
+                    const sfg = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
+                    const sfgResult = await this._getSDDSpecFile(sfg.featureName, sfg.file);
+                    postMessage({
+                        type: 'specFile',
+                        ...sfgResult,
+                        file: sfg.file,
+                        featureName: sfg.featureName,
                     });
-                    existingUses.add(key);
+                    break;
+                }
+                case 'saveSpecFile': {
+                    const sfs = data as { featureName: string; file: 'requirements' | 'design' | 'tasks'; content: string };
+                    const sfsResult = await this._saveSDDSpecFile(sfs.featureName, sfs.file, sfs.content);
+                    postMessage({ type: 'saveResult', ...sfsResult, featureName: sfs.featureName, file: sfs.file });
+                    break;
+                }
+                case 'generateWithAI': {
+                    const gen = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
+                    const genResult = await this._generateSDDWithAI(gen.featureName, gen.file);
+                    postMessage({
+                        type: 'aiResult',
+                        ...genResult,
+                        file: gen.file,
+                        featureName: gen.featureName,
+                    });
+                    break;
+                }
+                case 'createSpecFile': {
+                    const cr = data as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
+                    const tplPath = `specs/templates/${cr.file}.md`;
+                    const tplFound = await tryReadInWorkspace(this._workspaceRoot, tplPath);
+                    const templateContent = tplFound ? tplFound.content : getFallbackTemplate(cr.file);
+                    const saveOk = await this._saveSDDSpecFile(cr.featureName, cr.file, templateContent);
+                    if (saveOk.ok) {
+                        const content = await this._getSDDSpecFile(cr.featureName, cr.file);
+                        postMessage({
+                            type: 'specFile',
+                            ...content,
+                            file: cr.file,
+                            featureName: cr.featureName,
+                        });
+                    } else {
+                        postMessage({
+                            type: 'saveResult',
+                            ok: false,
+                            error: saveOk.error || 'Could not create spec file',
+                            featureName: cr.featureName,
+                            file: cr.file,
+                        });
+                    }
+                    break;
+                }
+                case 'generateSpecDraft': {
+                    const gd = data as { featureName: string; file: 'requirements' | 'design' | 'tasks'; userPrompt: string; contextContent?: string };
+                    const gdResult = await this._generateSDDSpecDraft(gd.featureName, gd.file, gd.userPrompt, gd.contextContent);
+                    postMessage({
+                        type: 'specDraftResult',
+                        ...gdResult,
+                        file: gd.file,
+                        featureName: gd.featureName,
+                    });
+                    break;
+                }
+                case 'openInEditor': {
+                    const resolved = await resolveInWorkspace(this._workspaceRoot, data.filePath);
+                    if (resolved) {
+                        await openFileInEditor(this._workspaceRoot, resolved.fsPath);
+                    } else {
+                        await openFileInEditor(this._workspaceRoot, data.filePath);
+                    }
+                    break;
+                }
+                case 'createFeature': {
+                    const newFeat = await this._createSDDFeature(data.title, data.description, data.priority || 'P2', data.sprint || '');
+                    postMessage({ type: 'featureCreated', feature: newFeat });
+                    break;
+                }
+                case 'generateFeatureDescription': {
+                    const title = data.title || '';
+                    const mode = data.mode || 'generate';
+                    const currentDescription = data.currentDescription || '';
+                    const target = data.target || 'createDescription';
+                    let prompt: string;
+                    if (mode === 'refine' && currentDescription) {
+                        prompt = `Refine and improve the following text. Keep it concise and professional.\n\nTitle: ${title}\n\nCurrent text:\n${currentDescription}\n\nReturn only the refined text, no preamble.`;
+                    } else if (target === 'wizardPrompt' && title) {
+                        prompt = `Write a detailed prompt (2-4 sentences) describing what to generate for a software feature titled "${title}". The prompt should describe the feature's purpose, key functionality, and expected outcomes. Return only the prompt text, no preamble.`;
+                    } else if (target === 'editContent' && currentDescription) {
+                        prompt = `Refine and improve the following specification content. Maintain the structure and markdown formatting. Improve clarity and completeness.\n\nTitle: ${title}\n\nCurrent content:\n${currentDescription}\n\nReturn only the refined content, no preamble.`;
+                    } else {
+                        prompt = `Write a concise, one-paragraph description (2-3 sentences) for a software feature titled "${title}". Return only the description text, no preamble.`;
+                    }
+                    const result = await generateText(prompt, this._log);
+                    postMessage({ type: 'featureDescriptionResult', ok: result.ok, text: result.text, error: result.error, target });
+                    break;
+                }
+                case 'deleteFeature': {
+                    const featId = data.featureId;
+                    const success = await this._deleteSDDFeature(featId);
+                    postMessage({ type: 'featureDeleted', ok: success, featureId: featId });
+                    const features = await this._getSDDFeatureList();
+                    postMessage({ type: 'featureList', features });
+                    break;
+                }
+                // FEAT-029: Dismiss agentic suggestion
+                case 'dismissAgenticSuggestion': {
+                    const sugId = data.suggestionId;
+                    if (sugId && typeof sugId === 'string') {
+                        const current = this._context.workspaceState.get<string[]>('agenticDetector.dismissedSuggestionIds', []);
+                        if (!current.includes(sugId)) {
+                            await this._context.workspaceState.update('agenticDetector.dismissedSuggestionIds', [...current, sugId]);
+                        }
+                    }
+                    break;
+                }
+                // FEAT-029 T34: Apply Harness+SDD scaffold
+                case 'applyHarnessSDD': {
+                    await this._applyHarnessSDD();
+                    break;
+                }
+                // Open the dashboard in a full-window editor panel
+                case 'openFullWindow':
+                    this.openFullWindowPanel();
+                    break;
+                // FEAT-028: open VS Code settings
+                case 'openSettings': {
+                    const query = (data as { query?: string }).query ?? '@ext:marcmassacapo.harness-dashboard-vscode';
+                    vscode.commands.executeCommand('workbench.action.openSettings', query);
+                    break;
                 }
             }
-
-            const nodeTypeCounts = result.graph.nodes.reduce((acc: Record<string, number>, n) => {
-                acc[n.type] = (acc[n.type] || 0) + 1; // T6 (R11): explicit type, no implicit any
-                return acc;
-            }, {});
-
-            this._log.info(`Sending data to Webview — nodes: ${JSON.stringify(nodeTypeCounts)}, milestones: ${result.milestones.length}`);
-
-            this._view.webview.postMessage({ type: 'init', data: result });
+        } catch (e: any) {
+            vscode.window.showErrorMessage(`Harness Error: ${e.message}`);
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.js'));
-        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview.css'));
+    /**
+     * Generate the HTML for a Harness Dashboard webview (used by both sidebar and full-window panel).
+     */
+    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview): string {
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
+        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
 
         return `<!DOCTYPE html>
             <html lang="en">
@@ -526,6 +666,38 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                 <script type="module" src="${scriptUri}"></script>
             </body>
             </html>`;
+    }
+
+    private _getHtmlForWebview(webview: vscode.Webview): string {
+        return HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview);
+    }
+
+    /**
+     * Open the dashboard in a full-window editor panel (detached from the sidebar).
+     * The panel reuses the same data source (HarnessParser) and shares the full
+     * message-handling logic so all interactions work identically to the sidebar.
+     */
+    public async openFullWindowPanel(): Promise<void> {
+        const panel = vscode.window.createWebviewPanel(
+            'harness-dashboard.fullDashboard',
+            'Harness Dashboard',
+            vscode.ViewColumn.Beside,
+            {
+                enableScripts: true,
+                localResourceRoots: [this._extensionUri],
+                sandbox: 'allow-scripts allow-same-origin allow-forms',
+            },
+        );
+
+        panel.webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, panel.webview);
+
+        // Route responses to the new panel (shared message handler already handles ready/getData)
+        const sendToPanel = (msg: any) => panel.webview.postMessage(msg);
+        panel.webview.onDidReceiveMessage(async data => {
+            await this._handleWebviewMessage(data, sendToPanel);
+        });
+
+        this._log.info('[Dashboard] Full-window panel opened');
     }
 
     // ===== SDD Manager helpers (merged into Dashboard) =====
@@ -740,6 +912,66 @@ Return only the markdown body, no preamble. Follow the template's structure exac
         }
 
         return result;
+    }
+
+    // ── T34: Harness+SDD scaffold ──────────────────────────────────────
+
+    /**
+     * Apply the Harness+SDD scaffold to the workspace:
+     *
+     * 1. Creates `.agents/agentic.json` with a minimal Harness template
+     * 2. Creates `feature_list.json` if it does not already exist
+     * 3. Triggers a full re-scan so the advisory panel reflects the
+     *    new methodology
+     *
+     * The profile update is sent automatically via the `scanComplete`
+     * listener wired in `activate()`.
+     */
+    private async _applyHarnessSDD(): Promise<void> {
+        // ── Step 1: create .agents/ directory + agentic.json ──
+        const agentsDir = vscode.Uri.joinPath(this._workspaceRoot, '.agents');
+        await vscode.workspace.fs.createDirectory(agentsDir);
+
+        // Detect the first active CLI (if any) so the scaffold can record it.
+        const cliInstalls =
+            this._agenticDetector?.getProfile()?.layers['1'].cliInstalls ?? [];
+        const detectedCLI =
+            cliInstalls.length > 0 ? cliInstalls[0].cliId : null;
+
+        const content = scaffoldAgenticJson(detectedCLI);
+        const targetUri = vscode.Uri.joinPath(
+            this._workspaceRoot,
+            '.agents',
+            'agentic.json',
+        );
+        await vscode.workspace.fs.writeFile(
+            targetUri,
+            Buffer.from(content, 'utf8'),
+        );
+
+        // ── Step 2: create feature_list.json if absent ──
+        const flUri = vscode.Uri.joinPath(
+            this._workspaceRoot,
+            'feature_list.json',
+        );
+        try {
+            await vscode.workspace.fs.stat(flUri);
+        } catch {
+            // File does not exist — create it.
+            await vscode.workspace.fs.writeFile(
+                flUri,
+                Buffer.from(scaffoldFeatureListJson(), 'utf8'),
+            );
+        }
+
+        this._log.info(
+            '[ApplyHarnessSDD] Scaffold written. Triggering re-scan…',
+        );
+
+        // ── Step 3: re-scan — scanComplete event sends the profile ──
+        if (this._agenticDetector) {
+            await this._agenticDetector.scan();
+        }
     }
 }
 

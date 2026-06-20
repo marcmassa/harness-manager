@@ -16,6 +16,8 @@ export interface FeatureEntry {
     agent: string;
     sprint: string;
     sdd: boolean;
+    /** Indicates where this feature entry was sourced from. */
+    source: 'json' | 'filesystem';
 }
 
 interface GetFeatureListResponse {
@@ -188,6 +190,92 @@ export async function findSpecsRoot(workspaceRoot: vscode.Uri): Promise<vscode.U
  */
 export function invalidateSpecsRootCache(workspaceRoot: vscode.Uri): void {
     _specsRootCache.delete(workspaceRoot.toString());
+}
+
+// ===== Filesystem specs discovery =====
+
+/**
+ * A feature-like entry discovered from the filesystem (specs/<name>/ directory)
+ * rather than from feature_list.json.
+ */
+export interface DiscoveredSpecEntry {
+    name: string;
+    title: string;
+    hasRequirements: boolean;
+    hasDesign: boolean;
+    hasTasks: boolean;
+    /** Relative path from workspace root to the specs/ base directory. */
+    specsBaseRel: string;
+}
+
+/**
+ * Discover spec directories on the filesystem by finding all
+ * specs/<name>/requirements.md patterns anywhere in the workspace
+ * (using findSpecsRoot), then enumerating subdirectories.
+ *
+ * Returns a map of feature-name → DiscoveredSpecEntry for every
+ * directory under specs/ that contains at least one spec file.
+ */
+export async function discoverSpecsFromFilesystem(
+    workspaceRoot: vscode.Uri,
+): Promise<Map<string, DiscoveredSpecEntry>> {
+    const result = new Map<string, DiscoveredSpecEntry>();
+
+    const base = await findSpecsRoot(workspaceRoot);
+    if (!base) return result; // No specs/ directory exists yet
+
+    const specsDir = vscode.Uri.joinPath(base, 'specs');
+    let entries: [string, vscode.FileType][];
+    try {
+        entries = await vscode.workspace.fs.readDirectory(specsDir);
+    } catch {
+        return result; // specs/ doesn't exist or isn't readable
+    }
+
+    for (const [name, fileType] of entries) {
+        if (fileType !== vscode.FileType.Directory) continue;
+        // Skip hidden directories and templates/
+        if (name.startsWith('.') || name === 'templates') continue;
+
+        const featureDir = vscode.Uri.joinPath(specsDir, name);
+
+        const reqExists = await fileExists(vscode.Uri.joinPath(featureDir, 'requirements.md'));
+        const desExists = await fileExists(vscode.Uri.joinPath(featureDir, 'design.md'));
+        const tskExists = await fileExists(vscode.Uri.joinPath(featureDir, 'tasks.md'));
+
+        if (!reqExists && !desExists && !tskExists) continue; // Empty directory
+
+        // Convert kebab-case to Title Case for display
+        const title = name
+            .split('-')
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+
+        const baseRel = vscode.workspace.asRelativePath(base, false) || '.';
+
+        result.set(name, {
+            name,
+            title,
+            hasRequirements: reqExists,
+            hasDesign: desExists,
+            hasTasks: tskExists,
+            specsBaseRel: baseRel,
+        });
+    }
+
+    return result;
+}
+
+/**
+ * Check whether a file exists at the given URI.
+ */
+async function fileExists(uri: vscode.Uri): Promise<boolean> {
+    try {
+        await vscode.workspace.fs.stat(uri);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 /**

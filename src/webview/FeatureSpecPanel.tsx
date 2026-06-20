@@ -19,6 +19,7 @@ export interface FeatureEntry {
     agent: string;
     sprint: string;
     sdd: boolean;
+    source?: 'json' | 'filesystem';
 }
 
 type SpecFile = 'requirements' | 'design' | 'tasks';
@@ -36,6 +37,7 @@ const STATUS_COLOURS: Record<string, string> = {
     in_progress: '#4a90d4',
     done: '#2aa198',
     blocked: '#c14a4a',
+    discovered: '#6c8ab6',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
     in_progress: 'In Progress',
     done: 'Done',
     blocked: 'Blocked',
+    discovered: 'Discovered',
 };
 
 /** Sort order: done first (by sprint/priority), then active, then pending */
@@ -53,6 +56,7 @@ const STATUS_SORT_ORDER: Record<string, number> = {
     spec_ready: 2,
     pending: 3,
     blocked: 4,
+    discovered: 5,
 };
 
 // ===== Sub-components =====
@@ -258,6 +262,19 @@ const FeatureCard = ({
                             letterSpacing: '0.3px',
                         }}>
                             SDD
+                        </span>
+                    )}
+                    {feature.source === 'filesystem' && (
+                        <span style={{
+                            fontSize: '0.55em',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            background: 'rgba(108, 138, 182, 0.15)',
+                            color: '#6c8ab6',
+                            fontWeight: 700,
+                            letterSpacing: '0.3px',
+                        }}>
+                            DISCOVERED
                         </span>
                     )}
                     {tc && (
@@ -755,11 +772,12 @@ export const FeatureSpecPanel = ({ milestones, startWizard, targetFeature }: Fea
         return map;
     }, [milestones]);
 
-    /** Status counts for the summary bar */
+    /** Status counts for the summary bar — includes discovered/filesystem specs */
     const statusCounts = React.useMemo(() => {
-        const counts: Record<string, number> = { pending: 0, spec_ready: 0, in_progress: 0, done: 0, blocked: 0 };
+        const counts: Record<string, number> = {};
         for (const f of features) {
-            if (counts[f.status] !== undefined) counts[f.status]++;
+            const s = f.status || 'pending';
+            counts[s] = (counts[s] || 0) + 1;
         }
         return counts;
     }, [features]);

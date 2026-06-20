@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -79,6 +79,11 @@
       {
         "command": "harness-dashboard.checkLM",
         "title": "Harness Dashboard: Check AI Provider Status",
+        "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.rescanAgentic",
+        "title": "Harness Dashboard: Re-scan Agentic Architecture",
         "category": "Harness Dashboard"
       }
     ],

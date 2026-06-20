@@ -13,6 +13,8 @@ import ReactFlow, {
     NodeChange,
 } from 'reactflow';
 import { CustomNode } from './components/CustomNode.js';
+import { DiscoveredNode } from './components/DiscoveredNode.js';
+import { LayerLegend } from './components/LayerLegend.js';
 import { EdgeContextMenu } from './components/EdgeContextMenu.js';
 import { getLayoutedElementsByProvider, type ProviderGroup } from './layoutUtils.js';
 import type { EdgeLabel } from '../types.js';
@@ -26,6 +28,11 @@ const nodeTypes = {
     feature: CustomNode,
     steering: CustomNode,
     hook: CustomNode,
+    'discovered-agent': DiscoveredNode,
+    'discovered-skill': DiscoveredNode,
+    'discovered-tool': DiscoveredNode,
+    'discovered-resource': DiscoveredNode,
+    'cli-install': DiscoveredNode,
 };
 
 // ===== EDGE VISUAL STYLES — maximum contrast & visibility =====
@@ -103,6 +110,18 @@ const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolea
         animated: false,
         markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 14, color: '#6c6c8a' },
     },
+    // Phase 5 — Whiteboard Layer Visualization: inferred relationship edges
+    'inferred': {
+        style: {
+            stroke: '#88cc33',
+            strokeWidth: 1.5,
+            strokeDasharray: '3,3',
+            strokeLinecap: 'round',
+            opacity: 0.5,
+        },
+        animated: false,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 8, color: '#88cc33' },
+    },
 };
 
 const defaultEdgeCfg = {
@@ -119,15 +138,17 @@ export const EDGE_TYPE_ROUTING: Record<string, string> = {
     suggested: 'smoothstep',
     governs: 'smoothstep',
     triggers: 'smoothstep',
+    inferred: 'default',
 };
 
 interface Props {
     graph: HarnessGraph;
     onNodeSelect: (node: any) => void;
     selectedNodeId?: string | null;
+    discoveredNodes?: { nodes: HarnessGraph['nodes']; edges: HarnessGraph['edges'] };
 }
 
-export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props) => {
+export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes }: Props) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const manualPositionsRef = React.useRef<ManualPositionMap>({});
@@ -435,10 +456,27 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
         };
     }, []);
 
-    React.useEffect(() => {
-        if (!graph) return;
+    // Merge discovered nodes into the base graph
+    const mergedGraph = React.useMemo(() => {
+        if (!discoveredNodes || (discoveredNodes.nodes.length === 0 && discoveredNodes.edges.length === 0)) {
+            return graph;
+        }
+        const existingNodeIds = new Set(graph.nodes.map(n => n.id));
+        const existingEdgeKeys = new Set(graph.edges.map(e => `${e.source}::${e.target}::${e.label || ''}`));
 
-        const initialNodes = graph.nodes.map(n => {
+        const newNodes = discoveredNodes.nodes.filter(n => !existingNodeIds.has(n.id));
+        const newEdges = discoveredNodes.edges.filter(e => !existingEdgeKeys.has(`${e.source}::${e.target}::${e.label || ''}`));
+
+        return {
+            nodes: [...graph.nodes, ...newNodes],
+            edges: [...graph.edges, ...newEdges],
+        };
+    }, [graph, discoveredNodes]);
+
+    React.useEffect(() => {
+        if (!mergedGraph) return;
+
+        const initialNodes = mergedGraph.nodes.map(n => {
             let nodeLinkTargets: { id: string; label: string; alreadyConnected: boolean }[] = [];
             if (n.type === 'subagent' || n.type === 'agent') {
                 const connected = connectedSkills[n.id] || new Set();
@@ -568,7 +606,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
             window.requestAnimationFrame(() => fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' }));
             hasInitialFitRef.current = true;
         }
-    }, [graph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
+    }, [mergedGraph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
 
     // Update isActive + className on nodes when selectedNodeId changes — no full layout rerun
     React.useEffect(() => {
@@ -878,62 +916,72 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId }: Props)
                 </svg>
             )}
 
-            {/* Provider navigation bar (top-right) */}
-            {providerGroups.length > 1 && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        background: 'var(--vscode-editorWidget-background)',
-                        border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
-                        borderRadius: 8,
-                        padding: '4px 8px',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-                        fontSize: '0.75em',
-                        zIndex: 25,
-                    }}
-                >
-                    <span style={{ opacity: 0.65, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '0.85em' }}>
-                        Provider
-                    </span>
-                    <select
-                        value={focusedProvider ?? '__all__'}
-                        onChange={(e) => {
-                            const v = e.target.value;
-                            setFocusedProvider(v === '__all__' ? null : v);
-                            if (v === '__all__') {
-                                fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' });
-                            } else {
-                                const nodeIds = nodes
-                                    .filter((n: any) => (n.data as any)?.metadata?._framework === v)
-                                    .map((n: any) => n.id);
-                                if (nodeIds.length > 0) {
-                                    fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400, ease: 'ease-in-out' });
-                                }
-                            }
-                        }}
+            {/* Phase 5 — Layer Legend + Provider navigation bar (top-right) */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    zIndex: 25,
+                }}
+            >
+                <LayerLegend />
+
+                {providerGroups.length > 1 && (
+                    <div
                         style={{
-                            background: 'var(--vscode-dropdown-background)',
-                            color: 'var(--vscode-dropdown-foreground)',
-                            border: '1px solid var(--vscode-dropdown-border)',
-                            borderRadius: 4,
-                            padding: '2px 6px',
-                            fontSize: '1em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: 'var(--vscode-editorWidget-background)',
+                            border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
+                            borderRadius: 8,
+                            padding: '4px 8px',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+                            fontSize: '0.75em',
                         }}
                     >
-                        <option value="__all__">All ({providerGroups.reduce((acc, g) => acc + g.count, 0)})</option>
-                        {providerGroups.map((g) => (
-                            <option key={g.id} value={g.id}>
-                                {g.label} ({g.count})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            )}
+                        <span style={{ opacity: 0.65, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '0.85em' }}>
+                            Provider
+                        </span>
+                        <select
+                            value={focusedProvider ?? '__all__'}
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                setFocusedProvider(v === '__all__' ? null : v);
+                                if (v === '__all__') {
+                                    fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' });
+                                } else {
+                                    const nodeIds = nodes
+                                        .filter((n: any) => (n.data as any)?.metadata?._framework === v)
+                                        .map((n: any) => n.id);
+                                    if (nodeIds.length > 0) {
+                                        fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400, ease: 'ease-in-out' });
+                                    }
+                                }
+                            }}
+                            style={{
+                                background: 'var(--vscode-dropdown-background)',
+                                color: 'var(--vscode-dropdown-foreground)',
+                                border: '1px solid var(--vscode-dropdown-border)',
+                                borderRadius: 4,
+                                padding: '2px 6px',
+                                fontSize: '1em',
+                            }}
+                        >
+                            <option value="__all__">All ({providerGroups.reduce((acc, g) => acc + g.count, 0)})</option>
+                            {providerGroups.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                    {g.label} ({g.count})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+            </div>
 
             {/* Edge Context Menu (R1, R9, R5) */}
             {contextMenuEdge && (

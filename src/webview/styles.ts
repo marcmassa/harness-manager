@@ -91,6 +91,58 @@ export const NODE_STYLES: Record<string, CSSProperties> = {
         minWidth: '160px',
         boxShadow: '0 2px 8px rgba(108, 108, 138, 0.15)',
     },
+    // Phase 5 — Whiteboard Layer Visualization discovered nodes
+    'discovered-agent': {
+        background: 'color-mix(in srgb, var(--vscode-editor-background) 92%, #88cc33)',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.sm,
+        border: '2px dashed #88cc33',
+        minWidth: '160px',
+        boxShadow: '0 2px 8px rgba(136, 204, 51, 0.12)',
+        opacity: 0.88,
+    },
+    'discovered-skill': {
+        background: 'color-mix(in srgb, var(--vscode-editor-background) 92%, #88cc33)',
+        color: 'var(--vscode-editor-foreground)',
+        padding: '12px 20px',
+        borderRadius: '20px',
+        border: '2px dashed #88cc33',
+        minWidth: '140px',
+        textAlign: 'center' as const,
+        boxShadow: '0 2px 8px rgba(136, 204, 51, 0.1)',
+        opacity: 0.88,
+    },
+    'discovered-tool': {
+        background: 'color-mix(in srgb, var(--vscode-editor-background) 90%, #cc8844)',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.sm,
+        border: '2px dashed #cc8844',
+        minWidth: '140px',
+        boxShadow: '0 2px 8px rgba(204, 136, 68, 0.12)',
+        opacity: 0.88,
+    },
+    'discovered-resource': {
+        background: 'color-mix(in srgb, var(--vscode-editor-background) 92%, #6c6c8a)',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.sm,
+        border: '2px dashed #6c6c8a',
+        minWidth: '140px',
+        boxShadow: '0 2px 8px rgba(108, 108, 138, 0.12)',
+        opacity: 0.88,
+    },
+    'cli-install': {
+        background: 'color-mix(in srgb, var(--vscode-editor-background) 90%, #3399ff)',
+        color: 'var(--vscode-editor-foreground)',
+        padding: SPACE.md,
+        borderRadius: SPACE.sm,
+        border: '2px solid #3399ff',
+        minWidth: '160px',
+        boxShadow: '0 2px 8px rgba(51, 153, 255, 0.15)',
+        opacity: 0.92,
+    },
 };
 
 // ===== HANDLE ACCENT COLOURS (per type) =====
@@ -103,6 +155,11 @@ export const HANDLE_ACCENT: Record<string, string> = {
     feature:  '#888888',
     steering: '#d4a84a',
     hook:     '#6c6c8a',
+    'discovered-agent':    '#88cc33',
+    'discovered-skill':    '#88cc33',
+    'discovered-tool':     '#cc8844',
+    'discovered-resource': '#6c6c8a',
+    'cli-install':         '#3399ff',
 };
 
 // ===== EDGE GLOW COLOUR TOKENS (RGB only, no alpha) =====
@@ -116,6 +173,7 @@ export const EDGE_GLOW_RGB: Record<string, string> = {
     suggested:  '212, 168, 74',
     governs:    '212, 168, 74',
     triggers:   '108, 108, 138',
+    inferred:   '136, 204, 51',
     fallback:   '136, 136, 136',
 };
 
