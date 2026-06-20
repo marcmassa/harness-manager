@@ -4,12 +4,14 @@ import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-too
 import { ReactFlowProvider } from 'reactflow';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
 import { FeatureSpecPanel } from './FeatureSpecPanel.js';
+import { AdvisoryPanel } from './AdvisoryPanel.js';
 import { EntitySidePanel } from './components/EntitySidePanel.js';
 import { MDViewer } from './components/MDViewer.js';
 import type { EntityFormData } from './components/EntitySidePanel.js';
 import { DashboardData, MarkdownFileContent } from '../types.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import { SPACE } from './styles.js';
+import { profileToDiscoveredNodes } from '../agentic-detector/profileToNodes.js';
 
 import 'reactflow/dist/style.css';
 
@@ -88,6 +90,25 @@ const IconGear = () => (
         <path d="M10.5 10.5l1 1" />
         <path d="M11.5 4.5l-1 1" />
         <path d="M5.5 10.5l-1 1" />
+    </svg>
+);
+
+const IconExpand = () => (
+    <svg
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M2 9v5h5" />
+        <path d="M14 7V2H9" />
+        <path d="M2 14l5.5-5.5" />
+        <path d="M14 2L8.5 7.5" />
     </svg>
 );
 
@@ -252,6 +273,12 @@ const App = () => {
     const [startWizard, setStartWizard] = React.useState(0); // increment to trigger wizard in Specs Manager
     const [timelineTargetFeature, setTimelineTargetFeature] = React.useState<string | null>(null); // FEAT node click → select in timeline
     
+    // FEAT-029: Agentic detection profile from extension
+    const [advisoryProfile, setAdvisoryProfile] = React.useState<any>(null);
+
+    // Phase 5: Discovered nodes from AgenticProfile — transformed for the whiteboard
+    const [discoveredNodes, setDiscoveredNodes] = React.useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
+    
     // Side panel state (replaces inline isCreating form)
     const [isSidePanelOpen, setIsSidePanelOpen] = React.useState(false);
     
@@ -275,6 +302,17 @@ const App = () => {
                 case 'markdownContent':
                     setMdContent(message.content);
                     setMdLoading(false);
+                    break;
+                case 'advisoryProfile':
+                    setAdvisoryProfile(message.profile);
+                    // Phase 5: Transform the AgenticProfile into discovered nodes for the whiteboard
+                    if (message.profile) {
+                        const result = profileToDiscoveredNodes(
+                            message.profile,
+                            new Set(message.profile.acknowledgedNodeIds || [])
+                        );
+                        setDiscoveredNodes(result);
+                    }
                     break;
             }
         };
@@ -351,6 +389,16 @@ const App = () => {
             return;
         }
         setSelectedNode(node);
+    }, []);
+
+    // FEAT-029: Dismiss a suggestion from the advisory panel
+    const handleDismissSuggestion = React.useCallback((suggestionId: string) => {
+        vscode.postMessage({ type: 'dismissAgenticSuggestion', suggestionId });
+    }, []);
+
+    // FEAT-029 T34: Apply Harness+SDD scaffold action
+    const handleApplyHarnessSDD = React.useCallback(() => {
+        vscode.postMessage({ type: 'applyHarnessSDD' });
     }, []);
 
     // Handle entity creation from side panel
@@ -436,6 +484,15 @@ const App = () => {
                         <button
                             type="button"
                             className="harness-settings-button"
+                            title="Open in full-window editor"
+                            aria-label="Open in full-window editor"
+                            onClick={() => vscode.postMessage?.({ type: 'openFullWindow' })}
+                        >
+                            <IconExpand />
+                        </button>
+                        <button
+                            type="button"
+                            className="harness-settings-button"
                             title="Extension Settings"
                             aria-label="Extension Settings"
                             onClick={() => vscode.postMessage?.({ type: 'openSettings', query: '@ext:marcmassacapo.harness-dashboard-vscode' })}
@@ -446,8 +503,8 @@ const App = () => {
                 </div>
                 
                 <div style={{ display: 'flex', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {(['whiteboard', 'timeline'] as const).map(tab => {
-                        const label = tab === 'timeline' ? 'Specs Manager' : 'Whiteboard';
+                    {(['whiteboard', 'timeline', 'advisory'] as const).map(tab => {
+                        const label = tab === 'timeline' ? 'Specs Manager' : tab === 'advisory' ? 'Advisory' : 'Whiteboard';
                         return (
                             <div
                                 key={tab}
@@ -504,7 +561,7 @@ const App = () => {
                     <EmptyState />
                 ) : (
                     <ReactFlowProvider>
-                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={handleNodeSelect} selectedNodeId={selectedNode?.id} />
+                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={handleNodeSelect} selectedNodeId={selectedNode?.id} discoveredNodes={discoveredNodes} />
                     </ReactFlowProvider>
                 )}
             </section>
@@ -518,6 +575,17 @@ const App = () => {
                 animation: activeTab === 'timeline' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
                 <FeatureSpecPanel milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} />
+            </section>
+
+            <section style={{ 
+                flex: 1, 
+                display: activeTab === 'advisory' ? 'flex' : 'none',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                minHeight: 0,
+                animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
+            }}>
+                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} />
             </section>
             </div>{/* end left column */}
 
@@ -1148,6 +1216,19 @@ const App = () => {
                 .harness-edge--governs.selected .react-flow__edge-path {
                     filter: drop-shadow(0 0 10px rgba(212, 168, 74, 0.70));
                     stroke-width: 4.5 !important;
+                }
+
+                /* inferred (green, subtle dashed) — Phase 5 */
+                .harness-edge--inferred .react-flow__edge-path {
+                    filter: drop-shadow(0 0 2px rgba(136, 204, 51, 0.20));
+                }
+                .harness-edge--inferred:hover .react-flow__edge-path {
+                    filter: drop-shadow(0 0 4px rgba(136, 204, 51, 0.40));
+                    stroke-width: 3 !important;
+                }
+                .harness-edge--inferred.selected .react-flow__edge-path {
+                    filter: drop-shadow(0 0 6px rgba(136, 204, 51, 0.60));
+                    stroke-width: 3 !important;
                 }
 
                 /* triggers (muted purple, dashed) */

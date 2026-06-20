@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -15,6 +15,8 @@
 | Whiteboard | SDD Panel |
 |---|---|
 | ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](media/screenshots/sdd-panel.png) |
+| **Architecture Analysis & Advisory** | **Full-window Dashboard** |
+| ![Advisory tab with maturity badge, SVG signal bars, suggestions and CLI detection](media/screenshots/achitecture-advisory.png) | ![Harness Dashboard opened as a full editor panel, detached from the activity bar](media/screenshots/full-window.png) |
 
 ---
 
@@ -49,17 +51,25 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | 📐 **SDD Management Panel** | Browse and edit spec files (requirements, design, tasks) per feature, with AI-assisted spec generation |
 | 🔄 **Cross-framework discovery** | Find hooks and steering files from any agentic framework (Harness, Kiro, Claude Code, etc.) |
 | 🤖 **Universal AI Provider** | Provider chain (`vscode.lm` → OpenAI-compatible API fallback) works in any IDE without Copilot |
+| 🔍 **Agentic Architecture Detection** | Scans any workspace for agentic signals (prompts, rules, MCP, frameworks, tools, skills, memory, context), classifies maturity L0–L5, identifies architectural patterns, and generates actionable improvement suggestions |
+| 🧩 **Discovered Node Visualization** | Detected CLI installs, agent implementations, Harness SDD, and methodology elements appear on the whiteboard with layer badges (`[CLI]`, `[IMPL]`, `[HARNESS]`, `[SDD]`) and dashed/solid borders |
+| 📊 **SVG Signal Bar Chart** | See signal strength across 9 categories at a glance in the Advisory tab |
+| 🚀 **One-click Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals |
+| 🔲 **Full-window Dashboard** | Open the dashboard as a standalone editor panel, detached from the activity bar, for more screen space |
 
 ---
 
-## What's new in 0.4.1
+## What's new in 0.5.0
 
 | Area | What changed |
 |------|-------------|
-| **Whiteboard layout** | Agent → Subagent → Skill/Steering/Hook rendered in a strict TB hierarchy. Nodes in the same rank wrap into multiple rows (max 4 per row) instead of extending horizontally. Feature chips appear in a compact grid below the architectural graph, well-separated from the agent hierarchy. |
-| **Specs discovery** | `specs/` directory is now found by recursive glob instead of a hardcoded list of bases — works whether specs live at the root, under `.kiro/`, or anywhere else. |
-| **AI no-provider message** | When no provider is available and no API key is set, the error message now includes an actionable suggestion (`harness-dashboard.ai.apiKey` / GitHub Copilot). |
-| **Hooks path** | KISS + DRY hook scripts moved to `.kiro/hooks/`; Kiro v1 JSON hook files created for all five lifecycle hooks. |
+| **Agentic Architecture Detection** | New signal scanner detects 30+ signals across 9 categories (prompts, rules, MCP, frameworks, tools, skills, agent scripts, memory, context) in any workspace — even without a known framework. Maturity classified L0–L5. Architecture patterns identified (Tool-Using Agent, Pipeline, Orchestrator-Worker, Multi-Agent, etc.). All results rendered on the whiteboard as discovered nodes with layer badges. |
+| **Advisory Engine** | 15+ actionable improvement suggestions gated by maturity level, with per-suggestion dismiss tracking. Signal strength bar chart in the Advisory tab. |
+| **One-click Harness+SDD Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals — zero configuration needed. |
+| **Discovered Node Visualization** | Detected CLI installs, agent implementations, Harness SDD, and methodology elements appear on the whiteboard with layer badges (`[CLI]`/`[IMPL]`/`[HARNESS]`/`[SDD]`), dashed/solid borders, `?`/`✓` acknowledgement icons, and evidence popups. |
+| **Adapter-aware Deduplication** | Signals already covered by existing framework adapters are automatically filtered out — no double-listing of known elements. |
+| **Harness/SDD Adoption Events** | Detecting `.agents/agentic.json` or `feature_list.json` emits adoption badges and re-classifies maturity. |
+| **Full-window Dashboard** | Open the entire dashboard in a dedicated editor panel via the expand icon — all features (whiteboard, specs, advisory) work identically. |
 
 For the full list of changes, see the [CHANGELOG](./CHANGELOG.md).
 

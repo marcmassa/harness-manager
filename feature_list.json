@@ -334,16 +334,28 @@
     "sprint": "Current"
   },
   {
-    "id": "FEAT-028",
-    "name": "universal-ai-provider",
-    "title": "Universal AI Provider — configurable LM fallback for any IDE",
-    "description": "Extends the AI generation system with a provider chain: vscode.lm first, then a configurable OpenAI-compatible API as fallback. Makes AI features work in any IDE (VS Code + Copilot, Kiro, VS Code without Copilot) without changing the webview. Adds harness-dashboard.checkLM command for diagnostics and 3 new settings (apiKey, endpoint, model). Zero new npm dependencies.",
-    "type": "feat",
-    "status": "done",
-    "sdd": true,
-    "priority": "P1",
-    "agent": "typescript-implementer",
-    "sprint": "Next"
-  }
+      "id": "FEAT-028",
+      "name": "universal-ai-provider",
+      "title": "Universal AI Provider — configurable LM fallback for any IDE",
+      "description": "Extends the AI generation system with a provider chain: vscode.lm first, then a configurable OpenAI-compatible API as fallback. Makes AI features work in any IDE (VS Code + Copilot, Kiro, VS Code without Copilot) without changing the webview. Adds harness-dashboard.checkLM command for diagnostics and 3 new settings (apiKey, endpoint, model). Zero new npm dependencies.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-029",
+      "name": "universal-agentic-detection",
+      "title": "Universal Agentic Architecture Detection & Advisory",
+      "description": "Scans any workspace for agentic implementation signals (prompts, rules, MCP, frameworks, tools, skills, agent scripts, memory, context) even without a known framework. Classifies maturity (L0–L5), identifies architecture patterns (Tool-Using Agent, Pipeline, Orchestrator-Worker, Multi-Agent, etc.), renders discovered elements on the whiteboard, and generates actionable improvement suggestions to guide users toward standardized, governed implementations.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    }
   ]
 }

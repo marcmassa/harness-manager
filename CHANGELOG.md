@@ -12,6 +12,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.5.0] — 2026-06-20
+
+> Headline feature: **Universal Agentic Architecture Detection & Advisory (FEAT-029)** — scans any workspace for agentic implementation signals, classifies maturity (L0–L5), identifies architecture patterns, renders discovered elements on the whiteboard, and generates actionable improvement suggestions. Plus: adapter-aware deduplication, Harness/SDD adoption events, SVG signal bar chart, and one-click scaffold.
+
+### Added
+
+#### FEAT-029 — Universal Agentic Architecture Detection & Advisory
+
+- **30 declarative signal definitions** across 9 categories (prompts, rules, MCP, frameworks, tools, skills, agent scripts, memory, context) in `signalCatalog.ts`.
+- **Signal scanner** (`signalScanner.ts`) — VS Code `findFiles`-based scanner with 200-file cap and excluded-dir filtering. 5 pattern types: yaml-frontmatter, json-key, import-statement, shell-command, regex. 21 tests.
+- **Maturity classifier** (`maturityClassifier.ts`) — classifies workspaces L0 (no signals) through L5 (full lifecycle automation). 11 tests.
+- **Pattern analyzer** (`patternAnalyzer.ts`) — detects 8 architecture patterns (Tool-Using Agent, Pipeline, Orchestrator-Worker, Multi-Agent, etc.) with confidence scoring. 11 tests.
+- **Advisory engine** (`advisoryEngine.ts`) — 15+ suggestion rules across 6 categories, maturity-gated, per-suggestion dismiss tracking. 73 tests.
+- **Layer integration** (`agenticDetector.ts`) — 3-layer orchestration (CLI/Install → Implementation → Methodology), file watcher, dismiss/restore persistence, adapter-aware dedup via `_getAdapterClaimedFiles()`.
+- **Tree view** (`agenticDetectorProvider.ts`) — 579-line TreeDataProvider for the sidebar.
+- **Harness/SDD adoption events** — `harnessDetected` / `sddDetected` events with transition tracking, `feature_list.json` watcher.
+- **27 integration tests** for the detector layer.
+
+#### Whiteboard Layer Visualization (Phase 5)
+
+- **5 discovered node types** — `discovered-cli`, `discovered-implementation`, `discovered-harness`, `discovered-sdd`, `cli-install` with dashed/solid borders and acknowledgement icons.
+- **Layer badges** — `[CLI]` (blue), `[IMPL]` (green), `[HARNESS]` (emerald), `[SDD]` (teal) on whiteboard nodes.
+- **`profileToNodes.ts`** — transforms `AgenticProfile` → `HarnessNode[]` + `HarnessEdge[]`. 9 tests.
+- **`DiscoveredNode.tsx`** — custom React Flow node with `?`/`✓` icons and evidence tooltip on click.
+- **`LayerLegend.tsx`** — collapsible legend in the whiteboard toolbar.
+- **Acknowledgement persistence** — `acknowledgeNode`/`isNodeAcknowledged` via `workspaceState`.
+- **Inferred edges** — `edgeType: 'inferred'` with muted styling.
+
+#### Advisory Panel Enhancements (Phase 6)
+
+- **`AdvisoryPanel.tsx`** — 534-line React component with maturity badge, CLI list, pattern display, and suggestion cards.
+- **SVG bar chart** — pure-SVG horizontal bars for all 9 signal categories, color-coded (grey for zero count), percentage-filled `<rect>` with zero dependencies.
+- **One-click scaffold** (`scaffold.ts`) — `scaffoldAgenticJson()` and `scaffoldFeatureListJson()` generate `.agents/agentic.json` + `feature_list.json` from detected signals; handler in `extension.ts` re-scans after writing.
+- **17 tests** for AdvisoryPanel.
+
+### Technical
+
+- Test suite: **357 unit tests** (23 files) — 29 new tests across all feature areas.
+- Build: `npm run build` clean, no errors.
+- All 29 features in `feature_list.json` are `done`.
+
 ## [0.4.1] — 2026-06-18
 
 > Patch release: whiteboard layout overhaul and specs discovery fix. Feature chips remain visible but are now separated from the architectural hierarchy and rendered in a compact grid. No new features.
