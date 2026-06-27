@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import matter from 'gray-matter';
+import matter from './frontmatter.js';
 
 export class HarnessWriter {
     constructor(private readonly workspaceRoot: vscode.Uri) {}

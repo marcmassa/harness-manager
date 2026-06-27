@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -194,7 +194,10 @@
         },
         "harness-dashboard.codeQuality.severity": {
           "type": "string",
-          "enum": ["warning", "error"],
+          "enum": [
+            "warning",
+            "error"
+          ],
           "default": "warning",
           "description": "Severity for all reported issues. 'error' promotes all warnings to errors."
         },
@@ -245,12 +248,15 @@
     "@types/dagre": "^0.7.54",
     "@vscode/webview-ui-toolkit": "^1.2.2",
     "dagre": "^0.8.5",
-    "gray-matter": "^4.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "yaml": "^2.9.0"
   },
   "overrides": {
-    "serialize-javascript": ">=7.0.5"
+    "serialize-javascript": ">=7.0.5",
+    "form-data": "4.0.6",
+    "undici": "7.28.0",
+    "diff": "9.0.0"
   }
 }

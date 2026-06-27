@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import matter from 'gray-matter';
+import matter from '../frontmatter.js';
 import { ParserResult } from '../types.js';
 import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
