@@ -233,21 +233,21 @@
     "vsce:prepublish": "npm run build"
   },
   "devDependencies": {
+    "@types/dagre": "^0.7.54",
     "@types/mocha": "^10.0.10",
     "@types/vscode": "^1.85.0",
     "@vitest/coverage-v8": "^4.1.8",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "^3.9.2",
     "canvas": "^3.2.3",
+    "dagre": "^0.8.5",
     "esbuild": "^0.28.1",
     "mocha": "^11.7.6",
     "typescript": "^5.3.3",
     "vitest": "^4.1.8"
   },
   "dependencies": {
-    "@types/dagre": "^0.7.54",
     "@vscode/webview-ui-toolkit": "^1.2.2",
-    "dagre": "^0.8.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.11.4",

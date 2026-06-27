@@ -117,7 +117,7 @@ process on their own machine.
 | Component | Responsibility | Location | Tech |
 |---|---|---|---|
 | **Extension Host** | Lifecycle, command registration, webview ↔ host messaging, output channel | `src/extension.ts` | TypeScript, `vscode` API |
-| **Parser** | Read `agentic.json`, `feature_list.json`, `progress/progress.md`, `SUBAGENT.md`, `SKILL.md` into a `ParserResult` graph | `src/harnessParser.ts`, `src/parserLogic.ts` | `gray-matter` for frontmatter, custom JSON parser |
+| **Parser** | Read `agentic.json`, `feature_list.json`, `progress/progress.md`, `SUBAGENT.md`, `SKILL.md` into a `ParserResult` graph | `src/harnessParser.ts`, `src/parserLogic.ts` | `yaml` + `src/frontmatter.ts` for frontmatter, custom JSON parser |
 | **Writer** | Persist user edits (create subagent/skill, link/unlink, accept suggestion) back to disk | `src/harnessWriter.ts` | atomic `vscode.workspace.fs` writes |
 | **Adapters** | Detect + parse agent architectures from non-Harness sources (Claude Code, Gemini CLI, Cursor, Copilot, OpenCode, and the deprecated Windsurf) into the common graph model | `src/adapters/*.ts` | pattern: `IAgentAdapter` + 7 implementations (one of which — `WindsurfAdapter` — is retained for legacy workspaces; see ADR-003) |
 | **Semantic Layer** | TF-IDF vectorizer, cosine similarity, name-boost, n-gram tokenization | `src/semanticMatcher.ts` | pure functions, no I/O |
@@ -184,10 +184,8 @@ models via `vscode.lm`.
   - Node 20.x in CI (matches `engines.vscode ^1.85.0`).
   - esbuild for bundling (not Webpack, not Rollup).
   - Vitest for unit tests (not Jest, not Mocha).
-  - `gray-matter` for YAML frontmatter; `dagre` bundled as dependency
-    (not used in the main whiteboard layout path since 0.4.1 — layout
-    uses a manual TB hierarchy with row-wrap in `layoutUtils.ts`);
-    no custom parser.
+  - `yaml` (npm package) + `src/frontmatter.ts` (internal adapter) for YAML frontmatter — replaces the removed `gray-matter` dependency; exposes the same `.data`/`.content` API.
+  - `dagre` in `devDependencies` only (bundled at build time via esbuild but not a runtime production dependency; not used in the main whiteboard layout path since 0.4.1 — layout uses a manual TB hierarchy with row-wrap in `layoutUtils.ts`).
 
 - **VS Code engine**: `^1.85.0` (declared in `package.json#engines`).
 

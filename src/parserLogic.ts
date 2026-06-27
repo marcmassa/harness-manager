@@ -1,5 +1,5 @@
 import matter from './frontmatter.js';
-import { ParserResult, Milestone, DiscoveryMethod, CrossRefInfo } from './types.js';
+import { ParserResult, Milestone, DiscoveryMethod, CrossRefInfo, SubagentMetadata, SkillMetadata } from './types.js';
 import { computeSemanticSuggestions, SemanticMatcherOptions } from './semanticMatcher.js';
 import { computeIdoneityMatrix, detectMismatches, IdoneityMatrix, MismatchInfo } from './idoneity.js';
 
@@ -542,10 +542,10 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
         
         // 1. Identify if this is a subagent/agent file
         if (fileName === 'SUBAGENT.md') {
-            const agentId = data.name || folderName;
-            const existingNode = result.graph.nodes.find(n => 
-                n.id === agentId || 
-                (n.metadata.role_file && normalizedPath.endsWith(n.metadata.role_file))
+            const agentId = (data.name as string | undefined) || folderName;
+            const existingNode = result.graph.nodes.find(n =>
+                n.id === agentId ||
+                (n.metadata.role_file && normalizedPath.endsWith(n.metadata.role_file as string))
             );
 
             // Extract Skills from body (## Skills section)
@@ -558,13 +558,13 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
 
             if (existingNode) {
                 existingNode.metadata = { ...existingNode.metadata, ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList, _filePath: normalizedPath };
-                if (data.name) existingNode.label = data.name;
+                if (data.name) existingNode.label = data.name as string;
             } else {
                 result.graph.nodes.push({
                     id: agentId,
                     type: 'subagent',
                     label: agentId,
-                    metadata: { ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList, _filePath: normalizedPath }
+                    metadata: { ...data, body: body.substring(0, 500), _fullBody: body, markdownSkills: skillsList, _filePath: normalizedPath } as SubagentMetadata
                 });
             }
 
@@ -597,7 +597,7 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
         } 
         // 2. Identify if this is a skill file
         else if (fileName === 'SKILL.md' || normalizedPath.includes('/skills/')) {
-            const skillId = data.name || folderName;
+            const skillId = (data.name as string | undefined) || folderName;
             const existingSkillNode = result.graph.nodes.find(n => n.id === skillId);
             
             // Avoid duplicates
@@ -606,23 +606,23 @@ export function parseMarkdown(content: string, filePath: string, result: ParserR
                     id: skillId,
                     type: 'skill',
                     label: skillId,
-                    metadata: { 
-                        ...data, 
+                    metadata: {
+                        ...data,
                         body: body.substring(0, 500), _fullBody: body,
                         _filePath: normalizedPath,
                         // Progressive Disclosure — Stage 1: scanned via directory discovery
                         _discovery: 'scanned' as DiscoveryMethod
-                    }
+                    } as SkillMetadata
                 });
             } else {
-                existingSkillNode.metadata = { 
-                        ...existingSkillNode.metadata, 
-                        ...data, 
-                        body: body.substring(0, 500), _fullBody: body,
-                        _filePath: normalizedPath,
-                        // Preserve existing discovery status if already set
-                        _discovery: existingSkillNode.metadata._discovery || 'scanned'
-                    };
+                existingSkillNode.metadata = {
+                    ...existingSkillNode.metadata,
+                    ...data,
+                    body: body.substring(0, 500), _fullBody: body,
+                    _filePath: normalizedPath,
+                    // Preserve existing discovery status if already set
+                    _discovery: (existingSkillNode.metadata as SkillMetadata)._discovery || 'scanned'
+                } as SkillMetadata;
             }
 
             // R2: Scan body for cross-references to other entities
@@ -820,7 +820,7 @@ export function parseProgressMd(content: string, result: ParserResult) {
                     // Update existing milestone with actual date/outcome from progress.md
                     const existing = result.milestones.find(m => m.featureId === currentMilestone!.featureId);
                     if (existing) {
-                        existing.date = currentMilestone.date;
+                        if (currentMilestone.date) existing.date = currentMilestone.date;
                         if (currentMilestone.outcome) existing.outcome = currentMilestone.outcome;
                         if (currentMilestone.status) existing.status = currentMilestone.status;
                     }
@@ -848,7 +848,7 @@ export function parseProgressMd(content: string, result: ParserResult) {
         } else {
             const existing = result.milestones.find(m => m.featureId === currentMilestone!.featureId);
             if (existing) {
-                existing.date = currentMilestone.date;
+                if (currentMilestone.date) existing.date = currentMilestone.date;
                 if (currentMilestone.outcome) existing.outcome = currentMilestone.outcome;
                 if (currentMilestone.status) existing.status = currentMilestone.status;
             }
