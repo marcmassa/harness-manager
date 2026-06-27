@@ -85,25 +85,25 @@
   "steering": [
     {
       "name": "global-conventions",
-      "file": "steering/global-conventions.md",
+      "file": ".kiro/steering/global-conventions.md",
       "description": "Convenciones globales: sub-agentes, reglas obligatorias, referencias ADR",
       "applies_to": ["*"]
     },
     {
       "name": "typescript-implementer-conventions",
-      "file": "steering/typescript-implementer.md",
+      "file": ".kiro/steering/typescript-implementer.md",
       "description": "Convenciones TypeScript: VS Code extension host, React Flow webview, testing, anti-patterns",
       "applies_to": ["typescript-implementer"]
     },
     {
       "name": "kiss-principle",
-      "file": "steering/kiss-principle.md",
+      "file": ".kiro/steering/kiss-principle.md",
       "description": "Principio KISS: preferencia por soluciones simples, evitar abstracciones prematuras",
       "applies_to": ["*"]
     },
     {
       "name": "dry-principle",
-      "file": "steering/dry-principle.md",
+      "file": ".kiro/steering/dry-principle.md",
       "description": "Principio DRY: cada pieza de conocimiento tiene una representación única, autoritativa",
       "applies_to": ["*"]
     }
