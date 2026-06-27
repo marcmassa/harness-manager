@@ -356,6 +356,18 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "Next"
+    },
+    {
+      "id": "FEAT-030",
+      "name": "tech-debt-and-security-hardening",
+      "title": "Tech Debt & Security Hardening",
+      "description": "Addresses security gaps and accumulated technical debt identified in the v0.5.1 code review: WebView CSP nonce, sandbox hardening, message validation, extension.ts decomposition into domain coordinators, FeatureSpecPanel split, HarnessNode.metadata discriminated types, dagre devDependency migration, and webview utility/message bus test coverage.",
+      "type": "chore",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
     }
   ]
 }

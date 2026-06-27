@@ -29,7 +29,7 @@ export interface HarnessNode {
     id: string;
     type: NodeType;
     label: string;
-    metadata: Record<string, any>;
+    metadata: NodeMetadata;
 }
 
 export interface HarnessEdge {
@@ -37,7 +37,7 @@ export interface HarnessEdge {
     source: string;
     target: string;
     label?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface HarnessGraph {
@@ -71,3 +71,124 @@ export interface ParserResult {
     errors: ParserError[];
     detectedFrameworks?: string[];
 }
+
+// ── Webview message discriminator (FEAT-030 R5, R6) ──────────────────────────
+
+export type WebviewMessageType =
+    | 'ready' | 'getData'
+    | 'createNode' | 'deleteNode' | 'updateMetadata'
+    | 'createEdge' | 'deleteEdge' | 'confirmAndDeleteEdge'
+    | 'getMarkdownContent' | 'openMarkdownFile'
+    | 'acceptSuggestion' | 'dismissSuggestion'
+    | 'reassignSkill' | 'updateEdgeLabel' | 'toggleSkillConnection'
+    | 'getFeatureList' | 'getSpecFile' | 'saveSpecFile'
+    | 'generateWithAI' | 'createSpecFile' | 'generateSpecDraft'
+    | 'openInEditor' | 'createFeature' | 'generateFeatureDescription' | 'deleteFeature'
+    | 'dismissAgenticSuggestion' | 'applyHarnessSDD'
+    | 'openFullWindow' | 'openSettings';
+
+export interface WebviewMessage {
+    type: WebviewMessageType;
+    [key: string]: unknown;
+}
+
+const KNOWN_MESSAGE_TYPES = new Set<string>([
+    'ready', 'getData',
+    'createNode', 'deleteNode', 'updateMetadata',
+    'createEdge', 'deleteEdge', 'confirmAndDeleteEdge',
+    'getMarkdownContent', 'openMarkdownFile',
+    'acceptSuggestion', 'dismissSuggestion',
+    'reassignSkill', 'updateEdgeLabel', 'toggleSkillConnection',
+    'getFeatureList', 'getSpecFile', 'saveSpecFile',
+    'generateWithAI', 'createSpecFile', 'generateSpecDraft',
+    'openInEditor', 'createFeature', 'generateFeatureDescription', 'deleteFeature',
+    'dismissAgenticSuggestion', 'applyHarnessSDD',
+    'openFullWindow', 'openSettings',
+]);
+
+export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {
+    return (
+        typeof msg === 'object' &&
+        msg !== null &&
+        typeof (msg as Record<string, unknown>).type === 'string' &&
+        KNOWN_MESSAGE_TYPES.has((msg as Record<string, unknown>).type as string)
+    );
+}
+
+// ── HarnessNode.metadata typed interfaces (FEAT-030 R12) ─────────────────────
+// Fields shared by all node types produced by withFrameworkMetadata().
+
+interface FrameworkFields {
+    _filePath?: string;
+    _framework?: string;
+    _frameworkLabel?: string;
+}
+
+// Index signature on each interface allows frontmatter fields from markdown
+// files to pass through without individual declaration.
+
+export interface AgentMetadata extends FrameworkFields {
+    description?: string;
+    body?: string;
+    _fullBody?: string;
+    [key: string]: unknown;
+}
+
+export interface SubagentMetadata extends FrameworkFields {
+    description?: string;
+    body?: string;
+    _fullBody?: string;
+    roleFile?: string;
+    _orphan?: boolean;
+    _discovery?: DiscoveryMethod;
+    [key: string]: unknown;
+}
+
+export interface SkillMetadata extends FrameworkFields {
+    description?: string;
+    body?: string;
+    _fullBody?: string;
+    discoveryMethod?: DiscoveryMethod;
+    [key: string]: unknown;
+}
+
+export interface SteeringMetadata extends FrameworkFields {
+    description?: string;
+    body?: string;
+    appliesTo?: string[];
+    [key: string]: unknown;
+}
+
+export interface HookMetadata extends FrameworkFields {
+    event?: string;
+    script?: string;
+    body?: string;
+    [key: string]: unknown;
+}
+
+export interface FeatureMetadata extends FrameworkFields {
+    id?: string;
+    name?: string;
+    title?: string;
+    status?: string;
+    priority?: string;
+    sprint?: string;
+    type?: string;
+    sdd?: boolean;
+    agent?: string;
+    [key: string]: unknown;
+}
+
+export interface DiscoveredMetadata {
+    _filePath?: string;
+    layer?: 'cli' | 'impl' | 'harness' | 'sdd';
+    signals?: string[];
+    confidence?: number;
+    acknowledged?: boolean;
+    custom?: boolean;
+    [key: string]: unknown;
+}
+
+export type NodeMetadata =
+    | AgentMetadata | SubagentMetadata | SkillMetadata
+    | SteeringMetadata | HookMetadata | FeatureMetadata | DiscoveredMetadata;

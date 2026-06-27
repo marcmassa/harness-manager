@@ -1,5 +1,19 @@
 # Progress Log
 
+## [2026-06-27] FEAT-030: tech-debt-and-security-hardening (COMPLETED)
+
+- **Objective:** Address security gaps and accumulated tech debt from the v0.5.1 code review: WebView CSP nonce, sandbox hardening, unknown-message validation, extension.ts decomposition into domain coordinators, FeatureSpecPanel component split, HarnessNode.metadata discriminated types, dagre→devDependencies, and new test coverage.
+- **Outcome:** All 29 tasks completed. 372 tests pass (15 new). Build clean. `./check.sh` green on build/tests/feature-list (pre-existing adapter drift unrelated to this feature).
+- **Key changes:**
+  - **WebView security (R1–R6):** Per-render CSP nonce via Web Crypto API; `allow-same-origin` removed from sandbox; `isKnownWebviewMessage()` type guard with 28-type `WebviewMessageType` union; unknown messages emit `log.warn` and return early.
+  - **extension.ts decomposition (R7–R9):** 3 domain coordinator classes (`WhiteboardCoordinator`, `SddCoordinator`, `AdvisoryCoordinator`) in `src/coordinators/`; `_handleWebviewMessage` reduced to a 45-line chain; `setupCodeQualityVerifier` moved to `src/verifier/codeQualitySetup.ts`; result: 340 executable lines (target: ≤ 400).
+  - **FeatureSpecPanel split (R10–R11):** Decomposed 1994-line monolith into `FeatureList.tsx`(221), `SpecEditor.tsx`(314), `AiAssistBar.tsx`(96), `SpecWizard.tsx`(372), `FeatureSpecPanel.tsx`(192) — all listed files ≤ 600 lines.
+  - **Type safety (R12–R13):** `NodeMetadata` discriminated union with 7 typed interfaces (all with `[key: string]: unknown` index signature); `Record<string, any>` eliminated from `HarnessNode.metadata`; `any` count reduced across the codebase.
+  - **Dependency hygiene (R14–R15):** `dagre` + `@types/dagre` moved to `devDependencies`; `DESIGN.md` updated to remove stale gray-matter reference.
+  - **Test coverage (R16–R17):** 6 tests for `layoutUtils` (`src/webview/layoutUtils.test.ts`), 8 tests for message discriminator (`src/messageDiscriminator.test.ts`).
+- **Files created:** `src/coordinators/WhiteboardCoordinator.ts`, `SddCoordinator.ts`, `AdvisoryCoordinator.ts`, `src/verifier/codeQualitySetup.ts`, `src/webview/FeatureList.tsx`, `SpecEditor.tsx`, `AiAssistBar.tsx`, `SpecWizard.tsx`, `src/webview/layoutUtils.test.ts`, `src/messageDiscriminator.test.ts`, `progress/impl_tech-debt-and-security-hardening.md`.
+- **Files modified:** `src/extension.ts`, `src/types.ts`, `src/parserLogic.ts`, `package.json`, `DESIGN.md`, `src/webview/FeatureSpecPanel.tsx`, `feature_list.json`.
+
 ## [2026-06-17] FEAT-026: cross-framework-hooks-steering (COMPLETED)
 
 - **Objective:** Closes the FEAT-024 gap. A project that uses Kiro, Claude Code, Cursor, Gemini, Copilot, or Windsurf — *without* Harness SDD's `agentic.json` — can have hooks and steering files under their framework root (e.g., `.kiro/hooks/`) or even the project root (e.g., `hooks/`). The whiteboard must discover these and show them as first-class nodes.
