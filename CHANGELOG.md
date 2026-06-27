@@ -12,6 +12,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.6.0] — 2026-06-27
+
+> **Tech Debt & Security Hardening (FEAT-030)** — no new end-user features; all changes are security hardening, internal architecture refactoring, and type safety improvements. No breaking changes to settings, commands, or output format. All 372 unit tests pass (+15 new).
+
+### Security
+
+- **CSP nonce (R1–R3)** — `_getWebviewHtml()` now generates a 16-byte cryptographic nonce on every call using `globalThis.crypto.getRandomValues` (Web Crypto API, no Node.js dependency). The nonce is embedded in both the `<meta http-equiv="Content-Security-Policy">` header (`script-src 'nonce-...'`) and the `<script nonce="...">` attribute. `unsafe-inline` is absent from the policy.
+- **Sandbox hardening (R4)** — `allow-same-origin` removed from the `sandbox` option on both the sidebar `WebviewView` and the full-window `WebviewPanel`. A compromised script can no longer elevate to the extension host origin.
+- **Unknown-message guard (R5–R6)** — all 28 message types now have a corresponding entry in `WebviewMessageType` (union) and `KNOWN_MESSAGE_TYPES` (`Set<string>`). `isKnownWebviewMessage()` type guard rejects anything outside the set before the switch statement is entered; unknown types are logged with `this._log.warn(...)` and dropped silently.
+
+### Refactored
+
+#### Domain coordinator pattern (R7–R9)
+
+- **`src/coordinators/WhiteboardCoordinator.ts`** — handles 13 whiteboard/graph cases: `createNode`, `deleteNode`, `updateMetadata`, `createEdge`, `deleteEdge`, `confirmAndDeleteEdge`, `getMarkdownContent`, `openMarkdownFile`, `acceptSuggestion`, `dismissSuggestion`, `reassignSkill`, `updateEdgeLabel`, `toggleSkillConnection`. Contains the `_shouldUseCustomEdgeFallback`, `_upsertCustomUsesEdge`, `_removeCustomUsesEdge`, and `_deleteEdgeWithFallback` private helpers.
+- **`src/coordinators/SddCoordinator.ts`** — handles 10 SDD cases: `getFeatureList`, `getSpecFile`, `saveSpecFile`, `generateWithAI`, `createSpecFile`, `generateSpecDraft`, `openInEditor`, `createFeature`, `generateFeatureDescription`, `deleteFeature`. Owns all SDD private helpers previously scattered in `extension.ts`.
+- **`src/coordinators/AdvisoryCoordinator.ts`** — handles 2 advisory cases: `dismissAgenticSuggestion`, `applyHarnessSDD`. Owns the `_applyHarnessSDD` scaffold logic.
+- **`src/extension.ts`** — `_handleWebviewMessage` reduced to 45 lines: validates message, dispatches `ready`/`getData`/`openFullWindow`/`openSettings` inline, chains coordinators for everything else. `setupCodeQualityVerifier` and helpers extracted to **`src/verifier/codeQualitySetup.ts`**. Result: **340 executable lines** (target: ≤ 400).
+
+#### FeatureSpecPanel decomposition (R10–R11)
+
+The 1 994-line `FeatureSpecPanel.tsx` was split into five focused files. All four listed files are ≤ 600 lines:
+
+| File | Lines | Responsibility |
+|------|-------|---------------|
+| `FeatureSpecPanel.tsx` | 192 | Feature list state, message routing, outer layout |
+| `FeatureList.tsx` | 221 | Sidebar with `FeatureCard`, `StatusBadge`, `PriorityBadge` |
+| `SpecEditor.tsx` | 314 | Feature header, tab strip, edit/view tab content |
+| `AiAssistBar.tsx` | 96 | Action bar (Create from Template / Edit / Generate with AI) |
+| `SpecWizard.tsx` | 372 | AI-assisted spec generation wizard (5 steps) |
+
+#### Type safety (R12–R13)
+
+- **`NodeMetadata` discriminated union** — `HarnessNode.metadata` changed from `Record<string, any>` to `NodeMetadata`, a union of seven typed interfaces: `AgentMetadata`, `SubagentMetadata`, `SkillMetadata`, `SteeringMetadata`, `HookMetadata`, `FeatureMetadata`, `DiscoveredMetadata`. Each interface includes a `[key: string]: unknown` index signature to accommodate arbitrary frontmatter fields without losing structural typing.
+- **`_handleWebviewMessage` parameter** — changed from `data: any` to `data: unknown`; property accesses inside case blocks use explicit `as string` casts at the type boundary.
+- **`HarnessEdge.metadata`** — narrowed from `Record<string, any>` to `Record<string, unknown>`.
+- **`parserLogic.ts`** — `data.name` (gray-matter output) cast via `(data.name as string | undefined)` instead of implicit `any`.
+
+### Changed
+
+- **`dagre` → `devDependencies` (R14)** — the Dagre layout library is used only during the esbuild bundle step; it is no longer included in `dependencies` (and therefore no longer listed as a production VSIX dependency). Bundle size is unchanged.
+- **`DESIGN.md` §4 + §6 (R15)** — stale `gray-matter` references updated to reflect the replacement with `yaml` + `src/frontmatter.ts` introduced in 0.5.1.
+
+### Tests
+
+- **`src/webview/layoutUtils.test.ts`** (new, 6 tests) — `getLayoutedElementsByProvider`: empty arrays, single agent node, row wrap at `MAX_NODES_PER_ROW`, feature nodes separate, multi-provider groups, non-arch edge filtering.
+- **`src/messageDiscriminator.test.ts`** (new, 8 tests) — `isKnownWebviewMessage`: accepts all 28 known types, rejects empty object / string / null / undefined / unknown type / numeric type, accepts messages with extra payload fields.
+- **Total: 372 tests** across 25 files (+15 new since 0.5.1).
+
+---
+
 ## [0.5.1] — 2026-06-27
 
 > Security patch release. No new features, no breaking changes. All 357 unit tests pass.
