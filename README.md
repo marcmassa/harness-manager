@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.5.1-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -59,19 +59,18 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ---
 
-## What's new in 0.5.0
+## What's new in 0.5.1
 
-| Area | What changed |
-|------|-------------|
-| **Agentic Architecture Detection** | New signal scanner detects 30+ signals across 9 categories (prompts, rules, MCP, frameworks, tools, skills, agent scripts, memory, context) in any workspace — even without a known framework. Maturity classified L0–L5. Architecture patterns identified (Tool-Using Agent, Pipeline, Orchestrator-Worker, Multi-Agent, etc.). All results rendered on the whiteboard as discovered nodes with layer badges. |
-| **Advisory Engine** | 15+ actionable improvement suggestions gated by maturity level, with per-suggestion dismiss tracking. Signal strength bar chart in the Advisory tab. |
-| **One-click Harness+SDD Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals — zero configuration needed. |
-| **Discovered Node Visualization** | Detected CLI installs, agent implementations, Harness SDD, and methodology elements appear on the whiteboard with layer badges (`[CLI]`/`[IMPL]`/`[HARNESS]`/`[SDD]`), dashed/solid borders, `?`/`✓` acknowledgement icons, and evidence popups. |
-| **Adapter-aware Deduplication** | Signals already covered by existing framework adapters are automatically filtered out — no double-listing of known elements. |
-| **Harness/SDD Adoption Events** | Detecting `.agents/agentic.json` or `feature_list.json` emits adoption badges and re-classifies maturity. |
-| **Full-window Dashboard** | Open the entire dashboard in a dedicated editor panel via the expand icon — all features (whiteboard, specs, advisory) work identically. |
+Security patch — no new features. `npm audit` now reports **0 vulnerabilities**.
 
-For the full list of changes, see the [CHANGELOG](./CHANGELOG.md).
+| CVE(s) | Package | Severity | Fix |
+|--------|---------|----------|-----|
+| GHSA-hmw2-7cc7-3qxx | `form-data` (via `@vscode/vsce`) | High | Override → `4.0.6` |
+| GHSA-vmh5-mc38-953g + 6 more | `undici` (via `@vscode/vsce → cheerio`) | High | Override → `7.28.0` |
+| GHSA-73rr-hh4g-fpgx | `diff` (via `mocha`) | Moderate | Override → `9.0.0` |
+| GHSA-h67p-54hq-rp68 | `js-yaml@3.x` (via `gray-matter`) | Moderate | Replaced `gray-matter` with internal `src/frontmatter.ts` using `yaml` |
+
+For details see the [CHANGELOG](./CHANGELOG.md).
 
 ---
 

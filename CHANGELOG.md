@@ -12,6 +12,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.5.1] — 2026-06-27
+
+> Security patch release. No new features, no breaking changes. All 357 unit tests pass.
+
+### Security
+
+- **`form-data` CRLF injection** (GHSA-hmw2-7cc7-3qxx, high) — forced `form-data@4.0.6` via `npm overrides`. Transitive via `@vscode/vsce`.
+- **`undici` multiple CVEs** (GHSA-vmh5-mc38-953g, GHSA-p88m-4jfj-68fv, GHSA-vxpw-j846-p89q, GHSA-hm92-r4w5-c3mj, GHSA-35p6-xmwp-9g52, GHSA-g8m3-5g58-fq7m, GHSA-pr7r-676h-xcf6, high) — TLS certificate bypass, HTTP header injection, WebSocket DoS, SOCKS5 proxy pool reuse, keep-alive poisoning, Set-Cookie downgrade, shared cache disclosure — forced `undici@7.28.0` via `npm overrides`. Transitive via `@vscode/vsce → cheerio`.
+- **`diff` DoS** (GHSA-73rr-hh4g-fpgx, moderate) — quadratic complexity in `parsePatch`/`applyPatch` — forced `diff@9.0.0` via `npm overrides`. Transitive via `mocha`.
+- **`js-yaml` DoS** (GHSA-h67p-54hq-rp68, moderate) — quadratic complexity in YAML merge-key alias handling — removed `gray-matter` (which pins `js-yaml@^3.x` with no upstream fix) and replaced it with a lightweight internal `src/frontmatter.ts` using the `yaml` package. The new module exposes the same `matter(content)` / `matter.stringify(body, data)` API used across all call sites.
+
+### Technical
+
+- `npm audit` — **0 vulnerabilities** (was 2 high + 2 moderate before this patch).
+- `gray-matter` removed from `dependencies`; `yaml` added.
+- `src/frontmatter.ts` introduced as the single frontmatter parsing entry point.
+- No changes to extension behaviour, settings, or output format.
+
+---
+
 ## [0.5.0] — 2026-06-20
 
 > Headline feature: **Universal Agentic Architecture Detection & Advisory (FEAT-029)** — scans any workspace for agentic implementation signals, classifies maturity (L0–L5), identifies architecture patterns, renders discovered elements on the whiteboard, and generates actionable improvement suggestions. Plus: adapter-aware deduplication, Harness/SDD adoption events, SVG signal bar chart, and one-click scaffold.
