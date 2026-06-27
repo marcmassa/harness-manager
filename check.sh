@@ -200,10 +200,19 @@ if len(in_progress) > 1:
     names = ', '.join(f['id'] for f in in_progress)
     errors.append(f"Multiple features 'in_progress': {names}")
 
+SPEC_BASES = ['.kiro/specs', 'specs']
+
+def find_spec_dir(name):
+    for base in SPEC_BASES:
+        d = os.path.join(base, name)
+        if os.path.isdir(d):
+            return d
+    return os.path.join('specs', name)
+
 requires_spec = {"spec_ready", "in_progress", "done"}
 for feat in data['features']:
     if feat.get('sdd') and feat['status'] in requires_spec:
-        spec_dir = os.path.join('specs', feat['name'])
+        spec_dir = find_spec_dir(feat['name'])
         for fname in ('requirements.md', 'design.md', 'tasks.md'):
             if not os.path.isfile(os.path.join(spec_dir, fname)):
                 errors.append(f"{feat['id']}: sdd=true, status={feat['status']}, missing {spec_dir}/{fname}")
@@ -314,11 +323,17 @@ else
 	warn "Missing DESIGN.md in root directory"
 fi
 
-for f in specs/README.md specs/templates/requirements.md specs/templates/design.md specs/templates/tasks.md; do
-	if [ -f "$f" ]; then
-		pass "Exists $f"
-	else
-		warn "Missing $f"
+for f in README.md templates/requirements.md templates/design.md templates/tasks.md; do
+	found=false
+	for base in ".kiro/specs" "specs"; do
+		if [ -f "$base/$f" ]; then
+			pass "Exists $base/$f"
+			found=true
+			break
+		fi
+	done
+	if ! $found; then
+		warn "Missing $f (checked .kiro/specs/ and specs/)"
 	fi
 done
 
@@ -362,7 +377,7 @@ done
 # ── Steering Validation ────────────────────────
 section "Steering Validation"
 if [ -f ".agents/agentic.json" ]; then
-    python3 /dev/stdin <<'PYEOF' 2>/dev/null || true
+    python3 /dev/stdin <<'PYEOF' 2>/dev/null
 import json, os, sys
 with open('.agents/agentic.json') as f:
     m = json.load(f)
@@ -379,12 +394,13 @@ for s in steering:
             content = sf.read()
         if not content.startswith('---'):
             warnings.append(f"steering '{name}': missing YAML frontmatter")
-if os.path.isdir('steering'):
-    declared = {s['file'] for s in steering}
-    for f in os.listdir('steering'):
-        fpath = f"steering/{f}"
-        if fpath not in declared and f.endswith('.md'):
-            warnings.append(f"file '{fpath}' not declared in agentic.json#steering[]")
+for base in ['steering', '.kiro/steering']:
+    if os.path.isdir(base):
+        declared = {s['file'] for s in steering}
+        for f in os.listdir(base):
+            fpath = f"{base}/{f}"
+            if fpath not in declared and f.endswith('.md'):
+                warnings.append(f"file '{fpath}' not declared in agentic.json#steering[]")
 for e in errors:
     print(f"[ERROR] {e}")
 for w in warnings:
@@ -396,23 +412,26 @@ if not steering:
 else:
     print(f"[OK]    {len(steering)} steering file(s) valid")
 PYEOF
-    if [ $? -eq 0 ]; then pass "Steering validation"; else fail "Steering errors found"; fi
+    steer_rc=$?
+    if [ $steer_rc -eq 0 ]; then pass "Steering validation"; else fail "Steering errors found"; fi
 fi
 
 # ── Hooks Validation ─────────────────────────────
 section "Hooks Validation"
 if [ -f ".agents/agentic.json" ]; then
-    python3 /dev/stdin <<'PYEOF' 2>/dev/null || true
+    python3 /dev/stdin <<'PYEOF' 2>/dev/null
 import json, os, sys
 with open('.agents/agentic.json') as f:
     m = json.load(f)
 hooks = m.get('hooks', [])
 errors = []
 warnings = []
-if not os.path.isfile('hooks/run-hooks.sh'):
-    errors.append("hooks/run-hooks.sh not found")
-elif not os.access('hooks/run-hooks.sh', os.X_OK):
-    errors.append("hooks/run-hooks.sh is not executable")
+run_hooks_candidates = ['hooks/run-hooks.sh', '.kiro/hooks/run-hooks.sh']
+run_hooks_path = next((p for p in run_hooks_candidates if os.path.isfile(p)), None)
+if run_hooks_path is None:
+    errors.append("hooks/run-hooks.sh not found (checked hooks/ and .kiro/hooks/)")
+elif not os.access(run_hooks_path, os.X_OK):
+    errors.append(f"{run_hooks_path} is not executable")
 for h in hooks:
     script = h.get('script', '')
     event = h.get('event', '?')
@@ -431,7 +450,8 @@ if not hooks:
 else:
     print(f"[OK]    {len(hooks)} hook(s) registered")
 PYEOF
-    if [ $? -eq 0 ]; then pass "Hooks validation"; else fail "Hooks errors found"; fi
+    hooks_rc=$?
+    if [ $hooks_rc -eq 0 ]; then pass "Hooks validation"; else fail "Hooks errors found"; fi
 fi
 
 # ── Governance Documents check (FEAT-019 R16, R17) ───────
