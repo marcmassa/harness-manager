@@ -13,7 +13,7 @@
 // ============================================================================
 
 import * as vscode from 'vscode';
-import matter from 'gray-matter';
+import matter from '../frontmatter.js';
 import { HarnessEdge, HarnessNode } from '../types.js';
 import { ConfigurationRegistry } from '../adapters/ConfigurationRegistry.js';
 import {

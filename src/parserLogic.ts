@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import matter from './frontmatter.js';
 import { ParserResult, Milestone, DiscoveryMethod, CrossRefInfo } from './types.js';
 import { computeSemanticSuggestions, SemanticMatcherOptions } from './semanticMatcher.js';
 import { computeIdoneityMatrix, detectMismatches, IdoneityMatrix, MismatchInfo } from './idoneity.js';
