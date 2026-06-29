@@ -15,6 +15,8 @@ export const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
  * actions, markdown file viewing, and skill connection toggles.
  */
 export class WhiteboardCoordinator {
+    private _scheduleScan?: () => void;
+
     constructor(
         private readonly _writer: HarnessWriter,
         private readonly _parser: HarnessParser,
@@ -22,6 +24,10 @@ export class WhiteboardCoordinator {
         private readonly _workspaceRoot: vscode.Uri,
         private readonly _log: vscode.LogOutputChannel,
     ) {}
+
+    setScheduleScan(fn: () => void): void {
+        this._scheduleScan = fn;
+    }
 
     async handle(
         msg: WebviewMessage,
@@ -45,16 +51,19 @@ export class WhiteboardCoordinator {
                     );
                 }
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'deleteNode':
                 await this._writer.deleteNode(msg.id as string, msg.nodeType as string);
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'updateMetadata':
                 await this._writer.updateMetadata(msg.id as string, msg.nodeType as string, msg.metadata as Record<string, unknown>);
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'createEdge':
@@ -68,11 +77,13 @@ export class WhiteboardCoordinator {
                     }
                 }
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'deleteEdge':
                 await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'confirmAndDeleteEdge': {
@@ -84,6 +95,7 @@ export class WhiteboardCoordinator {
                 if (result === 'Yes, Delete') {
                     await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
                     await sendData(postMessage);
+                    this._scheduleScan?.();
                 }
                 return true;
             }
@@ -110,6 +122,7 @@ export class WhiteboardCoordinator {
             case 'acceptSuggestion':
                 await this._writer.acceptSuggestion(msg.subagentId as string, msg.skillId as string);
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
 
             case 'dismissSuggestion': {
@@ -149,6 +162,7 @@ export class WhiteboardCoordinator {
                     await this._context.workspaceState.update('harness-dashboard.disabledConnections', updated);
                 }
                 await sendData(postMessage);
+                this._scheduleScan?.();
                 return true;
             }
 

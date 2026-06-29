@@ -9,6 +9,7 @@ import { createDefaultAdapters } from '../adapters/index.js';
 import type {
   AgenticProfile,
   CLIInstall,
+  GraphContext,
   MethodologyInfo,
 } from './types.js';
 
@@ -142,6 +143,15 @@ export class AgenticDetector extends EventEmitter {
   /** Debounce timer handle for coalescing rapid file changes. */
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** GraphContext stored by the most recent scheduleScan() call, used by _onFileChanged()
+   * so the file-watcher scan doesn't lose the context when it cancels the coordinator timer. */
+  private _pendingGraphContext: GraphContext | undefined = undefined;
+
+  /** Optional callback injected from extension.ts to build a fresh GraphContext
+   * from the provider's cached dashboard data. Used by _onFileChanged() when
+   * no coordinator has set a pending context (pure editor-side file changes). */
+  private _getGraphContext?: () => GraphContext | undefined;
+
   /** The Layer-2 signal scanner instance, wired to VS Code workspace APIs. */
   private readonly _scanner: SignalScanner;
 
@@ -176,6 +186,12 @@ export class AgenticDetector extends EventEmitter {
 
   // ── Public API ─────────────────────────────────────────────────────────
 
+  /** Inject a callback to build GraphContext on demand (FEAT-031).
+   * Called from _onFileChanged() when no pending context is available. */
+  setGetGraphContext(fn: () => GraphContext | undefined): void {
+    this._getGraphContext = fn;
+  }
+
   /**
    * Perform a full three-layer scan of the workspace.
    *
@@ -186,12 +202,12 @@ export class AgenticDetector extends EventEmitter {
    * 4. Classify maturity (`MaturityClassifier`)
    * 5. Analyse architecture patterns (`PatternAnalyzer`)
    * 6. Read previously-dismissed suggestion IDs from workspace state
-   * 7. Generate suggestions (`AdvisoryEngine`)
+   * 7. Generate suggestions (`AdvisoryEngine`) — uses graphContext when provided
    * 8. Cache the profile, emit `'scanComplete'`, return it
    *
    * On failure the method emits `'scanError'` *and* re-throws the error.
    */
-  async scan(): Promise<AgenticProfile> {
+  async scan(graphContext?: GraphContext): Promise<AgenticProfile> {
     try {
       this._log.info('[AgenticDetector] Starting scan…');
 
@@ -261,6 +277,7 @@ export class AgenticDetector extends EventEmitter {
         suggestions: [],
         dismissedSuggestionIds: [],
         acknowledgedNodeIds: [],
+        graphContext,
       };
 
       // ── Classify maturity level ──
@@ -310,6 +327,27 @@ export class AgenticDetector extends EventEmitter {
     return this._profile;
   }
 
+  /**
+   * Schedule a debounced scan. Shares the existing `_debounceTimer` so
+   * coordinator-triggered rescans coalesce with file-watcher-triggered ones.
+   * The coordinator default (1000 ms) is intentionally longer than the
+   * file-watcher debounce (500 ms) so rapid node edits don't thrash.
+   */
+  scheduleScan(graphContext?: GraphContext, debounceMs = 1000): void {
+    this._pendingGraphContext = graphContext;
+    if (this._debounceTimer !== null) {
+      clearTimeout(this._debounceTimer);
+    }
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      const ctx = this._pendingGraphContext;
+      this._pendingGraphContext = undefined;
+      this.scan(ctx).catch((err) => {
+        this._log.error(`[AgenticDetector] Scheduled scan failed: ${err}`);
+      });
+    }, debounceMs);
+  }
+
   // ── File watching ──────────────────────────────────────────────────────
 
   /**
@@ -355,8 +393,20 @@ export class AgenticDetector extends EventEmitter {
     this._watchers.push(featureListWatcher);
     this._disposables.push(featureListWatcher);
 
+    // FEAT-031 T18: Watch spec files edited directly in the editor
+    const specsGlob = new vscode.RelativePattern(
+      this._workspaceRoot,
+      '.kiro/specs/**',
+    );
+    const specsWatcher = vscode.workspace.createFileSystemWatcher(specsGlob);
+    specsWatcher.onDidCreate(() => this._onFileChanged());
+    specsWatcher.onDidChange(() => this._onFileChanged());
+    specsWatcher.onDidDelete(() => this._onFileChanged());
+    this._watchers.push(specsWatcher);
+    this._disposables.push(specsWatcher);
+
     this._log.info(
-      `[AgenticDetector] File watcher started (${globs.length + 1} patterns)`,
+      `[AgenticDetector] File watcher started (${globs.length + 2} patterns)`,
     );
   }
 
@@ -502,7 +552,12 @@ export class AgenticDetector extends EventEmitter {
 
     this._debounceTimer = setTimeout(() => {
       this._debounceTimer = null;
-      this.scan().catch((err) => {
+      // Re-use the pending graphContext set by scheduleScan() so that
+      // file-watcher events don't lose the context when they cancel
+      // the coordinator's debounce timer.
+      const ctx = this._pendingGraphContext ?? this._getGraphContext?.();
+      this._pendingGraphContext = undefined;
+      this.scan(ctx).catch((err) => {
         this._log.error(`[AgenticDetector] Re-scan failed: ${err}`);
       });
     }, 500);

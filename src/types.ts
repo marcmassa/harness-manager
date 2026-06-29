@@ -84,7 +84,7 @@ export type WebviewMessageType =
     | 'getFeatureList' | 'getSpecFile' | 'saveSpecFile'
     | 'generateWithAI' | 'createSpecFile' | 'generateSpecDraft'
     | 'openInEditor' | 'createFeature' | 'generateFeatureDescription' | 'deleteFeature'
-    | 'dismissAgenticSuggestion' | 'applyHarnessSDD'
+    | 'dismissAgenticSuggestion' | 'applyHarnessSDD' | 'rescanAgentic'
     | 'openFullWindow' | 'openSettings';
 
 export interface WebviewMessage {
@@ -102,7 +102,7 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'getFeatureList', 'getSpecFile', 'saveSpecFile',
     'generateWithAI', 'createSpecFile', 'generateSpecDraft',
     'openInEditor', 'createFeature', 'generateFeatureDescription', 'deleteFeature',
-    'dismissAgenticSuggestion', 'applyHarnessSDD',
+    'dismissAgenticSuggestion', 'applyHarnessSDD', 'rescanAgentic',
     'openFullWindow', 'openSettings',
 ]);
 

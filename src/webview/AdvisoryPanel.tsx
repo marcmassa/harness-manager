@@ -306,6 +306,16 @@ const SuggestionCard = ({
     </div>
 );
 
+// ===== Rescan button =====
+
+const IconRefresh = () => (
+    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor"
+        strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" />
+        <polyline points="13.5 2.5 13.5 5.5 10.5 5.5" />
+    </svg>
+);
+
 // ===== Panel component =====
 
 interface AdvisoryPanelProps {
@@ -313,16 +323,36 @@ interface AdvisoryPanelProps {
     onDismissSuggestion: (suggestionId: string) => void;
     /** Called when the user clicks "Apply Harness+SDD" (T34). */
     onApplyHarnessSDD?: () => void;
+    /** Trigger an on-demand architecture re-scan (FEAT-031). */
+    onRescan: () => void;
+    /** True while a scan is in progress (FEAT-031). */
+    isScanning: boolean;
 }
 
-export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD }: AdvisoryPanelProps) => {
+const STALE_THRESHOLD_MS = 120_000;
+
+export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning }: AdvisoryPanelProps) => {
     // Optimistic local dismissal tracker
     const [dismissedLocally, setDismissedLocally] = React.useState<Set<string>>(new Set());
+    // Stale scan notice (FEAT-031 T19)
+    const [isStale, setIsStale] = React.useState(false);
+    const [staleDismissed, setStaleDismissed] = React.useState(false);
 
     // Reset local state when a new profile arrives (fresh scan)
     React.useEffect(() => {
         setDismissedLocally(new Set());
+        setIsStale(false);
+        setStaleDismissed(false);
     }, [profile]);
+
+    // Stale detection: set notice when tab re-renders and data is old
+    React.useEffect(() => {
+        if (!profile || staleDismissed || isScanning) return;
+        const age = Date.now() - profile.scanTimestamp;
+        if (age > STALE_THRESHOLD_MS) {
+            setIsStale(true);
+        }
+    }, [profile, staleDismissed, isScanning]);
 
     const handleDismiss = (id: string) => {
         setDismissedLocally((prev) => new Set(prev).add(id));
@@ -331,7 +361,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD 
 
     // ===== Empty / loading state =====
 
-    if (profile === null) {
+    if (profile === null && !isScanning) {
         return (
             <div
                 style={{
@@ -350,6 +380,32 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD 
                 <span style={{ fontSize: '0.85em', opacity: 0.7, textAlign: 'center', maxWidth: '280px' }}>
                     Run a scan to detect agentic architecture in this workspace.
                 </span>
+                <button
+                    type="button"
+                    onClick={onRescan}
+                    style={{
+                        marginTop: SPACE.sm,
+                        padding: `${SPACE.xs} ${SPACE.md}`,
+                        borderRadius: '6px',
+                        border: '1px solid var(--vscode-button-border, var(--vscode-focusBorder))',
+                        background: 'var(--vscode-button-background)',
+                        color: 'var(--vscode-button-foreground)',
+                        cursor: 'pointer',
+                        fontSize: '0.82em',
+                        fontWeight: 600,
+                    }}
+                >
+                    Scan now
+                </button>
+            </div>
+        );
+    }
+
+    if (isScanning && profile === null) {
+        return (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, padding: SPACE.lg, color: 'var(--vscode-descriptionForeground)' }}>
+                <vscode-progress-ring />
+                <span style={{ fontSize: '0.85em', opacity: 0.7 }}>Scanning architecture…</span>
             </div>
         );
     }
@@ -406,22 +462,87 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD 
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     flexShrink: 0,
+                    gap: SPACE.sm,
                 }}
             >
                 <h3 style={{ margin: 0, fontSize: '1em', fontWeight: 600 }}>
                     Agentic Architecture
                 </h3>
-                <span
-                    style={{
-                        fontSize: '0.7em',
-                        opacity: 0.45,
-                        whiteSpace: 'nowrap',
-                    }}
-                    title={`Last scanned: ${new Date(profile.scanTimestamp).toLocaleString()}`}
-                >
-                    scanned {formatTime(profile.scanTimestamp)}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {isScanning && <vscode-progress-ring style={{ width: '14px', height: '14px' }} />}
+                    <span
+                        style={{ fontSize: '0.7em', opacity: 0.45, whiteSpace: 'nowrap' }}
+                        title={profile ? `Last scanned: ${new Date(profile.scanTimestamp).toLocaleString()}` : undefined}
+                    >
+                        {isScanning ? 'Scanning…' : `scanned ${formatTime(profile!.scanTimestamp)}`}
+                    </span>
+                    <button
+                        type="button"
+                        title="Re-scan architecture"
+                        aria-label="Re-scan architecture"
+                        disabled={isScanning}
+                        onClick={onRescan}
+                        style={{
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--vscode-descriptionForeground)',
+                            cursor: isScanning ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                            opacity: isScanning ? 0.4 : 1,
+                            transition: 'opacity 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!isScanning) (e.currentTarget as HTMLButtonElement).style.background =
+                                'var(--vscode-toolbar-hoverBackground, color-mix(in srgb, var(--vscode-sideBar-background) 80%, var(--vscode-editor-background)))';
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                        }}
+                    >
+                        <IconRefresh />
+                    </button>
+                </div>
             </div>
+
+            {/* ===== Stale scan notice (FEAT-031 T19) ===== */}
+            {isStale && !staleDismissed && !isScanning && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: SPACE.sm,
+                    padding: `${SPACE.xs} ${SPACE.sm}`,
+                    marginTop: SPACE.sm,
+                    borderRadius: '6px',
+                    background: 'color-mix(in srgb, #d4a017 12%, var(--vscode-sideBar-background))',
+                    border: '1px solid color-mix(in srgb, #d4a017 35%, var(--vscode-panel-border))',
+                    fontSize: '0.72em',
+                    color: 'var(--vscode-foreground)',
+                }}>
+                    <span style={{ flex: 1, opacity: 0.8 }}>Results may be stale</span>
+                    <button
+                        type="button"
+                        onClick={() => { onRescan(); setIsStale(false); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d4a017', fontWeight: 700, fontSize: '1em', padding: '0 4px' }}
+                    >
+                        re-scan
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setStaleDismissed(true)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--vscode-descriptionForeground)', fontSize: '1em', padding: '0 2px' }}
+                        title="Dismiss"
+                        aria-label="Dismiss stale notice"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
 
             {/* ===== 2. Maturity badge ===== */}
             <div

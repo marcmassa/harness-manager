@@ -8,6 +8,7 @@ import type {
   MaturityInfo,
   PatternMatch,
   Suggestion,
+  GraphContext,
 } from './types.js';
 import { classify } from './maturityClassifier.js';
 
@@ -17,6 +18,7 @@ export interface MakeProfileOptions {
   categoryCounts?: Partial<Record<SignalCategory, number>>;
   harnessPresent?: boolean;
   sddActive?: boolean;
+  graphContext?: GraphContext;
 }
 
 const ALL_CATEGORIES: SignalCategory[] = [
@@ -121,5 +123,6 @@ export function makeProfile(opts: MakeProfileOptions = {}): AgenticProfile {
     suggestions: [],
     dismissedSuggestionIds: [],
     acknowledgedNodeIds: [],
+    graphContext: opts.graphContext,
   };
 }

@@ -6,8 +6,7 @@ import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from 
 import { isKnownWebviewMessage } from './types.js';
 import { generateText, diagnoseLmAvailability } from './lmUtils.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
-import { AgenticDetectorProvider } from './agentic-detector/agenticDetectorProvider.js';
-import type { AgenticProfile } from './agentic-detector/types.js';
+import type { AgenticProfile, GraphContext, ArchitectureSummary } from './agentic-detector/types.js';
 import { WhiteboardCoordinator, CustomUsesEdge, CUSTOM_USES_EDGES_KEY } from './coordinators/WhiteboardCoordinator.js';
 import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
@@ -65,18 +64,35 @@ export function activate(context: vscode.ExtensionContext) {
         );
     }
 
+    // FEAT-031: Build GraphContext from in-memory parsed data for graph-aware suggestions
+    const buildGraphContext = (): GraphContext => {
+        const data = provider.getCachedData();
+        if (!data) return { nodeCount: 0, nodesByType: {}, edgeCount: 0, featureCount: 0, featuresByStatus: {} };
+        const nodesByType: Record<string, number> = {};
+        for (const n of data.graph.nodes) {
+            nodesByType[n.type] = (nodesByType[n.type] ?? 0) + 1;
+        }
+        const featuresByStatus: Record<string, number> = {};
+        for (const node of data.graph.nodes.filter(n => n.type === 'feature')) {
+            const status = (node.metadata as Record<string, unknown>)?.status as string | undefined;
+            if (status) featuresByStatus[status] = (featuresByStatus[status] ?? 0) + 1;
+        }
+        const featureCount = nodesByType['feature'] ?? 0;
+        return { nodeCount: data.graph.nodes.length, nodesByType, edgeCount: data.graph.edges.length, featureCount, featuresByStatus };
+    };
+
     // FEAT-029 Phase 4: Agentic Architecture Detector singleton
     const agenticDetector = new AgenticDetector(root, log, context.workspaceState);
-    // T34: Give the provider access so the scaffold action can trigger re-scans.
-    provider.setAgenticDetector(agenticDetector);
-    const agenticProvider = new AgenticDetectorProvider(agenticDetector);
-    context.subscriptions.push(
-        vscode.window.registerTreeDataProvider('harness-dashboard.agenticDetector', agenticProvider)
-    );
+    const scheduleScan = () => agenticDetector.scheduleScan(buildGraphContext());
+    agenticDetector.setGetGraphContext(() => {
+        const data = provider.getCachedData();
+        return data ? buildGraphContext() : undefined;
+    });
+    provider.setAgenticDetector(agenticDetector, scheduleScan);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
-            await agenticDetector.scan();
+            await agenticDetector.scan(buildGraphContext());
         })
     );
 
@@ -90,13 +106,24 @@ export function activate(context: vscode.ExtensionContext) {
     // Start watching for file changes
     agenticDetector.startWatching();
 
-    // FEAT-029: Forward scan results to the dashboard webview's advisory panel
+    const buildArchitectureSummary = (profile: AgenticProfile): ArchitectureSummary => ({
+        maturityLevel: profile.maturity.level,
+        maturityLabel: profile.maturity.label,
+        maturityColor: profile.maturity.color,
+        activeSuggestions: profile.suggestions.filter(s => !profile.dismissedSuggestionIds.includes(s.id)).length,
+        scanTimestamp: profile.scanTimestamp,
+        isScanning: false,
+    });
+
+    // FEAT-031: Forward scan results + architecture summary to the webview
     agenticDetector.on('scanComplete', (profile: AgenticProfile) => {
         provider.sendAdvisoryProfile(profile);
+        provider.postToWebview({ type: 'architectureSummary', ...buildArchitectureSummary(profile) });
     });
 
     // Run initial scan (don't await — let it complete in background)
-    agenticDetector.scan().catch(err => log.warn(`[AgenticDetector] Initial scan: ${err}`));
+    provider.postToWebview({ type: 'architectureSummary', maturityLevel: null, maturityLabel: '', maturityColor: '', activeSuggestions: 0, scanTimestamp: 0, isScanning: true });
+    agenticDetector.scan(buildGraphContext()).catch(err => log.warn(`[AgenticDetector] Initial scan: ${err}`));
 
     context.subscriptions.push({ dispose: () => agenticDetector.dispose() });
 
@@ -154,6 +181,7 @@ export function activate(context: vscode.ExtensionContext) {
 class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
     private _view?: vscode.WebviewView;
+    private _panel?: vscode.WebviewPanel;
     private _parser: HarnessParser;
     private _writer: HarnessWriter;
     private readonly _log: vscode.LogOutputChannel;
@@ -162,6 +190,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private readonly _whiteboardCoordinator: WhiteboardCoordinator;
     private readonly _sddCoordinator: SddCoordinator;
     private readonly _advisoryCoordinator: AdvisoryCoordinator;
+    private _cachedData: import('./types.js').DashboardData | null = null;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -174,9 +203,21 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._harnessConfig = harnessConfig;
         this._parser = new HarnessParser(this._workspaceRoot, this._log);
         this._writer = new HarnessWriter(this._workspaceRoot);
+        // scheduleScan is set after the provider is constructed (via setAgenticDetector)
         this._whiteboardCoordinator = new WhiteboardCoordinator(this._writer, this._parser, this._context, this._workspaceRoot, this._log);
         this._sddCoordinator = new SddCoordinator(this._workspaceRoot, this._log);
         this._advisoryCoordinator = new AdvisoryCoordinator(this._context, this._workspaceRoot, this._log);
+    }
+
+    /** Return the last parsed DashboardData for GraphContext building (FEAT-031). */
+    public getCachedData(): import('./types.js').DashboardData | null {
+        return this._cachedData;
+    }
+
+    /** Post a message to whichever view is currently active (FEAT-031). */
+    public postToWebview(msg: unknown): void {
+        this._view?.webview.postMessage(msg);
+        this._panel?.webview.postMessage(msg);
     }
 
     public resolveWebviewView(
@@ -266,6 +307,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         this._log.info(`Sending data to Webview — nodes: ${JSON.stringify(nodeTypeCounts)}, milestones: ${result.milestones.length}`);
 
+        this._cachedData = result;
         send({ type: 'init', data: result });
     }
 
@@ -275,12 +317,15 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     }
 
     public sendAdvisoryProfile(profile: AgenticProfile): void {
-        this._view?.webview.postMessage({ type: 'advisoryProfile', profile });
+        this.postToWebview({ type: 'advisoryProfile', profile });
     }
 
-    public setAgenticDetector(detector: AgenticDetector): void {
+    public setAgenticDetector(detector: AgenticDetector, scheduleScan: () => void): void {
         this._agenticDetector = detector;
         this._advisoryCoordinator.setAgenticDetector(detector);
+        // FEAT-031 T17: inject scheduleScan callback into mutating coordinators
+        this._whiteboardCoordinator.setScheduleScan(scheduleScan);
+        this._sddCoordinator.setScheduleScan(scheduleScan);
     }
 
     /** Shared webview message handler — used by both sidebar and full-window panel. */
@@ -302,7 +347,18 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                     await this._sendDataTo(postMessage);
                     if (this._agenticDetector) {
                         const profile = this._agenticDetector.getProfile();
-                        if (profile) postMessage({ type: 'advisoryProfile', profile });
+                        if (profile) {
+                            postMessage({ type: 'advisoryProfile', profile });
+                            postMessage({
+                                type: 'architectureSummary',
+                                maturityLevel: profile.maturity.level,
+                                maturityLabel: profile.maturity.label,
+                                maturityColor: profile.maturity.color,
+                                activeSuggestions: profile.suggestions.filter(s => !profile.dismissedSuggestionIds.includes(s.id)).length,
+                                scanTimestamp: profile.scanTimestamp,
+                                isScanning: false,
+                            });
+                        }
                     }
                     break;
                 case 'openFullWindow':
@@ -374,12 +430,17 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             },
         );
 
+        this._panel = panel;
         panel.webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, panel.webview);
 
         // Route responses to the new panel (shared message handler already handles ready/getData)
         const sendToPanel = (msg: unknown) => panel.webview.postMessage(msg);
         panel.webview.onDidReceiveMessage(async data => {
             await this._handleWebviewMessage(data, sendToPanel);
+        });
+
+        panel.onDidDispose(() => {
+            if (this._panel === panel) this._panel = undefined;
         });
 
         this._log.info('[Dashboard] Full-window panel opened');

@@ -368,6 +368,42 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "Next"
+    },
+    {
+      "id": "FEAT-031",
+      "name": "advisory-live-sync",
+      "title": "Advisory Live Sync & Re-scan",
+      "description": "Phase 1: Re-scan button in AdvisoryPanel with loading state. Phase 2: Eliminates the information bubble — wires the advisory engine to the live in-memory graph (GraphContext), broadcasts an ArchitectureSummary to all tabs via a maturity badge, triggers re-evaluation after every whiteboard/SDD write, watches .kiro/specs/** for editor changes, and consolidates suggestion dismissal through a single code path.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-032",
+      "name": "suggestion-actions",
+      "title": "Advisory Suggestion Actions",
+      "description": "Advisory suggestions become executable: each rule can define one or more SuggestionAction entries (create-directory, create-file, scaffold-agent, scaffold-skill, open-file, run-command). The advisory panel renders action buttons per suggestion; clicking one executes via ActionExecutor and triggers a re-scan. Closes the advisory loop — the tool acts, not just observes.",
+      "type": "feat",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-033",
+      "name": "agent-run-studio",
+      "title": "Agent Run & Architecture Studio",
+      "description": "Phase 1 — Agent Run Panel: launch any whiteboard node as an agent from any installed CLI (Claude Code, Gemini CLI, generic fallback) via VS Code integrated terminal. No vendor lock-in — RunAdapter interface is extensible. Includes run history, pulsing running indicator on nodes, feature attachment from SDD specs, and command preview. Phase 2 — Architecture Studio: Agent Builder Wizard (multi-step, AI-assisted), Architecture Templates (solo/coordinator/pipeline), scaffold-missing and sync-from-filesystem commands. Makes the whiteboard a real development and operations tool.",
+      "type": "feat",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
     }
   ]
 }
