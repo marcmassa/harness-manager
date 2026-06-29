@@ -225,6 +225,43 @@ const FrameworkBadge = ({ frameworks }: { frameworks: string[] }) => {
     );
 };
 
+/** Small maturity level pill shown in the tab header — visible from all tabs (FEAT-031). */
+const MaturityBadge = ({ summary }: { summary: { maturityLevel: string | null; maturityLabel: string; maturityColor: string; isScanning: boolean } }) => {
+    if (!summary.maturityLevel && !summary.isScanning) return null;
+    const color = summary.maturityColor || '#888';
+    return (
+        <div
+            title={summary.isScanning ? 'Scanning architecture…' : `Maturity: ${summary.maturityLevel} — ${summary.maturityLabel}`}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.65em',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                background: summary.isScanning
+                    ? 'color-mix(in srgb, var(--vscode-panel-border) 30%, transparent)'
+                    : `color-mix(in srgb, ${color} 18%, var(--vscode-sideBar-background))`,
+                border: `1px solid color-mix(in srgb, ${summary.isScanning ? 'var(--vscode-panel-border)' : color} 40%, transparent)`,
+                color: summary.isScanning ? 'var(--vscode-descriptionForeground)' : color,
+                letterSpacing: '0.3px',
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+            }}
+        >
+            {summary.isScanning ? (
+                <>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', opacity: 0.6, animation: 'pulse 1s infinite' }} />
+                    scanning
+                </>
+            ) : (
+                summary.maturityLevel
+            )}
+        </div>
+    );
+};
+
 const EmptyState = () => (
     <div
         style={{
@@ -275,6 +312,9 @@ const App = () => {
     
     // FEAT-029: Agentic detection profile from extension
     const [advisoryProfile, setAdvisoryProfile] = React.useState<any>(null);
+    // FEAT-031: scanning state + architecture summary for the tab badge
+    const [isAdvisoryScanning, setIsAdvisoryScanning] = React.useState(false);
+    const [architectureSummary, setArchitectureSummary] = React.useState<any>(null);
 
     // Phase 5: Discovered nodes from AgenticProfile — transformed for the whiteboard
     const [discoveredNodes, setDiscoveredNodes] = React.useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
@@ -305,6 +345,7 @@ const App = () => {
                     break;
                 case 'advisoryProfile':
                     setAdvisoryProfile(message.profile);
+                    setIsAdvisoryScanning(false);
                     // Phase 5: Transform the AgenticProfile into discovered nodes for the whiteboard
                     if (message.profile) {
                         const result = profileToDiscoveredNodes(
@@ -313,6 +354,10 @@ const App = () => {
                         );
                         setDiscoveredNodes(result);
                     }
+                    break;
+                case 'architectureSummary':
+                    setArchitectureSummary(message);
+                    setIsAdvisoryScanning(message.isScanning === true);
                     break;
             }
         };
@@ -394,6 +439,12 @@ const App = () => {
     // FEAT-029: Dismiss a suggestion from the advisory panel
     const handleDismissSuggestion = React.useCallback((suggestionId: string) => {
         vscode.postMessage({ type: 'dismissAgenticSuggestion', suggestionId });
+    }, []);
+
+    // FEAT-031: Trigger a manual re-scan from the Advisory panel
+    const handleRescan = React.useCallback(() => {
+        setIsAdvisoryScanning(true);
+        vscode.postMessage({ type: 'rescanAgentic' });
     }, []);
 
     // FEAT-029 T34: Apply Harness+SDD scaffold action
@@ -502,7 +553,7 @@ const App = () => {
                     </div>
                 </div>
                 
-                <div style={{ display: 'flex', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
+                <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
                     {(['whiteboard', 'timeline', 'advisory'] as const).map(tab => {
                         const label = tab === 'timeline' ? 'Specs Manager' : tab === 'advisory' ? 'Advisory' : 'Whiteboard';
                         return (
@@ -534,6 +585,12 @@ const App = () => {
                             </div>
                         );
                     })}
+                    {/* FEAT-031: Maturity badge — always visible from any tab */}
+                    {architectureSummary && (
+                        <div style={{ marginLeft: 'auto', paddingRight: SPACE.xs }}>
+                            <MaturityBadge summary={architectureSummary} />
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -585,7 +642,7 @@ const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} />
+                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} />
             </section>
             </div>{/* end left column */}
 
@@ -1006,6 +1063,7 @@ const App = () => {
                 }
 
                 /* ===== ANIMATIONS ===== */
+                @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
                 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

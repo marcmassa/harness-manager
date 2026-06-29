@@ -20,10 +20,16 @@ type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
  * feature creation/deletion, and in-editor navigation.
  */
 export class SddCoordinator {
+    private _scheduleScan?: () => void;
+
     constructor(
         private readonly _workspaceRoot: vscode.Uri,
         private readonly _log: vscode.LogOutputChannel,
     ) {}
+
+    setScheduleScan(fn: () => void): void {
+        this._scheduleScan = fn;
+    }
 
     async handle(
         msg: WebviewMessage,
@@ -72,6 +78,7 @@ export class SddCoordinator {
                 const { featureName, file, content } = msg as unknown as { featureName: string; file: 'requirements' | 'design' | 'tasks'; content: string };
                 const result = await this._saveSpecFile(featureName, file, content);
                 postMessage({ type: 'saveResult', ...result, featureName, file });
+                this._scheduleScan?.();
                 return true;
             }
 
@@ -116,6 +123,7 @@ export class SddCoordinator {
             case 'createFeature': {
                 const newFeat = await this._createFeature(msg.title as string, msg.description as string, (msg.priority as string) || 'P2', (msg.sprint as string) || '');
                 postMessage({ type: 'featureCreated', feature: newFeat });
+                this._scheduleScan?.();
                 return true;
             }
 
@@ -145,6 +153,7 @@ export class SddCoordinator {
                 postMessage({ type: 'featureDeleted', ok: success, featureId: featId });
                 const features = await this._getFeatureList();
                 postMessage({ type: 'featureList', features });
+                this._scheduleScan?.();
                 return true;
             }
 

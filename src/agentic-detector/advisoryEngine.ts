@@ -356,6 +356,53 @@ const RULES: SuggestionRule[] = [
       maturityTrigger: ['L2', 'L3', 'L4'],
     }),
   },
+
+  // S-GC01 — agents mapped in whiteboard but no skill documentation
+  {
+    id: 'agents-without-skills',
+    condition: (p) => {
+      const gc = p.graphContext;
+      if (!gc) return false;
+      return (gc.nodesByType['agent'] ?? 0) >= 2 && (gc.nodesByType['skill'] ?? 0) === 0;
+    },
+    build: (p) => {
+      const agentCount = p.graphContext?.nodesByType['agent'] ?? 0;
+      return {
+        title: `${agentCount} agents mapped — document them as skill files`,
+        description: `The whiteboard shows ${agentCount} agent nodes but no SKILL.md files exist. Document each agent's capabilities as a skill file to enable reuse and cross-agent composition.`,
+        impact: 'medium' as const,
+        effort: 'low' as const,
+        layer: 2 as const,
+        category: 'skills' as const,
+        maturityTrigger: ['L2', 'L3', 'L4', 'L5'],
+      };
+    },
+  },
+
+  // S-GC02 — all features done, sprint is complete
+  {
+    id: 'sprint-complete',
+    condition: (p) => {
+      const gc = p.graphContext;
+      if (!gc || gc.featureCount === 0) return false;
+      return (gc.featuresByStatus['in_progress'] ?? 0) === 0
+        && (gc.featuresByStatus['pending'] ?? 0) === 0
+        && (gc.featuresByStatus['spec_ready'] ?? 0) === 0
+        && (gc.featuresByStatus['done'] ?? 0) >= 5;
+    },
+    build: (p) => {
+      const doneCount = p.graphContext?.featuresByStatus['done'] ?? 0;
+      return {
+        title: `Sprint complete — ${doneCount} features done`,
+        description: `All tracked features are done and nothing is in progress. Consider starting a new sprint, archiving the backlog, or tagging a release.`,
+        impact: 'low' as const,
+        effort: 'low' as const,
+        layer: 3 as const,
+        category: 'methodology' as const,
+        maturityTrigger: ['L4', 'L5'],
+      };
+    },
+  },
 ];
 
 // ─── Priority comparator ────────────────────────────────────────────────────

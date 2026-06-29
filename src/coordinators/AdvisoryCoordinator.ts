@@ -30,17 +30,24 @@ export class AdvisoryCoordinator {
         switch (msg.type) {
             case 'dismissAgenticSuggestion': {
                 const sugId = msg.suggestionId;
-                if (sugId && typeof sugId === 'string') {
-                    const current = this._context.workspaceState.get<string[]>('agenticDetector.dismissedSuggestionIds', []);
-                    if (!current.includes(sugId)) {
-                        await this._context.workspaceState.update('agenticDetector.dismissedSuggestionIds', [...current, sugId]);
-                    }
+                if (sugId && typeof sugId === 'string' && this._agenticDetector) {
+                    // Delegate to AgenticDetector — single authoritative path (FEAT-031 T20)
+                    await this._agenticDetector.dismissSuggestion(sugId);
                 }
                 return true;
             }
 
             case 'applyHarnessSDD': {
                 await this._applyHarnessSDD();
+                return true;
+            }
+
+            case 'rescanAgentic': {
+                if (this._agenticDetector) {
+                    this._agenticDetector.scan().catch((err: unknown) => {
+                        this._log.error(`[AdvisoryCoordinator] rescanAgentic failed: ${err}`);
+                    });
+                }
                 return true;
             }
 

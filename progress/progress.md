@@ -1,5 +1,20 @@
 # Progress Log
 
+## [2026-06-29] FEAT-031: advisory-live-sync (COMPLETED)
+
+- **Objective:** Phase 1 — Re-scan button in `AdvisoryPanel.tsx` with loading state. Phase 2 — Break the advisory information bubble: wire the advisory engine to the live in-memory graph state (`GraphContext`), broadcast a lightweight `ArchitectureSummary` to all tabs via a maturity badge in the tab strip, trigger re-evaluation after every whiteboard/SDD coordinator write, watch `.kiro/specs/**` for editor-side changes, and consolidate suggestion dismissal through a single authoritative code path.
+- **Status:** All 22 tasks completed. 380 tests pass (8 new). Build clean. `./check.sh` green on build/tests/feature-list (adapter drift pre-existing, unrelated to FEAT-031).
+- **Key changes:**
+  - **Phase 1 — Re-scan UI (T1–T5):** `'rescanAgentic'` added to `WebviewMessageType` + `KNOWN_MESSAGE_TYPES`; `AdvisoryCoordinator` handles it by calling `agenticDetector.scan()`; `AdvisoryPanel` gets `onRescan`/`isScanning` props + ↻ button with disabled state + spinner; `index.tsx` adds `handleRescan` callback + `isAdvisoryScanning` state; empty state shows "Scan now" button.
+  - **Phase 2 — Shared state bus (T7–T14):** `GraphContext` and `ArchitectureSummary` interfaces in `agentic-detector/types.ts`; `AgenticDetector.scan(graphContext?)` stores context on profile before `generate()`; `AgenticDetector.scheduleScan()` debounces with shared timer; `getCachedData()` getter + `buildGraphContext()` helper in `extension.ts`; `postToWebview()` broadcasts to both sidebar `_view` and full-window `_panel`; `architectureSummary` message dispatched on every scan start/complete; `MaturityBadge` component in tab strip header — shows level pill (e.g. "L5") with maturity color, pulsing dot when scanning, hidden when summary is null.
+  - **Graph-aware rules (T12):** S-GC01 fires when whiteboard has ≥2 agents and 0 skill nodes; S-GC02 fires when all features (≥5) are in `done` status with none in_progress/pending/spec_ready.
+  - **Post-write re-evaluation (T15–T18):** `WhiteboardCoordinator` and `SddCoordinator` get `setScheduleScan(fn)` setter; `scheduleScan()` called after every mutating operation (8 in whiteboard, 3 in SDD); `.kiro/specs/**` FileSystemWatcher added to `AgenticDetector.startWatching()`.
+  - **Stale data & dismissal fixes (T19–T20):** 120-second stale notice in `AdvisoryPanel`; dismissal consolidated through `AgenticDetector.dismissSuggestion()` — duplicate `workspaceState` write removed.
+  - **Tests (T21):** 4 S-GC01 tests + 4 S-GC02 tests in `advisoryEngine.test.ts`; `testUtils.ts` updated to accept `graphContext?` option.
+- **Files changed:** `src/types.ts`, `src/agentic-detector/types.ts`, `src/agentic-detector/agenticDetector.ts`, `src/agentic-detector/advisoryEngine.ts`, `src/agentic-detector/testUtils.ts`, `src/coordinators/AdvisoryCoordinator.ts`, `src/coordinators/WhiteboardCoordinator.ts`, `src/coordinators/SddCoordinator.ts`, `src/extension.ts`, `src/webview/AdvisoryPanel.tsx`, `src/webview/index.tsx`, `feature_list.json`.
+- **Files created:** `.kiro/specs/advisory-live-sync/{requirements,design,tasks}.md`.
+- **Key files to change:** `src/types.ts`, `src/agentic-detector/types.ts`, `src/agentic-detector/agenticDetector.ts`, `src/agentic-detector/advisoryEngine.ts`, `src/coordinators/AdvisoryCoordinator.ts`, `src/coordinators/WhiteboardCoordinator.ts`, `src/coordinators/SddCoordinator.ts`, `src/extension.ts`, `src/webview/AdvisoryPanel.tsx`, `src/webview/index.tsx`.
+
 ## [2026-06-27] FEAT-030: tech-debt-and-security-hardening (COMPLETED)
 
 - **Objective:** Address security gaps and accumulated tech debt from the v0.5.1 code review: WebView CSP nonce, sandbox hardening, unknown-message validation, extension.ts decomposition into domain coordinators, FeatureSpecPanel component split, HarnessNode.metadata discriminated types, dagre→devDependencies, and new test coverage.

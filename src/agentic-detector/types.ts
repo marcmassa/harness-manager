@@ -137,6 +137,27 @@ export interface Suggestion {
   actionPayload?: string;
 }
 
+// === GraphContext (in-memory whiteboard/SDD state passed to scan) ===
+
+export interface GraphContext {
+  nodeCount: number;
+  nodesByType: Record<string, number>;
+  edgeCount: number;
+  featureCount: number;
+  featuresByStatus: Record<string, number>;
+}
+
+// === ArchitectureSummary (lightweight broadcast to all tabs) ===
+
+export interface ArchitectureSummary {
+  maturityLevel: MaturityLevel | null;
+  maturityLabel: string;
+  maturityColor: string;
+  activeSuggestions: number;
+  scanTimestamp: number;
+  isScanning: boolean;
+}
+
 // === Composite profile ===
 
 export interface AgenticProfile {
@@ -152,4 +173,5 @@ export interface AgenticProfile {
   suggestions: Suggestion[];
   dismissedSuggestionIds: string[];
   acknowledgedNodeIds: string[];
+  graphContext?: GraphContext;
 }

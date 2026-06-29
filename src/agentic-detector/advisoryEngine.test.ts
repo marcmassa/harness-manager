@@ -352,3 +352,87 @@ describe('Edge cases', () => {
     }
   });
 });
+
+// ─── FEAT-031: Graph-aware rules ─────────────────────────────────────────────
+
+describe('S-GC01 — agents-without-skills', () => {
+  it('fires when whiteboard has ≥2 agents and 0 skills', () => {
+    const profile = makeProfile({
+      activeCategories: ['agent-methodologies', 'agent-scripts'],
+      categoryCounts: { 'agent-methodologies': 2, 'agent-scripts': 1 },
+      graphContext: { nodeCount: 5, nodesByType: { agent: 3, subagent: 2 }, edgeCount: 3, featureCount: 0, featuresByStatus: {} },
+    });
+    const result = generate(profile);
+    const suggestion = findById(result, 'agents-without-skills');
+    expect(suggestion).toBeDefined();
+    expect(suggestion!.category).toBe('skills');
+    expect(suggestion!.title).toContain('3 agents');
+  });
+
+  it('does NOT fire when skills exist in whiteboard', () => {
+    const profile = makeProfile({
+      activeCategories: ['agent-methodologies'],
+      categoryCounts: { 'agent-methodologies': 2 },
+      graphContext: { nodeCount: 6, nodesByType: { agent: 3, skill: 2 }, edgeCount: 2, featureCount: 0, featuresByStatus: {} },
+    });
+    const result = generate(profile);
+    expect(findById(result, 'agents-without-skills')).toBeUndefined();
+  });
+
+  it('does NOT fire when graphContext is absent', () => {
+    const profile = makeProfile({
+      activeCategories: ['agent-methodologies'],
+      categoryCounts: { 'agent-methodologies': 2 },
+    });
+    const result = generate(profile);
+    expect(findById(result, 'agents-without-skills')).toBeUndefined();
+  });
+
+  it('does NOT fire when fewer than 2 agents', () => {
+    const profile = makeProfile({
+      graphContext: { nodeCount: 1, nodesByType: { agent: 1 }, edgeCount: 0, featureCount: 0, featuresByStatus: {} },
+    });
+    const result = generate(profile);
+    expect(findById(result, 'agents-without-skills')).toBeUndefined();
+  });
+});
+
+describe('S-GC02 — sprint-complete', () => {
+  it('fires when all features are done (≥5) and none in_progress', () => {
+    const profile = makeProfile({
+      sddActive: true,
+      activeCategories: ['agent-methodologies', 'skills', 'tools', 'mcp'],
+      categoryCounts: { 'agent-methodologies': 3, skills: 2, tools: 2, mcp: 1 },
+      cliInstalls: [{ cliId: 'claude', cliName: 'Claude Code', detectedBy: 'test', configFiles: [], isActive: true }],
+      graphContext: { nodeCount: 30, nodesByType: { feature: 10 }, edgeCount: 15, featureCount: 10, featuresByStatus: { done: 10 } },
+    });
+    const result = generate(profile);
+    const suggestion = findById(result, 'sprint-complete');
+    expect(suggestion).toBeDefined();
+    expect(suggestion!.title).toContain('10 features done');
+  });
+
+  it('does NOT fire when features are in_progress', () => {
+    const profile = makeProfile({
+      sddActive: true,
+      graphContext: { nodeCount: 10, nodesByType: { feature: 8 }, edgeCount: 5, featureCount: 8, featuresByStatus: { done: 7, in_progress: 1 } },
+    });
+    const result = generate(profile);
+    expect(findById(result, 'sprint-complete')).toBeUndefined();
+  });
+
+  it('does NOT fire when fewer than 5 features are done', () => {
+    const profile = makeProfile({
+      sddActive: true,
+      graphContext: { nodeCount: 4, nodesByType: { feature: 4 }, edgeCount: 2, featureCount: 4, featuresByStatus: { done: 4 } },
+    });
+    const result = generate(profile);
+    expect(findById(result, 'sprint-complete')).toBeUndefined();
+  });
+
+  it('does NOT fire when graphContext is absent', () => {
+    const profile = makeProfile({ sddActive: true });
+    const result = generate(profile);
+    expect(findById(result, 'sprint-complete')).toBeUndefined();
+  });
+});
