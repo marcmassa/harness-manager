@@ -85,6 +85,16 @@
         "command": "harness-dashboard.rescanAgentic",
         "title": "Harness Dashboard: Re-scan Agentic Architecture",
         "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.scaffoldMissing",
+        "title": "Harness: Scaffold Missing Agent Files",
+        "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.syncFromFilesystem",
+        "title": "Harness: Sync Agents from Filesystem",
+        "category": "Harness Dashboard"
       }
     ],
     "configuration": {

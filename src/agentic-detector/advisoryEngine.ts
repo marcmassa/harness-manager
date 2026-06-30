@@ -1,6 +1,7 @@
 import type {
   AgenticProfile,
   Suggestion,
+  SuggestionAction,
   SignalCategory,
   SignalCategoryResult,
   MaturityLevel,
@@ -74,6 +75,23 @@ const RULES: SuggestionRule[] = [
       layer: 2 as const,
       category: 'prompts' as const,
       maturityTrigger: ['L1', 'L2', 'L3', 'L4'],
+      actions: [
+        {
+          id: 'create-prompts-dir',
+          label: 'Create prompts/',
+          type: 'create-directory',
+          payload: { relPath: 'prompts' },
+        },
+        {
+          id: 'create-system-prompt',
+          label: 'Add prompts/system.md',
+          type: 'create-file',
+          payload: {
+            relPath: 'prompts/system.md',
+            template: '# System Prompt\n\nYou are a helpful AI assistant.\n',
+          },
+        },
+      ] satisfies SuggestionAction[],
     }),
   },
 
@@ -319,6 +337,14 @@ const RULES: SuggestionRule[] = [
       actionType: 'navigate' as const,
       actionPayload: 'https://docs.harness-manager.dev/getting-started',
       maturityTrigger: ['L0'],
+      actions: [
+        {
+          id: 'scaffold-main-agent',
+          label: 'Create starter agent',
+          type: 'scaffold-agent',
+          payload: { name: 'main-agent', description: 'A general-purpose agent for this project.' },
+        },
+      ] satisfies SuggestionAction[],
     }),
   },
 
@@ -357,6 +383,89 @@ const RULES: SuggestionRule[] = [
     }),
   },
 
+  // FEAT-032: add-claude-md — Claude Code CLI detected, no context-identity files
+  {
+    id: 'add-claude-md',
+    condition: p =>
+      p.layers['1'].cliInstalls.some(c => c.cliId === 'claude-code') &&
+      !hasCategory(p, 'context-identity') &&
+      isAtOrAbove(p, 'L1') &&
+      isAtOrBelow(p, 'L3'),
+    build: () => ({
+      title: 'Add a CLAUDE.md project context file',
+      description: 'A CLAUDE.md file gives Claude Code essential context about your project — goals, architecture, and conventions. Create one to improve AI assistance quality.',
+      impact: 'medium' as const,
+      effort: 'low' as const,
+      layer: 2 as const,
+      category: 'context-identity' as const,
+      maturityTrigger: ['L1', 'L2', 'L3'],
+      actions: [
+        {
+          id: 'create-claude-md',
+          label: 'Create CLAUDE.md',
+          type: 'create-file',
+          payload: {
+            relPath: 'CLAUDE.md',
+            template: '# Project Context\n\n## Overview\n\n<!-- Describe your project here -->\n\n## Architecture\n\n<!-- Describe key architectural decisions -->\n\n## Development Guidelines\n\n<!-- Add conventions and guidelines for AI assistants -->\n',
+          },
+        },
+      ] satisfies SuggestionAction[],
+    }),
+  },
+
+  // FEAT-032: add-agent-readme — agent-scripts present, no context-identity files
+  {
+    id: 'add-agent-readme',
+    condition: p =>
+      hasCategory(p, 'agent-scripts') &&
+      !hasCategory(p, 'context-identity') &&
+      isAtOrAbove(p, 'L2') &&
+      isAtOrBelow(p, 'L3'),
+    build: () => ({
+      title: 'Add an AGENTS.md to document your agents',
+      description: "An AGENTS.md file describes your project's agents, their roles, and how they interact. Create one for better team and AI awareness.",
+      impact: 'medium' as const,
+      effort: 'low' as const,
+      layer: 2 as const,
+      category: 'context-identity' as const,
+      maturityTrigger: ['L2', 'L3'],
+      actions: [
+        {
+          id: 'create-agents-md',
+          label: 'Create AGENTS.md',
+          type: 'create-file',
+          payload: {
+            relPath: 'AGENTS.md',
+            template: '# Agents\n\n## Overview\n\nThis project uses agentic AI workflows.\n\n## Agents\n\n<!-- Document each agent here -->\n\n## Skills\n\n<!-- Document reusable skills here -->\n',
+          },
+        },
+      ] satisfies SuggestionAction[],
+    }),
+  },
+
+  // FEAT-032: use-skill-files — at L1, no skill files exist yet
+  {
+    id: 'use-skill-files',
+    condition: p => !hasCategory(p, 'skills') && currentLevel(p) === 'L1',
+    build: () => ({
+      title: 'Document reusable behaviours as skill files',
+      description: 'Skill files (SKILL.md) describe reusable agent capabilities. Creating skill files enables cross-agent composition and better discoverability.',
+      impact: 'medium' as const,
+      effort: 'low' as const,
+      layer: 2 as const,
+      category: 'skills' as const,
+      maturityTrigger: ['L1'],
+      actions: [
+        {
+          id: 'scaffold-first-skill',
+          label: 'Create my-first-skill',
+          type: 'scaffold-skill',
+          payload: { name: 'my-first-skill', description: 'A reusable skill for this project.' },
+        },
+      ] satisfies SuggestionAction[],
+    }),
+  },
+
   // S-GC01 — agents mapped in whiteboard but no skill documentation
   {
     id: 'agents-without-skills',
@@ -375,6 +484,14 @@ const RULES: SuggestionRule[] = [
         layer: 2 as const,
         category: 'skills' as const,
         maturityTrigger: ['L2', 'L3', 'L4', 'L5'],
+        actions: [
+          {
+            id: 'scaffold-skill-stub',
+            label: 'Create skill stub',
+            type: 'scaffold-skill',
+            payload: { name: 'my-first-skill', description: 'A reusable skill for documenting agent capabilities.' },
+          },
+        ] satisfies SuggestionAction[],
       };
     },
   },

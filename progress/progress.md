@@ -1,5 +1,37 @@
 # Progress Log
 
+## [2026-06-29] FEAT-033: agent-run-studio (COMPLETED)
+
+- **Objective:** Phase 1 — Agent Run Panel: launch any whiteboard node as an agent via any installed CLI with no vendor lock-in. Phase 2 — Architecture Studio: Agent Builder Wizard, Architecture Templates, scaffold/sync utilities.
+- **Status:** All tasks completed (T1–T38 + T39 partial). 421 tests pass (29 new). Build clean.
+- **Key changes:**
+  - **RunAdapter abstraction (T1–T5):** `src/run/types.ts` defines `RunAdapter`, `RunNode`, `RunOptions`, `RunHistoryEntry`. Three adapters: `ClaudeCodeAdapter` (interactive + one-shot), `GeminiCliAdapter` (`--file`/`--prompt`), `GenericAdapter` (always available fallback — opens file in editor). `RunAdapterRegistry` detects available adapters on PATH with session cache + `forceRefresh()`.
+  - **RunCoordinator (T6–T13):** Manages `vscode.Terminal` lifecycle per node, run history (FIFO 20 entries in workspaceState), feature context attachment from `.kiro/specs/`, `_onTerminalClose` posts `agentRunEnded` to webview. Follows setter injection pattern.
+  - **RunAgentPanel (T15–T19):** 340px right-side drawer with CLI dropdown, mode toggle (interactive/one-shot for Claude Code), task textarea, collapsible "Attach feature" from SDD specs, advanced (model/args), command preview auto-updated client-side, copy + run buttons. Renders as absolute overlay in `index.tsx`.
+  - **Whiteboard integration (T18–T21):** ▶ Run button on agent/subagent node cards (hover/select). Pulsing ring animation on running nodes. "Last run" relative-time badge updated every 60s.
+  - **Sync utilities (T36–T37):** `harness-dashboard.scaffoldMissing` — QuickPick for nodes without files, calls writer. `harness-dashboard.syncFromFilesystem` — scans `.agents/**`, imports unregistered nodes via `HarnessWriter.registerNode()` (never overwrites existing SUBAGENT.md/SKILL.md).
+  - **AgentBuilderWizard (T24–T28):** Multi-step modal (Type/Name → Role/Capabilities → Connections → Preview/Create). Slug validation, AI generation with 10s timeout via `generateText()`, editable SUBAGENT.md preview in Step 4, skill connections create `uses` edges.
+  - **Architecture Templates (T29–T34):** 4 built-in templates (solo-agent, agent-with-skills, coordinator-specialists, sdd-pipeline). `ArchitectureTemplatePanel` shows cards with ASCII preview diagrams, node/edge counts, Apply button with confirmation.
+  - **Whiteboard toolbar (T35, T38):** "+ New" (wizard), "⊞ Templates", "⚙" menu (Scaffold missing / Sync from filesystem). `executeVSCodeCommand` message type bridges webview → VS Code commands.
+  - **SKILL.md template (Pocock style):** Plain-text `name/description` header block, Philosophy (WHY), When to use / Do NOT use, numbered Phases with completion criteria, Anti-patterns with explicit DO NOT rules, Checklist.
+  - **`registerNode()` fix:** `syncFromFilesystem` previously called `createSubagent()` which overwrote existing SUBAGENT.md. Now uses `registerNode()` — reads description from existing frontmatter, only touches `agentic.json`.
+- **Files created:** `src/run/types.ts`, `src/run/runAdapterRegistry.ts`, `src/run/adapters/{claudeCodeAdapter,geminiCliAdapter,genericAdapter}.ts`, `src/run/run.test.ts`, `src/coordinators/RunCoordinator.ts`, `src/webview/RunAgentPanel.tsx`, `src/webview/AgentBuilderWizard.tsx`, `src/webview/ArchitectureTemplatePanel.tsx`, `src/whiteboard/architectureTemplates.ts`.
+- **Files modified:** `src/types.ts` (+15 message types), `src/harnessWriter.ts` (+registerNode, +createSubagentWithContent, updated createSkill template), `src/coordinators/WhiteboardCoordinator.ts` (+4 cases), `src/extension.ts` (RunCoordinator wiring, commands), `src/webview/WhiteboardCanvas.tsx` (toolbar buttons), `src/webview/index.tsx` (run/wizard/templates state + handlers).
+
+## [2026-06-29] FEAT-032: suggestion-actions (COMPLETED)
+
+- **Objective:** Make advisory suggestions executable — each rule can define `SuggestionAction` entries. Clicking an action button in the advisory panel executes via `ActionExecutor` and triggers a re-scan.
+- **Status:** All 16 tasks completed. 421 tests pass (16 new). Build clean.
+- **Key changes:**
+  - **Types (T1):** `ActionType` union (6 types), `SuggestionAction` interface with `id/label/type/payload`, optional `actions?` field on `Suggestion`.
+  - **ActionExecutor (T2):** Handles `open-file`, `create-directory`, `create-file` (skip if exists), `scaffold-agent` (writes SUBAGENT.md with Pocock-style template), `scaffold-skill` (writes SKILL.md with Pocock phases/anti-patterns template), `run-command` (terminal). Never throws — returns `{ ok, error? }`. Calls `detector.scheduleScan()` on success.
+  - **AdvisoryCoordinator (T4–T5):** `_actionExecutor` instantiated in `setAgenticDetector()`. Case `executeAdvisoryAction` resolves suggestion+action from cached profile, delegates to executor, posts `advisoryActionResult`.
+  - **AdvisoryPanel UI (T7–T8):** `ActionButton` component with 4 states (idle/running/success/error). `success`/`error` states auto-reset to idle after 2.5s. Renders below suggestion description as flex-wrap row.
+  - **index.tsx (T9–T10):** `handleExecuteAction` sets button to running, posts message, `case 'advisoryActionResult'` updates state. `actionStates` keyed by `suggestionId::actionId`.
+  - **Rule actions (T11–T14):** `organize-prompts` → create-directory + create-file; `no-signals-detected` → scaffold-agent; `add-claude-md` + `add-agent-readme` → create-file with starters; `agents-without-skills` (S-GC01) → scaffold-skill.
+- **Files created:** `src/agentic-detector/actionExecutor.ts`, `src/agentic-detector/actionExecutor.test.ts`.
+- **Files modified:** `src/agentic-detector/types.ts`, `src/agentic-detector/advisoryEngine.ts`, `src/coordinators/AdvisoryCoordinator.ts`, `src/types.ts`, `src/webview/AdvisoryPanel.tsx`, `src/webview/index.tsx`.
+
 ## [2026-06-29] FEAT-031: advisory-live-sync (COMPLETED)
 
 - **Objective:** Phase 1 — Re-scan button in `AdvisoryPanel.tsx` with loading state. Phase 2 — Break the advisory information bubble: wire the advisory engine to the live in-memory graph state (`GraphContext`), broadcast a lightweight `ArchitectureSummary` to all tabs via a maturity badge in the tab strip, trigger re-evaluation after every whiteboard/SDD coordinator write, watch `.kiro/specs/**` for editor-side changes, and consolidate suggestion dismissal through a single authoritative code path.

@@ -7,9 +7,15 @@ import { isKnownWebviewMessage } from './types.js';
 import { generateText, diagnoseLmAvailability } from './lmUtils.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
 import type { AgenticProfile, GraphContext, ArchitectureSummary } from './agentic-detector/types.js';
-import { WhiteboardCoordinator, CustomUsesEdge, CUSTOM_USES_EDGES_KEY } from './coordinators/WhiteboardCoordinator.js';
+import { WhiteboardCoordinator, CustomUsesEdge, CustomEdge, CUSTOM_USES_EDGES_KEY, CUSTOM_EDGES_KEY } from './coordinators/WhiteboardCoordinator.js';
 import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
+// FEAT-033: Agent Run Panel
+import { RunCoordinator } from './coordinators/RunCoordinator.js';
+import { RunAdapterRegistry } from './run/runAdapterRegistry.js';
+import { ClaudeCodeAdapter } from './run/adapters/claudeCodeAdapter.js';
+import { GeminiCliAdapter } from './run/adapters/geminiCliAdapter.js';
+import { GenericAdapter } from './run/adapters/genericAdapter.js';
 
 export function activate(context: vscode.ExtensionContext) {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
@@ -31,6 +37,13 @@ export function activate(context: vscode.ExtensionContext) {
     const harnessConfig = new HarnessConfig(log);
     context.subscriptions.push(harnessConfig);
     configureAdaptersWithHarnessConfig(harnessConfig);
+
+    // FEAT-033: Run adapter registry (constructed early; wired to provider after provider creation)
+    const runRegistry = new RunAdapterRegistry([
+        new ClaudeCodeAdapter(),
+        new GeminiCliAdapter(),
+        new GenericAdapter(),
+    ]);
 
     // T1 (R1, R4): pass context so provider can access workspaceState
     const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log, harnessConfig);
@@ -90,6 +103,12 @@ export function activate(context: vscode.ExtensionContext) {
     });
     provider.setAgenticDetector(agenticDetector, scheduleScan);
 
+    // FEAT-033: Wire RunCoordinator into the provider
+    const runCoordinator = new RunCoordinator(runRegistry, root, context.workspaceState, log);
+    runCoordinator.activate(context);
+    runCoordinator.setPostToWebview(msg => provider.postToWebview(msg));
+    provider.setRunCoordinator(runCoordinator);
+
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
             await agenticDetector.scan(buildGraphContext());
@@ -100,6 +119,116 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.openInEditor', () => {
             provider.openFullWindowPanel();
+        })
+    );
+
+    // FEAT-033 T36: Scaffold missing agent files
+    context.subscriptions.push(
+        vscode.commands.registerCommand('harness-dashboard.scaffoldMissing', async () => {
+            const data = provider.getCachedData();
+            if (!data) {
+                vscode.window.showWarningMessage('Harness: No data loaded yet. Open the Dashboard first.');
+                return;
+            }
+            const missing: Array<{ id: string; type: string; filePath?: string }> = [];
+            for (const node of data.graph.nodes) {
+                const fp = (node.metadata as Record<string, unknown>)?._filePath as string | undefined;
+                if (!fp) {
+                    missing.push({ id: node.id, type: node.type });
+                    continue;
+                }
+                try {
+                    await vscode.workspace.fs.stat(vscode.Uri.joinPath(root, fp));
+                } catch {
+                    missing.push({ id: node.id, type: node.type, filePath: fp });
+                }
+            }
+            if (missing.length === 0) {
+                vscode.window.showInformationMessage('Harness: All nodes have files on disk.');
+                return;
+            }
+            const items = missing.map(n => ({
+                label: n.id,
+                description: n.type,
+                picked: true,
+            }));
+            const selected = await vscode.window.showQuickPick(items, {
+                canPickMany: true,
+                title: `Scaffold missing agent files (${missing.length} found)`,
+                placeHolder: 'Select nodes to scaffold',
+            });
+            if (!selected || selected.length === 0) return;
+            const writer = new (await import('./harnessWriter.js')).HarnessWriter(root);
+            for (const item of selected) {
+                const node = missing.find(n => n.id === item.label);
+                if (!node) continue;
+                if (node.type === 'skill') {
+                    await writer.createSkill(node.id, '');
+                } else {
+                    await writer.createSubagent(node.id, '');
+                }
+            }
+            await provider._sendData();
+            vscode.window.showInformationMessage(`Harness: Scaffolded ${selected.length} file(s).`);
+        })
+    );
+
+    // FEAT-033 T37: Sync agents from filesystem
+    context.subscriptions.push(
+        vscode.commands.registerCommand('harness-dashboard.syncFromFilesystem', async () => {
+            const data = provider.getCachedData();
+            const existingIds = new Set(data ? data.graph.nodes.map(n => n.id) : []);
+
+            const [subagentUris, skillUris] = await Promise.all([
+                vscode.workspace.findFiles(new vscode.RelativePattern(root, '.agents/subagents/**/SUBAGENT.md')),
+                vscode.workspace.findFiles(new vscode.RelativePattern(root, '.agents/skills/**/SKILL.md')),
+            ]);
+
+            const candidates: Array<{ id: string; type: 'subagent' | 'skill'; filePath: string }> = [];
+            for (const uri of subagentUris) {
+                const parts = uri.path.split('/');
+                const idx = parts.indexOf('subagents');
+                const id = idx >= 0 ? parts[idx + 1] : undefined;
+                if (id && !existingIds.has(id)) {
+                    candidates.push({ id, type: 'subagent', filePath: vscode.workspace.asRelativePath(uri) });
+                }
+            }
+            for (const uri of skillUris) {
+                const parts = uri.path.split('/');
+                const idx = parts.indexOf('skills');
+                const id = idx >= 0 ? parts[idx + 1] : undefined;
+                if (id && !existingIds.has(id)) {
+                    candidates.push({ id, type: 'skill', filePath: vscode.workspace.asRelativePath(uri) });
+                }
+            }
+
+            if (candidates.length === 0) {
+                vscode.window.showInformationMessage('Harness: All filesystem agents are already in the whiteboard.');
+                return;
+            }
+
+            const items = candidates.map(c => ({
+                label: c.id,
+                description: `${c.type} · ${c.filePath}`,
+                picked: true,
+            }));
+            const selected = await vscode.window.showQuickPick(items, {
+                canPickMany: true,
+                title: `Import agents from filesystem (${candidates.length} found)`,
+                placeHolder: 'Select agents to import into whiteboard',
+            });
+            if (!selected || selected.length === 0) return;
+
+            const writer = new (await import('./harnessWriter.js')).HarnessWriter(root);
+            for (const item of selected) {
+                const candidate = candidates.find(c => c.id === item.label);
+                if (!candidate) continue;
+                // registerNode only updates agentic.json — never touches existing SUBAGENT.md/SKILL.md
+                await writer.registerNode(candidate.id, candidate.type);
+            }
+            await provider._sendData();
+            scheduleScan();
+            vscode.window.showInformationMessage(`Harness: Imported ${selected.length} agent(s) into whiteboard.`);
         })
     );
 
@@ -190,6 +319,8 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private readonly _whiteboardCoordinator: WhiteboardCoordinator;
     private readonly _sddCoordinator: SddCoordinator;
     private readonly _advisoryCoordinator: AdvisoryCoordinator;
+    // FEAT-033
+    private _runCoordinator?: RunCoordinator;
     private _cachedData: import('./types.js').DashboardData | null = null;
 
     constructor(
@@ -278,8 +409,8 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             disabledConnections: new Set(disabledRaw),
         });
         const customUsesEdges = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
+        const nodeIds = new Set(result.graph.nodes.map((node) => node.id));
         if (customUsesEdges.length > 0) {
-            const nodeIds = new Set(result.graph.nodes.map((node) => node.id));
             const existingUses = new Set(
                 result.graph.edges
                     .filter((edge) => edge.label === 'uses')
@@ -299,6 +430,23 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                 existingUses.add(key);
             }
         }
+        const customEdges = this._context.workspaceState.get<CustomEdge[]>(CUSTOM_EDGES_KEY, []);
+        if (customEdges.length > 0) {
+            const existingKeys = new Set(result.graph.edges.map(e => `${e.source}::${e.target}::${e.label}`));
+            for (const edge of customEdges) {
+                if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) continue;
+                const key = `${edge.source}::${edge.target}::${edge.label}`;
+                if (existingKeys.has(key)) continue;
+                result.graph.edges.push({
+                    id: `custom-edge-${edge.source}-${edge.target}-${edge.label}`,
+                    source: edge.source,
+                    target: edge.target,
+                    label: edge.label,
+                    metadata: { custom: true },
+                });
+                existingKeys.add(key);
+            }
+        }
 
         const nodeTypeCounts = result.graph.nodes.reduce((acc: Record<string, number>, n) => {
             acc[n.type] = (acc[n.type] || 0) + 1; // T6 (R11): explicit type, no implicit any
@@ -312,7 +460,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     }
 
     /** Backward-compatible: send data to the sidebar webview. */
-    private async _sendData(): Promise<void> {
+    public async _sendData(): Promise<void> {
         return this._sendDataTo();
     }
 
@@ -326,6 +474,11 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         // FEAT-031 T17: inject scheduleScan callback into mutating coordinators
         this._whiteboardCoordinator.setScheduleScan(scheduleScan);
         this._sddCoordinator.setScheduleScan(scheduleScan);
+    }
+
+    // FEAT-033: inject RunCoordinator (setter pattern matching other coordinators)
+    public setRunCoordinator(coordinator: RunCoordinator): void {
+        this._runCoordinator = coordinator;
     }
 
     /** Shared webview message handler — used by both sidebar and full-window panel. */
@@ -367,11 +520,17 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                 case 'openSettings':
                     vscode.commands.executeCommand('workbench.action.openSettings', (data.query as string) ?? '@ext:marcmassacapo.harness-dashboard-vscode');
                     break;
+                // FEAT-033 Phase 2: Toolbar ⚙ menu — execute a VS Code command from the webview
+                case 'executeVSCodeCommand':
+                    await vscode.commands.executeCommand((data as any).command as string);
+                    break;
                 default: {
                     const handled =
                         await this._whiteboardCoordinator.handle(data, postMessage, sendData) ||
                         await this._sddCoordinator.handle(data, postMessage, sendData) ||
-                        await this._advisoryCoordinator.handle(data, postMessage, sendData);
+                        await this._advisoryCoordinator.handle(data, postMessage, sendData) ||
+                        // FEAT-033: RunCoordinator only needs postMessage (no sendData)
+                        (this._runCoordinator ? await this._runCoordinator.handle(data, postMessage) : false);
                     if (!handled) {
                         this._log.warn(`[Webview] Unhandled known message type: ${data.type}`);
                     }
@@ -386,7 +545,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
      * Generate the HTML for a Harness Dashboard webview (used by both sidebar and full-window panel).
      * A fresh cryptographic nonce is generated on every call so the CSP is unforgeable.
      */
-    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview): string {
+    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview, isFullWindow = false): string {
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
         const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
         const nonceBytes = new Uint8Array(16);
@@ -405,13 +564,14 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div id="root"></div>
+                <script nonce="${nonce}">window.__harness_is_full_window = ${isFullWindow};</script>
                 <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
             </body>
             </html>`;
     }
 
     private _getHtmlForWebview(webview: vscode.Webview): string {
-        return HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview);
+        return HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, false);
     }
 
     /**
@@ -431,7 +591,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         );
 
         this._panel = panel;
-        panel.webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, panel.webview);
+        panel.webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, panel.webview, true);
 
         // Route responses to the new panel (shared message handler already handles ready/getData)
         const sendToPanel = (msg: unknown) => panel.webview.postMessage(msg);

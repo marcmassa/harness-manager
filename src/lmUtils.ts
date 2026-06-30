@@ -67,16 +67,18 @@ export async function sendChatRequest(
     }
 }
 
-/** Provider that uses the VS Code `vscode.lm` API (GitHub Copilot, etc.). */
+/** Provider that uses the VS Code `vscode.lm` API (GitHub Copilot, Kiro, etc.).
+ *  Passes `options.model` as a family selector so the caller can pick a specific provider. */
 export const vscodeLmProvider: AiProvider = {
     name: 'vscode.lm',
-    async tryGenerate(prompt: string): Promise<AiResult> {
+    async tryGenerate(prompt: string, options?: AiProviderOptions): Promise<AiResult> {
         try {
-            const model = await selectFirstChatModel();
-            if (!model) {
+            const selector = options?.model ? { family: options.model } : {};
+            const models = await vscode.lm.selectChatModels(selector);
+            if (!models || models.length === 0) {
                 return { ok: false, error: 'No language model available via vscode.lm' };
             }
-            const text = await sendChatRequest(model, prompt);
+            const text = await sendChatRequest(models[0], prompt);
             if (text === undefined) {
                 return { ok: false, error: 'vscode.lm request failed (no response)' };
             }

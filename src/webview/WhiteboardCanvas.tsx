@@ -146,9 +146,16 @@ interface Props {
     onNodeSelect: (node: any) => void;
     selectedNodeId?: string | null;
     discoveredNodes?: { nodes: HarnessGraph['nodes']; edges: HarnessGraph['edges'] };
+    // FEAT-033: Run Panel integration
+    runningNodeIds?: Set<string>;
+    lastRunByNodeId?: Record<string, number>;
+    onRunNode?: (nodeId: string) => void;
+    // FEAT-033 Phase 2: Architecture Studio toolbar
+    onCreateNode?: () => void;
+    onOpenTemplates?: () => void;
 }
 
-export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes }: Props) => {
+export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes, runningNodeIds, lastRunByNodeId, onRunNode, onCreateNode, onOpenTemplates }: Props) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const manualPositionsRef = React.useRef<ManualPositionMap>({});
@@ -163,6 +170,9 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
     const dragLinkSourceRef = React.useRef<string | null>(null);
     const pendingEdgeCreationKeysRef = React.useRef<Set<string>>(new Set());
     const { fitView } = useReactFlow();
+
+    // FEAT-033 Phase 2: Gear menu open state
+    const [gearMenuOpen, setGearMenuOpen] = React.useState(false);
 
     // Edge context menu state
     const [contextMenuEdge, setContextMenuEdge] = React.useState<Edge | null>(null);
@@ -217,27 +227,43 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         }
         return map;
     }, [graph.edges, nodeTypeById]);
-    const getCanonicalUsesLinkPair = React.useCallback((sourceId: string, targetId: string): { sourceId: string; targetId: string } | null => {
+    const getCanonicalEdgeForPair = React.useCallback((sourceId: string, targetId: string): { sourceId: string; targetId: string; label: string } | null => {
         if (!sourceId || !targetId || sourceId === targetId) return null;
-        const sourceType = nodeTypeById.get(sourceId);
-        const targetType = nodeTypeById.get(targetId);
-        if (!sourceType || !targetType) return null;
+        const sType = nodeTypeById.get(sourceId);
+        const tType = nodeTypeById.get(targetId);
+        if (!sType || !tType) return null;
 
-        const sourceIsOwner = sourceType === 'subagent' || sourceType === 'agent';
-        const targetIsOwner = targetType === 'subagent' || targetType === 'agent';
+        const sIsOwner = sType === 'agent' || sType === 'subagent';
+        const tIsOwner = tType === 'agent' || tType === 'subagent';
 
-        if (sourceIsOwner && targetType === 'skill') {
-            return { sourceId, targetId };
-        }
-        if (targetIsOwner && sourceType === 'skill') {
-            return { sourceId: targetId, targetId: sourceId };
-        }
+        // agent/subagent ↔ skill → "uses" (canonical: owner → skill)
+        if (sIsOwner && tType === 'skill') return { sourceId, targetId, label: 'uses' };
+        if (sType === 'skill' && tIsOwner) return { sourceId: targetId, targetId: sourceId, label: 'uses' };
+
+        // agent ↔ subagent → "manages" (canonical: agent → subagent)
+        if (sType === 'agent' && tType === 'subagent') return { sourceId, targetId, label: 'manages' };
+        if (sType === 'subagent' && tType === 'agent') return { sourceId: targetId, targetId: sourceId, label: 'manages' };
+
+        // agent/subagent ↔ steering → "governs" (canonical: steering → owner)
+        if (sType === 'steering' && tIsOwner) return { sourceId, targetId, label: 'governs' };
+        if (sIsOwner && tType === 'steering') return { sourceId: targetId, targetId: sourceId, label: 'governs' };
+
+        // agent/subagent ↔ hook → "triggers" (canonical: hook → owner)
+        if (sType === 'hook' && tIsOwner) return { sourceId, targetId, label: 'triggers' };
+        if (sIsOwner && tType === 'hook') return { sourceId: targetId, targetId: sourceId, label: 'triggers' };
+
         return null;
     }, [nodeTypeById]);
 
-    const isValidUsesLinkPair = React.useCallback((sourceId: string, targetId: string): boolean => {
-        return getCanonicalUsesLinkPair(sourceId, targetId) !== null;
-    }, [getCanonicalUsesLinkPair]);
+    // Keep old name as alias so pill/drag code still compiles without touching every callsite
+    const getCanonicalUsesLinkPair = getCanonicalEdgeForPair;
+
+    const isValidNodePair = React.useCallback((sourceId: string, targetId: string): boolean => {
+        return getCanonicalEdgeForPair(sourceId, targetId) !== null;
+    }, [getCanonicalEdgeForPair]);
+
+    // Alias for code that hasn't been renamed yet
+    const isValidUsesLinkPair = isValidNodePair;
 
     // FEAT-011: Idoneity score → edge style thresholds (R5)
     const IDONEITY_STYLES = {
@@ -331,36 +357,35 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
 
     const createUsesEdge = React.useCallback((sourceId?: string | null, targetId?: string | null) => {
         if (!sourceId || !targetId || sourceId === targetId) return;
-        const canonicalPair = getCanonicalUsesLinkPair(sourceId, targetId);
+        const canonicalPair = getCanonicalEdgeForPair(sourceId, targetId);
         if (!canonicalPair) return;
 
-        const canonicalSourceId = canonicalPair.sourceId;
-        const canonicalTargetId = canonicalPair.targetId;
-        const edgeKey = `${canonicalSourceId}::${canonicalTargetId}::uses`;
+        const { sourceId: canonicalSourceId, targetId: canonicalTargetId, label } = canonicalPair;
+        const edgeKey = `${canonicalSourceId}::${canonicalTargetId}::${label}`;
 
         if (pendingEdgeCreationKeysRef.current.has(edgeKey)) return;
 
         const alreadyExists = edgesRef.current.some((edge) => {
             const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
-            return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind.startsWith('uses');
+            return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind === label;
         });
         if (alreadyExists) return;
         pendingEdgeCreationKeysRef.current.add(edgeKey);
         window.setTimeout(() => pendingEdgeCreationKeysRef.current.delete(edgeKey), 400);
 
-        const cfg = edgeConfigs['uses'] || defaultEdgeCfg;
+        const cfg = edgeConfigs[label] || defaultEdgeCfg;
         const edgeId = `edge-${canonicalSourceId}-${canonicalTargetId}-${Date.now()}`;
         const newEdge: Edge = {
             id: edgeId,
             source: canonicalSourceId,
             target: canonicalTargetId,
-            label: 'uses',
-            type: EDGE_TYPE_ROUTING['uses'],
-            className: 'harness-edge harness-edge--uses',
+            label,
+            type: EDGE_TYPE_ROUTING[label] ?? 'default',
+            className: `harness-edge harness-edge--${label}`,
             style: cfg.style,
             animated: cfg.animated,
             markerEnd: cfg.markerEnd,
-            data: { originalLabel: 'uses' },
+            data: { originalLabel: label },
             labelStyle: {
                 fontSize: '11px',
                 fontWeight: 600,
@@ -377,7 +402,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         setEdges((eds) => {
             const existsInState = eds.some((edge) => {
                 const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
-                return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind.startsWith('uses');
+                return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind === label;
             });
             return existsInState ? eds : addEdge(newEdge, eds);
         });
@@ -385,9 +410,9 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
 
         const vscode = (window as any).__harness_vscode_api;
         if (vscode?.postMessage) {
-            vscode.postMessage({ type: 'createEdge', source: canonicalSourceId, target: canonicalTargetId });
+            vscode.postMessage({ type: 'createEdge', source: canonicalSourceId, target: canonicalTargetId, label });
         }
-    }, [setEdges, triggerEdgeCreationFeedback, getCanonicalUsesLinkPair]);
+    }, [setEdges, triggerEdgeCreationFeedback, getCanonicalEdgeForPair]);
 
     const handleSourcePillClick = React.useCallback((sourceId: string) => {
         setPendingLinkSourceId((current) => current === sourceId ? null : sourceId);
@@ -509,12 +534,16 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                     onTargetPillClick: handleTargetPillClick,
                     onLinkTargetHoverChange: handleDragLinkHoverChange,
                     onLinkDropOnNode: handleDragLinkDropOnNode,
-                    canLinkThroughPills: n.type === 'agent' || n.type === 'subagent' || n.type === 'skill',
+                    canLinkThroughPills: n.type === 'agent' || n.type === 'subagent' || n.type === 'skill' || n.type === 'steering' || n.type === 'hook',
                     isLinkSourceArmed: false,
                     isLinkTargetActive: false,
                     isDragLinkHoverTarget: false,
                     suggestedCount: suggestedCounts[n.id] || 0,
                     isActive: n.id === selectedNodeId,
+                    // FEAT-033: Run Panel integration (R8, R12, R15)
+                    isRunning: runningNodeIds?.has(n.id) ?? false,
+                    lastRunTimestamp: lastRunByNodeId?.[n.id],
+                    onRunNode: (n.type === 'agent' || n.type === 'subagent') ? onRunNode : undefined,
                     onContextMenu: (event: React.MouseEvent) => {
                         event.preventDefault();
                         setNodeContextMenu({ node: n, position: { x: event.clientX, y: event.clientY } });
@@ -608,15 +637,23 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         }
     }, [mergedGraph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
 
-    // Update isActive + className on nodes when selectedNodeId changes — no full layout rerun
+    // Update isActive + className on nodes when selectedNodeId or runningNodeIds changes
     React.useEffect(() => {
-        setNodes(nds => nds.map(n => ({
-            ...n,
-            selected: n.id === selectedNodeId,
-            className: n.id === selectedNodeId ? 'harness-active-node' : '',
-            data: { ...n.data, isActive: n.id === selectedNodeId },
-        })));
-    }, [selectedNodeId]);
+        setNodes(nds => nds.map(n => {
+            const isActive = n.id === selectedNodeId;
+            const isRunning = runningNodeIds?.has(n.id) ?? false;
+            const classes = [
+                isActive ? 'harness-active-node' : '',
+                isRunning ? 'harness-node--running' : '',
+            ].filter(Boolean).join(' ');
+            return {
+                ...n,
+                selected: isActive,
+                className: classes,
+                data: { ...n.data, isActive, isRunning },
+            };
+        }));
+    }, [selectedNodeId, runningNodeIds]);
 
     React.useEffect(() => {
         const linkSourceId = pendingLinkSourceId || dragLinkSourceId;
@@ -653,9 +690,10 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
     );
 
     const onConnectStart = React.useCallback((_: MouseEvent | TouchEvent, params: any) => {
-        const sourceId = params?.handleType === 'source' ? params?.nodeId : null;
+        // capture from any handle type — ReactFlow normalizes direction in onConnect
+        const sourceId = params?.nodeId ?? null;
         setPendingLinkSourceId(null);
-        setDragLinkSourceId(sourceId ?? null);
+        setDragLinkSourceId(sourceId);
         setDragLinkHoverTargetId(null);
     }, []);
 
@@ -854,6 +892,12 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                 nodesConnectable={true}
                 elementsSelectable={true}
                 selectionMode={SelectionMode.Partial}
+                connectionLineStyle={{ stroke: 'var(--vscode-focusBorder)', strokeWidth: 2.5, strokeDasharray: '6,4' }}
+                isValidConnection={(connection) => {
+                    const s = connection.source ?? '';
+                    const t = connection.target ?? '';
+                    return s !== t && getCanonicalEdgeForPair(s, t) !== null;
+                }}
                 defaultEdgeOptions={{
                     style: { transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' },
                 }}
@@ -915,6 +959,83 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                     </g>
                 </svg>
             )}
+
+            {/* FEAT-033 Phase 2 — Architecture Studio toolbar (top-left) */}
+            <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 25, display: 'flex', gap: 6, alignItems: 'center' }}>
+                {onCreateNode && (
+                    <button
+                        onClick={onCreateNode}
+                        title="New Node (Agent Builder Wizard)"
+                        style={toolbarBtnStyle}
+                    >
+                        + New
+                    </button>
+                )}
+                {onOpenTemplates && (
+                    <button
+                        onClick={onOpenTemplates}
+                        title="Architecture Templates"
+                        style={toolbarBtnSecondaryStyle}
+                    >
+                        ⊞ Templates
+                    </button>
+                )}
+                {/* Gear menu */}
+                <div style={{ position: 'relative' }}>
+                    <button
+                        onClick={() => setGearMenuOpen(o => !o)}
+                        title="Whiteboard actions"
+                        style={toolbarBtnSecondaryStyle}
+                    >
+                        ⚙
+                    </button>
+                    {gearMenuOpen && (
+                        <>
+                            {/* Click-outside overlay */}
+                            <div
+                                style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                                onClick={() => setGearMenuOpen(false)}
+                            />
+                            <div style={{
+                                position: 'absolute', top: '110%', left: 0, zIndex: 9999,
+                                background: 'var(--vscode-dropdown-background)',
+                                border: '1px solid var(--vscode-dropdown-border)',
+                                borderRadius: 8,
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                                minWidth: 220,
+                                padding: '4px 0',
+                                animation: 'pickerFadeIn 0.14s ease-out',
+                            }}>
+                                {[
+                                    { label: 'Scaffold missing files', cmd: 'harness-dashboard.scaffoldMissing' },
+                                    { label: 'Sync from filesystem', cmd: 'harness-dashboard.syncFromFilesystem' },
+                                ].map(item => (
+                                    <button
+                                        key={item.cmd}
+                                        onClick={() => {
+                                            const vscode = (window as any).__harness_vscode_api;
+                                            if (vscode?.postMessage) {
+                                                vscode.postMessage({ type: 'executeVSCodeCommand', command: item.cmd });
+                                            }
+                                            setGearMenuOpen(false);
+                                        }}
+                                        style={{
+                                            display: 'block', width: '100%', textAlign: 'left',
+                                            padding: '8px 14px', fontSize: '0.84em',
+                                            background: 'transparent', border: 'none', cursor: 'pointer',
+                                            color: 'var(--vscode-dropdown-foreground)', fontFamily: 'inherit',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
 
             {/* Phase 5 — Layer Legend + Provider navigation bar (top-right) */}
             <div
@@ -1445,4 +1566,37 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
             )}
         </div>
     );
+};
+
+// ── FEAT-033 Phase 2: Shared toolbar button styles ────────────────────────────
+// Primary: same vivid color as vscode-button (consistent with header action buttons)
+const toolbarBtnStyle: React.CSSProperties = {
+    padding: '5px 13px',
+    fontSize: '0.78em',
+    fontWeight: 600,
+    background: 'var(--vscode-button-background)',
+    border: 'none',
+    borderRadius: 7,
+    cursor: 'pointer',
+    color: 'var(--vscode-button-foreground)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
+    fontFamily: 'inherit',
+    letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
+};
+
+// Secondary: neutral widget color for ancillary actions
+const toolbarBtnSecondaryStyle: React.CSSProperties = {
+    padding: '5px 10px',
+    fontSize: '0.78em',
+    fontWeight: 600,
+    background: 'var(--vscode-editorWidget-background)',
+    border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
+    borderRadius: 7,
+    cursor: 'pointer',
+    color: 'var(--vscode-foreground)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
+    fontFamily: 'inherit',
+    letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
 };

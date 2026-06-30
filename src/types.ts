@@ -85,7 +85,20 @@ export type WebviewMessageType =
     | 'generateWithAI' | 'createSpecFile' | 'generateSpecDraft'
     | 'openInEditor' | 'createFeature' | 'generateFeatureDescription' | 'deleteFeature'
     | 'dismissAgenticSuggestion' | 'applyHarnessSDD' | 'rescanAgentic'
-    | 'openFullWindow' | 'openSettings';
+    | 'executeAdvisoryAction' | 'advisoryActionResult'  // FEAT-032
+    | 'createSteering' | 'createHook'
+    | 'openFullWindow' | 'openSettings'
+    // FEAT-033: Agent Run Panel
+    | 'getRunAdapters' | 'runAdapters' | 'runAgent' | 'agentRunStarted'
+    | 'agentRunEnded' | 'agentRunError' | 'getRunHistory' | 'runHistory'
+    // FEAT-033 Phase 2: Agent Builder Wizard
+    | 'createNodeFromWizard' | 'generateAgentDescription' | 'agentDescriptionResult'
+    // FEAT-033 Phase 2: Architecture Templates
+    | 'getArchitectureTemplates' | 'architectureTemplates' | 'applyArchitectureTemplate'
+    // FEAT-033 Phase 2: Toolbar commands
+    | 'executeVSCodeCommand'
+    // FEAT-033 Provider selector
+    | 'getLmModels' | 'lmModels';
 
 export interface WebviewMessage {
     type: WebviewMessageType;
@@ -103,7 +116,20 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'generateWithAI', 'createSpecFile', 'generateSpecDraft',
     'openInEditor', 'createFeature', 'generateFeatureDescription', 'deleteFeature',
     'dismissAgenticSuggestion', 'applyHarnessSDD', 'rescanAgentic',
+    'executeAdvisoryAction', 'advisoryActionResult',  // FEAT-032
+    'createSteering', 'createHook',
     'openFullWindow', 'openSettings',
+    // FEAT-033: Agent Run Panel
+    'getRunAdapters', 'runAdapters', 'runAgent', 'agentRunStarted',
+    'agentRunEnded', 'agentRunError', 'getRunHistory', 'runHistory',
+    // FEAT-033 Phase 2: Agent Builder Wizard
+    'createNodeFromWizard', 'generateAgentDescription', 'agentDescriptionResult',
+    // FEAT-033 Phase 2: Architecture Templates
+    'getArchitectureTemplates', 'architectureTemplates', 'applyArchitectureTemplate',
+    // FEAT-033 Phase 2: Toolbar commands
+    'executeVSCodeCommand',
+    // FEAT-033 Provider selector
+    'getLmModels', 'lmModels',
 ]);
 
 export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {

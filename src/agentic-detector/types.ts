@@ -122,6 +122,23 @@ export interface PatternMatch {
   evidence: string[];
 }
 
+// === Suggestion Actions (FEAT-032) ===
+
+export type ActionType =
+  | 'open-file'
+  | 'create-directory'
+  | 'create-file'
+  | 'scaffold-agent'
+  | 'scaffold-skill'
+  | 'run-command';
+
+export interface SuggestionAction {
+  id: string;
+  label: string;
+  type: ActionType;
+  payload: Record<string, string>;
+}
+
 // === Suggestions ===
 
 export interface Suggestion {
@@ -135,6 +152,7 @@ export interface Suggestion {
   maturityTrigger: MaturityLevel[];
   actionType?: 'scaffold' | 'navigate' | 'link';
   actionPayload?: string;
+  actions?: SuggestionAction[];   // FEAT-032: executable action buttons
 }
 
 // === GraphContext (in-memory whiteboard/SDD state passed to scan) ===
