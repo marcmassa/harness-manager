@@ -4,6 +4,36 @@ import matter from './frontmatter.js';
 export class HarnessWriter {
     constructor(private readonly workspaceRoot: vscode.Uri) {}
 
+    /** Imports an existing SUBAGENT.md/SKILL.md from disk into agentic.json without touching the file. */
+    public async registerNode(name: string, type: 'subagent' | 'skill', description = ''): Promise<void> {
+        const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
+        const content = await vscode.workspace.fs.readFile(agenticUri);
+        const data = JSON.parse(content.toString());
+
+        if (type === 'subagent') {
+            if (!data.subagents) data.subagents = [];
+            if (data.subagents.find((sa: { name: string }) => sa.name === name)) return;
+            const roleFile = `.agents/subagents/${name}/SUBAGENT.md`;
+            // Try to read description from existing SUBAGENT.md frontmatter
+            let desc = description;
+            if (!desc) {
+                try {
+                    const mdUri = vscode.Uri.joinPath(this.workspaceRoot, roleFile);
+                    const md = Buffer.from(await vscode.workspace.fs.readFile(mdUri)).toString('utf8');
+                    const parsed = matter(md);
+                    desc = (parsed.data as { description?: string }).description ?? '';
+                } catch { /* file may not have frontmatter */ }
+            }
+            data.subagents.push({ name, mode: 'subagent', description: desc, role_file: roleFile,
+                permission: { edit: { 'progress/**': 'allow', 'feature_list.json': 'allow', '*': 'deny' } } });
+        } else {
+            if (!data.skills) data.skills = [];
+            if (data.skills.find((s: { name: string }) => s.name === name)) return;
+            data.skills.push({ name, description });
+        }
+        await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+    }
+
     public async createSubagent(name: string, description: string): Promise<void> {
         const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
         const content = await vscode.workspace.fs.readFile(agenticUri);
@@ -46,30 +76,129 @@ export class HarnessWriter {
         await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(subagentDir, 'SUBAGENT.md'), Buffer.from(mdContent));
     }
 
+    /**
+     * Like createSubagent but writes `mdContent` verbatim as SUBAGENT.md
+     * instead of the default matter.stringify template.
+     * Used by the Agent Builder Wizard Step 4 (FEAT-033 Phase 2).
+     */
+    public async createSubagentWithContent(name: string, description: string, mdContent: string): Promise<void> {
+        const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');
+        const content = await vscode.workspace.fs.readFile(agenticUri);
+        const data = JSON.parse(content.toString());
+
+        if (!data.subagents) data.subagents = [];
+
+        if (data.subagents.find((sa: any) => sa.name === name)) {
+            throw new Error(`Sub-agent "${name}" already exists.`);
+        }
+
+        const roleFile = `.agents/subagents/${name}/SUBAGENT.md`;
+        data.subagents.push({
+            name,
+            mode: 'subagent',
+            description,
+            role_file: roleFile,
+            permission: {
+                edit: {
+                    'progress/**': 'allow',
+                    'feature_list.json': 'allow',
+                    '*': 'deny',
+                },
+            },
+        });
+
+        await vscode.workspace.fs.writeFile(agenticUri, Buffer.from(JSON.stringify(data, null, 2)));
+
+        const subagentDir = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'subagents', name);
+        await vscode.workspace.fs.createDirectory(subagentDir);
+        await vscode.workspace.fs.writeFile(
+            vscode.Uri.joinPath(subagentDir, 'SUBAGENT.md'),
+            Buffer.from(mdContent),
+        );
+    }
+
     public async createSkill(
-        name: string, 
-        description: string, 
-        options?: { license?: string; compatibility?: string; author?: string; version?: string }
+        name: string,
+        description: string,
     ): Promise<void> {
         const skillDir = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'skills', name);
         await vscode.workspace.fs.createDirectory(skillDir);
 
-        const frontmatter: Record<string, any> = {
-            name,
-            description,
-            type: 'skill'
-        };
+        // Plain-text header block (Pocock style) + opinionated body with phases & anti-patterns
+        const mdContent = [
+            `name\n\n${name}\n\ndescription\n\n${description || `A reusable ${name} skill.`}`,
+            '',
+            `# ${name}`,
+            '',
+            '## Philosophy',
+            '',
+            description || `A reusable ${name} skill.`,
+            '',
+            'The goal is to [state the single clear outcome this skill produces].',
+            '',
+            '## When to use this skill',
+            '',
+            '- Use when you need to [primary trigger]',
+            '- Use when [secondary trigger]',
+            '- **Do NOT use** when [counter-indication]',
+            '',
+            '## Phases',
+            '',
+            '### Phase 1: Understand the context',
+            '',
+            '1. Read the relevant files and understand the current state',
+            '2. Identify the specific goal and any constraints',
+            '3. Clarify ambiguities before proceeding',
+            '',
+            '**Completion criteria:** You can state in one sentence what needs to happen and why.',
+            '',
+            '### Phase 2: Execute',
+            '',
+            '1. [Step 1 — concrete action]',
+            '2. [Step 2 — concrete action]',
+            '3. [Step 3 — concrete action]',
+            '',
+            '**Completion criteria:** [What must be true before moving on]',
+            '',
+            '### Phase 3: Verify',
+            '',
+            '1. Confirm the output meets the original goal',
+            '2. Check for side-effects or regressions',
+            '3. Clean up any temporary state',
+            '',
+            '**Completion criteria:** The outcome matches what was stated in Phase 1.',
+            '',
+            '## Anti-patterns',
+            '',
+            '- **DO NOT** skip Phase 1 — acting on assumptions causes rework',
+            '- **DO NOT** [specific pitfall for this skill]',
+            '',
+            '## Checklist',
+            '',
+            '- [ ] Phase 1 complete — goal clearly stated',
+            '- [ ] Phase 2 complete — execution done',
+            '- [ ] Phase 3 complete — verified and clean',
+        ].join('\n');
 
-        if (options?.license) frontmatter.license = options.license;
-        if (options?.compatibility) frontmatter.compatibility = options.compatibility;
-        if (options?.author || options?.version) {
-            frontmatter.metadata = {};
-            if (options?.author) frontmatter.metadata.author = options.author;
-            if (options?.version) frontmatter.metadata.version = options.version;
-        }
-
-        const mdContent = matter.stringify(`\n${description}`, frontmatter);
         await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(skillDir, 'SKILL.md'), Buffer.from(mdContent));
+    }
+
+    /** Creates a steering .md file at .claude/steering/<name>.md */
+    public async createSteering(name: string, content: string, appliesTo = '*'): Promise<void> {
+        const dir = vscode.Uri.joinPath(this.workspaceRoot, '.claude', 'steering');
+        await vscode.workspace.fs.createDirectory(dir);
+        const file = vscode.Uri.joinPath(dir, `${name}.md`);
+        const md = `---\napplies_to:\n  - "${appliesTo}"\n---\n\n${content}\n`;
+        await vscode.workspace.fs.writeFile(file, Buffer.from(md));
+    }
+
+    /** Creates a hook script at .claude/hooks/<name>.sh */
+    public async createHook(name: string, triggerEvent: string, scriptContent: string): Promise<void> {
+        const dir = vscode.Uri.joinPath(this.workspaceRoot, '.claude', 'hooks');
+        await vscode.workspace.fs.createDirectory(dir);
+        const file = vscode.Uri.joinPath(dir, `${name}.sh`);
+        const header = `#!/bin/bash\n# Hook: ${name}\n# Trigger: ${triggerEvent}\n\n`;
+        await vscode.workspace.fs.writeFile(file, Buffer.from(header + scriptContent));
     }
 
     public async deleteNode(id: string, type: string): Promise<void> {

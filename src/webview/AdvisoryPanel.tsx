@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { AgenticProfile, Suggestion, PatternMatch, SignalCategoryResult } from '../agentic-detector/types.js';
+import type { AgenticProfile, Suggestion, PatternMatch, SignalCategoryResult, SuggestionAction } from '../agentic-detector/types.js';
 
 // ===== Design tokens (local, matching webview convention) =====
 
@@ -206,15 +206,84 @@ const SignalBar = ({
     );
 };
 
+// ===== Action button state type =====
+
+export type ActionButtonState = 'idle' | 'running' | 'success' | 'error';
+
+// ===== ActionButton component (FEAT-032 R9–R14) =====
+
+const ActionButton = ({
+    action,
+    onExecute,
+    state,
+}: {
+    action: SuggestionAction;
+    onExecute: (actionId: string) => void;
+    state: ActionButtonState;
+}) => {
+    const label =
+        state === 'running' ? '…' :
+        state === 'success' ? '✓ Done' :
+        state === 'error'   ? '✗ Error' : action.label;
+
+    return (
+        <button
+            type="button"
+            onClick={() => state === 'idle' && onExecute(action.id)}
+            disabled={state !== 'idle'}
+            style={{
+                fontSize: '0.72em',
+                padding: '3px 10px',
+                borderRadius: '6px',
+                border: '1px solid var(--vscode-button-secondaryBorder, var(--vscode-panel-border))',
+                background: state === 'success' ? 'color-mix(in srgb, #4caf50 12%, transparent)' :
+                            state === 'error'   ? 'color-mix(in srgb, #f44336 12%, transparent)' :
+                            'transparent',
+                color: state === 'success' ? '#4caf50' :
+                       state === 'error'   ? '#f44336' :
+                       'var(--vscode-button-secondaryForeground, var(--vscode-foreground))',
+                cursor: state === 'idle' ? 'pointer' : 'default',
+                opacity: state === 'running' ? 0.6 : 1,
+                transition: 'all 0.15s ease',
+            }}
+        >
+            {label}
+        </button>
+    );
+};
+
 // ===== Card sub-component =====
 
 const SuggestionCard = ({
     suggestion,
     onDismiss,
+    onExecuteAction,
+    actionStates,
 }: {
     suggestion: Suggestion;
     onDismiss: (id: string) => void;
-}) => (
+    onExecuteAction?: (suggestionId: string, actionId: string) => void;
+    actionStates?: Record<string, ActionButtonState>;
+    errorMessage?: string;
+}) => {
+    // Track per-card inline error message (shown briefly on error)
+    const [cardError, setCardError] = React.useState<string | null>(null);
+
+    // When an action's state transitions to 'error', show inline error for 5s
+    React.useEffect(() => {
+        if (!actionStates || !suggestion.actions) return;
+        const hasError = suggestion.actions.some(a => {
+            const key = `${suggestion.id}::${a.id}`;
+            return actionStates[key] === 'error';
+        });
+        if (hasError) {
+            setCardError('Action failed. Check the Output channel for details.');
+            const t = setTimeout(() => setCardError(null), 5000);
+            return () => clearTimeout(t);
+        }
+    }, [actionStates, suggestion]);
+
+    return (
     <div
         className="harness-suggestion-card"
         style={{
@@ -289,6 +358,46 @@ const SuggestionCard = ({
             {suggestion.description}
         </div>
 
+        {/* Action buttons row (FEAT-032 R9, R10, R14) */}
+        {onExecuteAction && suggestion.actions && suggestion.actions.length > 0 && (
+            <div
+                style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: SPACE.xs,
+                    alignItems: 'center',
+                    marginTop: '2px',
+                }}
+            >
+                {suggestion.actions.map(action => {
+                    const key = `${suggestion.id}::${action.id}`;
+                    const state: ActionButtonState = actionStates?.[key] ?? 'idle';
+                    return (
+                        <ActionButton
+                            key={action.id}
+                            action={action}
+                            onExecute={(actionId) => onExecuteAction(suggestion.id, actionId)}
+                            state={state}
+                        />
+                    );
+                })}
+            </div>
+        )}
+
+        {/* Inline error message (FEAT-032 R13) */}
+        {cardError && (
+            <div
+                style={{
+                    fontSize: '0.72em',
+                    color: '#f44336',
+                    padding: '2px 0',
+                    lineHeight: 1.4,
+                }}
+            >
+                {cardError}
+            </div>
+        )}
+
         {/* Badge row */}
         <div
             style={{
@@ -304,7 +413,8 @@ const SuggestionCard = ({
             <CategoryTag label={suggestion.category} />
         </div>
     </div>
-);
+    );
+};
 
 // ===== Rescan button =====
 
@@ -324,14 +434,18 @@ interface AdvisoryPanelProps {
     /** Called when the user clicks "Apply Harness+SDD" (T34). */
     onApplyHarnessSDD?: () => void;
     /** Trigger an on-demand architecture re-scan (FEAT-031). */
-    onRescan: () => void;
+    onRescan?: () => void;
     /** True while a scan is in progress (FEAT-031). */
-    isScanning: boolean;
+    isScanning?: boolean;
+    /** Called when the user clicks an action button on a suggestion card (FEAT-032). */
+    onExecuteAction?: (suggestionId: string, actionId: string) => void;
+    /** Per-action button states keyed by `"${suggestionId}::${actionId}"` (FEAT-032). */
+    actionStates?: Record<string, ActionButtonState>;
 }
 
 const STALE_THRESHOLD_MS = 120_000;
 
-export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning }: AdvisoryPanelProps) => {
+export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning, onExecuteAction, actionStates }: AdvisoryPanelProps) => {
     // Optimistic local dismissal tracker
     const [dismissedLocally, setDismissedLocally] = React.useState<Set<string>>(new Set());
     // Stale scan notice (FEAT-031 T19)
@@ -774,7 +888,13 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     {sectionHeader('Suggestions')}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
                         {suggestions.map((s) => (
-                            <SuggestionCard key={s.id} suggestion={s} onDismiss={handleDismiss} />
+                            <SuggestionCard
+                                key={s.id}
+                                suggestion={s}
+                                onDismiss={handleDismiss}
+                                onExecuteAction={onExecuteAction}
+                                actionStates={actionStates}
+                            />
                         ))}
                     </div>
                 </>

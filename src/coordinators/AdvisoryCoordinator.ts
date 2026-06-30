@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { WebviewMessage } from '../types.js';
 import { AgenticDetector } from '../agentic-detector/agenticDetector.js';
 import { scaffoldAgenticJson, scaffoldFeatureListJson } from '../agentic-detector/scaffold.js';
+import { ActionExecutor } from '../agentic-detector/actionExecutor.js';
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
@@ -11,6 +12,8 @@ type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
  * and applying the Harness+SDD scaffold.
  */
 export class AdvisoryCoordinator {
+    private _actionExecutor?: ActionExecutor;
+
     constructor(
         private readonly _context: vscode.ExtensionContext,
         private readonly _workspaceRoot: vscode.Uri,
@@ -20,6 +23,7 @@ export class AdvisoryCoordinator {
 
     setAgenticDetector(detector: AgenticDetector): void {
         this._agenticDetector = detector;
+        this._actionExecutor = new ActionExecutor(this._workspaceRoot, detector, this._log);
     }
 
     async handle(
@@ -48,6 +52,20 @@ export class AdvisoryCoordinator {
                         this._log.error(`[AdvisoryCoordinator] rescanAgentic failed: ${err}`);
                     });
                 }
+                return true;
+            }
+
+            case 'executeAdvisoryAction': {
+                const { suggestionId, actionId } = msg as unknown as { suggestionId: string; actionId: string };
+                const profile = this._agenticDetector?.getProfile();
+                const suggestion = profile?.suggestions.find(s => s.id === suggestionId);
+                const action = suggestion?.actions?.find(a => a.id === actionId);
+                if (!action || !this._actionExecutor) {
+                    _postMessage({ type: 'advisoryActionResult', suggestionId, actionId, ok: false, error: 'Action not found' });
+                    return true;
+                }
+                const result = await this._actionExecutor.execute(action);
+                _postMessage({ type: 'advisoryActionResult', suggestionId, actionId, ...result });
                 return true;
             }
 

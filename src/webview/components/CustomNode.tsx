@@ -9,6 +9,17 @@ interface SkillOption {
     alreadyConnected: boolean;
 }
 
+// FEAT-033: Format a Unix timestamp as a relative time string (R15)
+function formatRelativeTime(timestamp: number): string {
+    const diffMs = Date.now() - timestamp;
+    const diffMin = Math.floor(diffMs / 60_000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} hr ago`;
+    return `${Math.floor(diffHr / 24)} d ago`;
+}
+
 
 export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     const [showSkillPicker, setShowSkillPicker] = React.useState(false);
@@ -160,8 +171,9 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
     const isLinkSourceArmed = data.isLinkSourceArmed === true;
     const isLinkTargetActive = data.isLinkTargetActive === true;
     const isDragLinkHoverTarget = data.isDragLinkHoverTarget === true;
-    const showSourcePill = canLinkThroughPills && (isActive || isLinkSourceArmed);
-    const showTargetPill = canLinkThroughPills && (isActive || isLinkTargetActive);
+    // Show pills on hover — users can start a connection without opening the detail panel
+    const showSourcePill = canLinkThroughPills && (isHovered || isActive || isLinkSourceArmed);
+    const showTargetPill = canLinkThroughPills && (isHovered || isActive || isLinkTargetActive);
     const sourceHandleInteractive = canLinkThroughPills && showSourcePill;
     const targetHandleInteractive = canLinkThroughPills && showTargetPill;
     const dragHoverStyle: React.CSSProperties = isDragLinkHoverTarget ? {
@@ -308,7 +320,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         cursor: targetHandleInteractive ? 'pointer' : 'default',
                     }}
                     isConnectable={targetHandleInteractive}
-                    title={!canLinkThroughPills ? 'Only agent/subagent/skill nodes can be linked' : isLinkTargetActive ? 'Click to complete link' : 'Drag a link here'}
+                    title={!canLinkThroughPills ? 'This node type cannot be linked' : isLinkTargetActive ? 'Click to complete link' : 'Drag a link here'}
                     onClick={(event) => {
                         event.stopPropagation();
                         if (canLinkThroughPills && data.onTargetPillClick) {
@@ -351,6 +363,39 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         textOverflow: 'ellipsis',
                     }}>
                         {data.metadata._frameworkLabel}
+                    </div>
+                )}
+
+                {/* FEAT-033: ▶ Run button — agent/subagent only, visible on hover/select (R8) */}
+                {(type === 'agent' || type === 'subagent') && data.onRunNode && (isHovered || isActive) && (
+                    <div
+                        title="Run agent in terminal"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            data.onRunNode(id);
+                        }}
+                        style={{
+                            width: '24px', height: '24px', borderRadius: '50%',
+                            background: data.isRunning ? '#63b3ed' : '#2aa198',
+                            color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', fontSize: '12px', fontWeight: 'bold',
+                            lineHeight: '1',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                            transition: `all 0.2s ${EASE_SMOOTH}`,
+                            flexShrink: 0,
+                            animation: 'popIn 0.25s ease-out',
+                        }}
+                        onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.transform = 'scale(1.15)';
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(0,0,0,0.45)';
+                        }}
+                        onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.35)';
+                        }}
+                    >
+                        ▶
                     </div>
                 )}
 
@@ -401,6 +446,24 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                     color: accent,
                 }}>
                     Click another IN pill to link
+                </div>
+            )}
+
+            {/* FEAT-033: Last run timestamp badge (R15) */}
+            {(type === 'agent' || type === 'subagent') && data.lastRunTimestamp && (
+                <div style={{ marginTop: SPACE.xs, display: 'flex', gap: SPACE.xs }}>
+                    <span style={{
+                        fontSize: '0.55em',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        background: 'rgba(99, 179, 237, 0.12)',
+                        color: '#63b3ed',
+                        fontWeight: 600,
+                        letterSpacing: '0.3px',
+                        border: '1px solid rgba(99, 179, 237, 0.25)',
+                    }}>
+                        ⚡ {formatRelativeTime(data.lastRunTimestamp as number)}
+                    </span>
                 </div>
             )}
 
@@ -531,7 +594,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         cursor: sourceHandleInteractive ? 'pointer' : 'default',
                     }}
                     isConnectable={sourceHandleInteractive}
-                    title={!canLinkThroughPills ? 'Only agent/subagent/skill nodes can be linked' : isLinkSourceArmed ? 'Click to cancel link mode' : 'Click to start link or drag to connect'}
+                    title={!canLinkThroughPills ? 'This node type cannot be linked' : isLinkSourceArmed ? 'Click to cancel link mode' : 'Hover + drag to connect, or click OUT to start click-to-connect'}
                     onClick={(event) => {
                         event.stopPropagation();
                         if (canLinkThroughPills && data.onSourcePillClick) {

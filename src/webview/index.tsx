@@ -5,9 +5,16 @@ import { ReactFlowProvider } from 'reactflow';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
 import { FeatureSpecPanel } from './FeatureSpecPanel.js';
 import { AdvisoryPanel } from './AdvisoryPanel.js';
-import { EntitySidePanel } from './components/EntitySidePanel.js';
+import type { ActionButtonState } from './AdvisoryPanel.js';  // FEAT-032
+// FEAT-033
+import { RunAgentPanel } from './RunAgentPanel.js';
+import type { RunAgentOpts } from './RunAgentPanel.js';
+import type { RunHistoryEntry } from '../run/types.js';
+// FEAT-033 Phase 2: Architecture Studio
+import { AgentBuilderWizard } from './AgentBuilderWizard.js';
+import { ArchitectureTemplatePanel } from './ArchitectureTemplatePanel.js';
+import type { ArchitectureTemplate } from '../whiteboard/architectureTemplates.js';
 import { MDViewer } from './components/MDViewer.js';
-import type { EntityFormData } from './components/EntitySidePanel.js';
 import { DashboardData, MarkdownFileContent } from '../types.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import { SPACE } from './styles.js';
@@ -183,6 +190,22 @@ const SkeletonLoading = () => (
         </div>
     </div>
 );
+// ── Shared action button style: vivid vscode-button color + compact toolbar shape ──
+const harnessActionBtnStyle: React.CSSProperties = {
+    padding: '5px 13px',
+    fontSize: '0.78em',
+    fontWeight: 600,
+    background: 'var(--vscode-button-background)',
+    border: 'none',
+    borderRadius: 7,
+    cursor: 'pointer',
+    color: 'var(--vscode-button-foreground)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
+    fontFamily: 'inherit',
+    letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
+};
+
 const FRAMEWORK_SIGNATURES: Array<{ label: string; signatures: string }> = SUPPORTED_FRAMEWORKS.map((framework) => ({
     label: framework.label,
     signatures: framework.signatures.join(', '),
@@ -315,12 +338,33 @@ const App = () => {
     // FEAT-031: scanning state + architecture summary for the tab badge
     const [isAdvisoryScanning, setIsAdvisoryScanning] = React.useState(false);
     const [architectureSummary, setArchitectureSummary] = React.useState<any>(null);
+    // FEAT-032: per-action button states keyed by `"${suggestionId}::${actionId}"`
+    const [actionStates, setActionStates] = React.useState<Record<string, ActionButtonState>>({});
 
     // Phase 5: Discovered nodes from AgenticProfile — transformed for the whiteboard
     const [discoveredNodes, setDiscoveredNodes] = React.useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
+
+    // FEAT-033: Agent Run Panel state
+    const [runningNodeIds, setRunningNodeIds] = React.useState<Set<string>>(new Set());
+    const [runHistory, setRunHistory] = React.useState<RunHistoryEntry[]>([]);
+    const [runAdapters, setRunAdapters] = React.useState<{ id: string; name: string }[]>([{ id: 'generic', name: 'Open in Editor' }]);
+    const [runPanelNodeId, setRunPanelNodeId] = React.useState<string | null>(null);
+    const [runPanelNode, setRunPanelNode] = React.useState<{ id: string; name: string; filePath: string; type: 'agent' | 'subagent' | 'skill' } | null>(null);
+    const [selectedAdapterId, setSelectedAdapterId] = React.useState('generic');
+    const [noCliDetected, setNoCliDetected] = React.useState(false);
+    // Relative time for "last run" badges — tick every 60 s
+    const [, setTimeTick] = React.useState(0);
     
-    // Side panel state (replaces inline isCreating form)
-    const [isSidePanelOpen, setIsSidePanelOpen] = React.useState(false);
+    // FEAT-033 Phase 2: Agent Builder Wizard state
+    const [wizardOpen, setWizardOpen] = React.useState(false);
+    const [wizardInitialType, setWizardInitialType] = React.useState<import('./AgentBuilderWizard.js').WizardNodeType | undefined>(undefined);
+    const [wizardAiCapabilities, setWizardAiCapabilities] = React.useState<string[] | null>(null);
+    const [lmModels, setLmModels] = React.useState<Array<{ family: string; name: string; vendor: string }>>([]);
+
+    // FEAT-033 Phase 2: Architecture Templates state
+    const [templatePanelOpen, setTemplatePanelOpen] = React.useState(false);
+    const [templates, setTemplates] = React.useState<ArchitectureTemplate[]>([]);
+    const [applyingTemplate, setApplyingTemplate] = React.useState(false);
     
     // MD viewer state
     const [mdContent, setMdContent] = React.useState<MarkdownFileContent | null>(null);
@@ -359,14 +403,85 @@ const App = () => {
                     setArchitectureSummary(message);
                     setIsAdvisoryScanning(message.isScanning === true);
                     break;
+                // FEAT-032: advisory action result
+                case 'advisoryActionResult': {
+                    const { suggestionId, actionId, ok } = message as { suggestionId: string; actionId: string; ok: boolean };
+                    const key = `${suggestionId}::${actionId}`;
+                    const newState: ActionButtonState = ok ? 'success' : 'error';
+                    setActionStates(prev => ({ ...prev, [key]: newState }));
+                    setTimeout(() => setActionStates(prev => ({ ...prev, [key]: 'idle' })), 2500);
+                    break;
+                }
+                // FEAT-033: Agent Run Panel messages
+                case 'runAdapters':
+                    setRunAdapters(message.adapters as { id: string; name: string }[]);
+                    setNoCliDetected(Boolean(message.noCliDetected));
+                    if (Array.isArray(message.adapters) && message.adapters.length > 0) {
+                        // Pick first non-generic adapter as default, fall back to generic
+                        const preferred = (message.adapters as { id: string }[]).find(a => a.id !== 'generic');
+                        setSelectedAdapterId((preferred ?? message.adapters[0]).id);
+                    }
+                    break;
+                case 'agentRunStarted':
+                    setRunningNodeIds(prev => new Set([...prev, message.nodeId as string]));
+                    break;
+                case 'agentRunEnded':
+                    setRunningNodeIds(prev => {
+                        const n = new Set(prev);
+                        n.delete(message.nodeId as string);
+                        return n;
+                    });
+                    break;
+                case 'runHistory':
+                    setRunHistory(message.history as RunHistoryEntry[]);
+                    break;
+                // FEAT-033 Phase 2: AI description result for wizard
+                case 'agentDescriptionResult':
+                    setWizardAiCapabilities(message.capabilities as string[]);
+                    break;
+                // FEAT-033 Provider selector: available vscode.lm models
+                case 'lmModels':
+                    setLmModels((message.models ?? []) as Array<{ family: string; name: string; vendor: string }>);
+                    break;
+                // FEAT-033 Phase 2: Architecture templates list
+                case 'architectureTemplates':
+                    setTemplates(message.templates as ArchitectureTemplate[]);
+                    setApplyingTemplate(false);
+                    break;
             }
         };
 
         window.addEventListener('message', handleMessage);
         vscode.postMessage({ type: 'ready' });
+        // FEAT-033: Request available adapters on load
+        vscode.postMessage({ type: 'getRunAdapters' });
+        vscode.postMessage({ type: 'getRunHistory' });
 
         return () => window.removeEventListener('message', handleMessage);
     }, []);
+
+    // FEAT-033: Tick every 60 s to update "last run" relative timestamps (R15)
+    React.useEffect(() => {
+        const id = window.setInterval(() => setTimeTick(t => t + 1), 60_000);
+        return () => window.clearInterval(id);
+    }, []);
+
+    // FEAT-033: Open run panel and set node info when runPanelNodeId changes
+    React.useEffect(() => {
+        if (!runPanelNodeId || !data) {
+            setRunPanelNode(null);
+            return;
+        }
+        const node = data.graph.nodes.find(n => n.id === runPanelNodeId);
+        if (node) {
+            setRunPanelNode({
+                id: node.id,
+                name: node.label,
+                filePath: (node.metadata as Record<string, unknown>)?._filePath as string || '',
+                type: node.type as 'agent' | 'subagent' | 'skill',
+            });
+        }
+    }, [runPanelNodeId, data]);
 
     // When a node is selected, request its Markdown file content (R3) and reset detail tab
     React.useEffect(() => {
@@ -447,50 +562,106 @@ const App = () => {
         vscode.postMessage({ type: 'rescanAgentic' });
     }, []);
 
+    // FEAT-032: Execute an advisory suggestion action
+    const handleExecuteAction = React.useCallback((suggestionId: string, actionId: string) => {
+        const key = `${suggestionId}::${actionId}`;
+        setActionStates(prev => ({ ...prev, [key]: 'running' }));
+        vscode.postMessage({ type: 'executeAdvisoryAction', suggestionId, actionId });
+    }, []);
+
     // FEAT-029 T34: Apply Harness+SDD scaffold action
     const handleApplyHarnessSDD = React.useCallback(() => {
         vscode.postMessage({ type: 'applyHarnessSDD' });
     }, []);
 
-    // Handle entity creation from side panel
-    const handleCreateEntity = React.useCallback((formData: EntityFormData) => {
-        if (formData.entityType === 'subagent') {
-            vscode.postMessage({ 
-                type: 'createNode', 
-                nodeType: 'subagent', 
-                name: formData.name, 
-                description: formData.description,
-            });
-        } else if (formData.entityType === 'skill') {
-            vscode.postMessage({ 
-                type: 'createNode', 
-                nodeType: 'skill', 
-                name: formData.name, 
-                description: formData.description,
-                license: formData.license,
-                compatibility: formData.compatibility,
-                author: formData.author,
-                version: formData.version,
-            });
-        } else if (formData.entityType === 'steering') {
-            vscode.postMessage({ 
-                type: 'createSteering', 
-                name: formData.name, 
-                description: formData.description,
-                content: formData.steeringContent || '',
-                appliesTo: formData.steeringAppliesTo || '*',
-            });
-        } else if (formData.entityType === 'hook') {
-            vscode.postMessage({ 
-                type: 'createHook', 
-                name: formData.name, 
-                description: formData.description,
-                scriptContent: formData.hookScript || '',
-                triggerEvent: formData.hookTrigger || '',
-            });
-        }
-        setIsSidePanelOpen(false);
+    // FEAT-033: Open Run Agent Panel from whiteboard node toolbar
+    const handleRunNode = React.useCallback((nodeId: string) => {
+        setRunPanelNodeId(nodeId);
     }, []);
+
+    // FEAT-033: Execute an agent run
+    const handleRunAgent = React.useCallback((opts: RunAgentOpts) => {
+        if (!runPanelNode) return;
+        vscode.postMessage({
+            type: 'runAgent',
+            nodeId: runPanelNode.id,
+            nodeName: runPanelNode.name,
+            nodeFilePath: runPanelNode.filePath,
+            nodeType: runPanelNode.type,
+            adapterId: opts.adapterId,
+            task: opts.task,
+            featureName: opts.featureName,
+            model: opts.model,
+            interactive: opts.interactive,
+            extraArgs: opts.extraArgs,
+        });
+    }, [runPanelNode]);
+
+    // FEAT-033 Phase 2: Open wizard — also request available LM models
+    const handleOpenWizard = React.useCallback((initialType?: import('./AgentBuilderWizard.js').WizardNodeType) => {
+        vscode.postMessage({ type: 'getLmModels' });
+        setWizardInitialType(initialType);
+        setWizardOpen(true);
+    }, []);
+
+    // FEAT-033 Phase 2: Wizard created a node — refresh data
+    const handleWizardCreated = React.useCallback(() => {
+        setWizardOpen(false);
+        vscode.postMessage({ type: 'getData' });
+    }, []);
+
+    // FEAT-033 Phase 2: Open template panel
+    const handleOpenTemplates = React.useCallback(() => {
+        setTemplatePanelOpen(true);
+        if (templates.length === 0) {
+            vscode.postMessage({ type: 'getArchitectureTemplates' });
+        }
+    }, [templates.length]);
+
+    // FEAT-033 Phase 2: Apply a template
+    const handleApplyTemplate = React.useCallback((templateId: string) => {
+        setApplyingTemplate(true);
+        vscode.postMessage({ type: 'applyArchitectureTemplate', templateId });
+        // Close the panel after a short delay (data refreshes via init message)
+        window.setTimeout(() => {
+            setTemplatePanelOpen(false);
+            vscode.postMessage({ type: 'getData' });
+        }, 1200);
+    }, []);
+
+    // FEAT-033: Compute "last run" timestamp per node for badges (R15)
+    const lastRunByNodeId = React.useMemo(() => {
+        const map: Record<string, number> = {};
+        for (const entry of runHistory) {
+            if (!map[entry.nodeId] || entry.timestamp > map[entry.nodeId]) {
+                map[entry.nodeId] = entry.timestamp;
+            }
+        }
+        return map;
+    }, [runHistory]);
+
+    // FEAT-033: Feature list for "Attach feature" in RunAgentPanel
+    const featureList = React.useMemo(() => {
+        if (!data) return [];
+        return data.graph.nodes
+            .filter(n => n.type === 'feature')
+            .map(n => {
+                const m = n.metadata as Record<string, unknown>;
+                return {
+                    id: n.id,
+                    name: (m.name as string) || n.id,
+                    title: (m.title as string) || n.label,
+                    description: (m.description as string) || '',
+                    type: (m.type as string) || '',
+                    status: (m.status as string) || '',
+                    priority: (m.priority as string) || '',
+                    agent: (m.agent as string) || '',
+                    sprint: (m.sprint as string) || '',
+                    sdd: Boolean(m.sdd),
+                    source: 'json' as const,
+                };
+            });
+    }, [data]);
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -523,23 +694,11 @@ const App = () => {
                     </h2>
                     <div style={{ display: 'flex', gap: SPACE.sm, alignItems: 'center' }}>
                         <FrameworkBadge frameworks={detectedFrameworks} />
-                        <vscode-button
-                            onClick={() => {
-                                setActiveTab('timeline');
-                                setStartWizard(n => n + 1);
-                            }}
-                        >
-                            Generate Spec
-                        </vscode-button>
-                        <vscode-button onClick={() => setIsSidePanelOpen(true)}>Add Entity</vscode-button>
-                        <button
-                            type="button"
-                            className="harness-settings-button"
-                            title="Open in full-window editor"
-                            aria-label="Open in full-window editor"
-                            onClick={() => vscode.postMessage?.({ type: 'openFullWindow' })}
-                        >
-                            <IconExpand />
+                        <button style={harnessActionBtnStyle} onClick={() => handleOpenWizard('feature-spec')}>
+                            ✨ Generate Spec
+                        </button>
+                        <button style={harnessActionBtnStyle} onClick={() => handleOpenWizard()}>
+                            + New Node
                         </button>
                         <button
                             type="button"
@@ -594,13 +753,6 @@ const App = () => {
                 </div>
             </header>
 
-            {/* Side Panel for Entity Creation (R4, R5, R6, R7) — replaces inline isCreating section */}
-            <EntitySidePanel
-                isOpen={isSidePanelOpen}
-                onClose={() => setIsSidePanelOpen(false)}
-                onCreateEntity={handleCreateEntity}
-            />
-            
             {/* Row: canvas/timeline column + right detail panel */}
             <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
 
@@ -618,13 +770,63 @@ const App = () => {
                     <EmptyState />
                 ) : (
                     <ReactFlowProvider>
-                        <WhiteboardCanvas graph={filteredGraph} onNodeSelect={handleNodeSelect} selectedNodeId={selectedNode?.id} discoveredNodes={discoveredNodes} />
+                        <WhiteboardCanvas
+                            graph={filteredGraph}
+                            onNodeSelect={handleNodeSelect}
+                            selectedNodeId={selectedNode?.id}
+                            discoveredNodes={discoveredNodes}
+                            runningNodeIds={runningNodeIds}
+                            lastRunByNodeId={lastRunByNodeId}
+                            onRunNode={handleRunNode}
+                            onCreateNode={handleOpenWizard}
+                            onOpenTemplates={handleOpenTemplates}
+                        />
                     </ReactFlowProvider>
+                )}
+                {/* FEAT-033 Phase 2: Architecture Template Panel (slide from left) */}
+                {!shouldShowEmptyState && templatePanelOpen && (
+                    <ArchitectureTemplatePanel
+                        templates={templates}
+                        onApply={handleApplyTemplate}
+                        onClose={() => setTemplatePanelOpen(false)}
+                        applying={applyingTemplate}
+                    />
+                )}
+                {/* FEAT-033: Run Agent Panel overlay (R9) */}
+                {runPanelNodeId && runPanelNode && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: '340px',
+                        height: '100%',
+                        background: 'var(--vscode-sideBar-background)',
+                        borderLeft: '1px solid var(--vscode-panel-border)',
+                        zIndex: 10,
+                        overflow: 'auto',
+                        boxShadow: '-6px 0 24px rgba(0,0,0,0.35)',
+                        animation: 'slideInRight 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}>
+                        <RunAgentPanel
+                            nodeId={runPanelNode.id}
+                            nodeName={runPanelNode.name}
+                            nodeFilePath={runPanelNode.filePath}
+                            nodeType={runPanelNode.type}
+                            adapters={runAdapters}
+                            selectedAdapterId={selectedAdapterId}
+                            onAdapterChange={setSelectedAdapterId}
+                            features={featureList}
+                            onRun={handleRunAgent}
+                            onClose={() => setRunPanelNodeId(null)}
+                            isRunning={runningNodeIds.has(runPanelNode.id)}
+                            noCliDetected={noCliDetected}
+                        />
+                    </div>
                 )}
             </section>
 
-            <section style={{ 
-                flex: 1, 
+            <section style={{
+                flex: 1,
                 display: activeTab === 'timeline' ? 'flex' : 'none',
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -642,7 +844,7 @@ const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} />
+                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} />
             </section>
             </div>{/* end left column */}
 
@@ -990,7 +1192,62 @@ const App = () => {
                 </aside>
             )}
             </div>{/* end row wrapper */}
-            
+
+            {/* ── Wizard — rendered at root so it works from any tab ── */}
+            {wizardOpen && data && (
+                <AgentBuilderWizard
+                    existingNodeIds={data.graph.nodes.map(n => n.id)}
+                    existingSkills={data.graph.nodes
+                        .filter(n => n.type === 'skill')
+                        .map(n => ({ id: n.id, name: n.label }))}
+                    onClose={() => setWizardOpen(false)}
+                    onCreated={handleWizardCreated}
+                    onGenerateSpec={() => {
+                        setWizardOpen(false);
+                        setActiveTab('timeline');
+                        setStartWizard(n => n + 1);
+                    }}
+                    initialType={wizardInitialType}
+                    pendingAiCapabilities={wizardAiCapabilities}
+                    onClearAiCapabilities={() => setWizardAiCapabilities(null)}
+                    lmModels={lmModels}
+                />
+            )}
+
+            {/* ── Floating expand button — only shown in sidebar mode ── */}
+            {!(window as any).__harness_is_full_window && <button
+                title="Open in full-window editor"
+                aria-label="Open in full-window editor"
+                onClick={() => vscode.postMessage?.({ type: 'openFullWindow' })}
+                style={{
+                    position: 'fixed',
+                    bottom: 14,
+                    right: 14,
+                    zIndex: 2000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 10px',
+                    fontSize: '0.72em',
+                    fontWeight: 600,
+                    background: 'var(--vscode-editorWidget-background)',
+                    border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
+                    borderRadius: 20,
+                    cursor: 'pointer',
+                    color: 'var(--vscode-foreground)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    fontFamily: 'inherit',
+                    opacity: 0.75,
+                    letterSpacing: '0.2px',
+                    transition: 'opacity 0.15s ease',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '0.75')}
+            >
+                <IconExpand />
+                Expand
+            </button>}
+
             <style>{`
                 :root {
                     --space-xs: 4px;
@@ -1072,6 +1329,16 @@ const App = () => {
                 @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
                 @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
                 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+                /* FEAT-033: Running node pulse animation (R12) */
+                @keyframes runPulse {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(99, 179, 237, 0.4); }
+                    50%       { box-shadow: 0 0 0 6px rgba(99, 179, 237, 0); }
+                }
+                .harness-node--running {
+                    animation: runPulse 1.2s ease-out infinite;
+                    --run-color-rgb: 99, 179, 237;
+                }
 
                 @keyframes pickerFadeIn {
                     from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
