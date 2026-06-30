@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -39,7 +39,8 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | Feature | Description |
 |---------|-------------|
 | 🗺 **Whiteboard canvas** | Drag-and-drop, zoom, pan — powered by React Flow |
-| 🔗 **Edge types** | `manages` (smoothstep), `uses` (dashed teal), `suggested` (animated amber), `discovered` (straight grey) |
+| 🔗 **Edge types** | `manages`, `uses`, `governs`, `triggers`, `suggested`, `discovered` — each with semantic coloring and arrow style |
+| 🧱 **Agent Builder Wizard** | Unified modal for creating any node type (agent, subagent, skill, steering, hook, feature-spec) with guided and advanced modes |
 | 💡 **Semantic skill discovery** | Suggests subagent↔skill connections from description text |
 | 📋 **Inline Markdown viewer** | Read SUBAGENT.md / SKILL.md without leaving the panel |
 | ✏️ **Edit in editor** | Open any Markdown file directly in the VS Code editor |
@@ -59,23 +60,29 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ---
 
-## What's new in 0.6.0
+## What's new in 0.7.0
 
-Security hardening and internal architecture refactor — no breaking changes, no new end-user features. All 372 unit tests pass.
+Unified entity creation wizard, full connection overhaul, and visual polish. No breaking changes.
 
-### Security improvements
+### Agent Builder Wizard — unified entity creation
 
-- **Content Security Policy nonce** — every webview render generates a cryptographic nonce (Web Crypto API). The `<meta http-equiv="Content-Security-Policy">` header now enforces `script-src 'nonce-...'` with no `unsafe-inline`, preventing script injection via DOM manipulation or postMessage exploitation.
-- **WebView sandbox tightened** — `allow-same-origin` removed from both sidebar and full-window panel options, eliminating the risk of a compromised webview elevating itself to the extension host origin.
-- **Unknown-message guard** — `_handleWebviewMessage` now validates every incoming message against a typed `WebviewMessageType` union (28 known types) before dispatching. Unknown types emit a warning to the output channel and are silently dropped.
+- **All node types in one place** — the old "Add Entity" button (steering, hook, skill, subagent) is gone; the Agent Builder Wizard now handles all 6 types: `agent`, `subagent`, `skill`, `steering`, `hook`, and `feature-spec`.
+- **Guided + Advanced modes** — a mode toggle lets you step through fields one by one (guided) or fill everything on a single scrollable page (advanced). State is preserved when switching between modes.
+- **Header pre-selection** — "✨ Generate Spec" and "+ New Node" header buttons open the wizard pre-selecting the relevant type, from any active tab.
+- **Root-level modal** — the wizard is no longer hidden when the Spec Manager or Advisory tab is active.
 
-### Architecture improvements
+### Whiteboard connection overhaul
 
-- **Domain coordinators** — `extension.ts` message handling split into three focused classes in `src/coordinators/`: `WhiteboardCoordinator` (13 cases), `SddCoordinator` (10 cases), `AdvisoryCoordinator` (2 cases). `extension.ts` retains only 4 shared handlers and is now 340 executable lines (down from ~700).
-- **FeatureSpecPanel decomposed** — 1 994-line monolith split into five focused files: `FeatureList.tsx` (221), `SpecEditor.tsx` (314), `AiAssistBar.tsx` (96), `SpecWizard.tsx` (372), `FeatureSpecPanel.tsx` (192). All listed files are well under the 600-line cap.
-- **Typed metadata** — `HarnessNode.metadata` changed from `Record<string, any>` to a `NodeMetadata` discriminated union with seven typed interfaces, each with a `[key: string]: unknown` escape hatch for frontmatter fields.
-- **`dagre` moved to `devDependencies`** — the layout library is used only at build time; it is no longer bundled into the production VSIX.
-- **New tests** — 15 additional Vitest tests: 6 for `layoutUtils` (empty graph, single node, row wrapping, feature nodes, multi-provider, edge filtering) and 8 for the `isKnownWebviewMessage` type guard.
+- **Full relationship coverage** — you can now draw any valid architectural link: `agent ↔ subagent` (manages), `agent/subagent ↔ skill` (uses), `agent/subagent ↔ steering` (governs), `agent/subagent ↔ hook` (triggers).
+- **Visible connection handles** — hovering any connectable node reveals OUT/IN pills without needing to open its detail panel first. Steering and hook nodes also show connection handles.
+- **Drag-to-connect feedback** — a dashed blue line tracks the cursor while dragging a connection; invalid drop targets are blocked by `isValidConnection`.
+- **Persistent non-"uses" edges** — manages/governs/triggers edges survive extension restarts via workspaceState.
+
+### UX polish
+
+- **Unified button style** — vivid `vscode-button` color + compact rounded shape with shadow, consistent across header and whiteboard toolbar.
+- **Floating expand button** — the "Expand" button is now fixed bottom-right, always visible regardless of active tab, and hidden when already in full-window mode.
+- **Full-window detection** — `__harness_is_full_window` injected via nonce-tagged inline script; no extra VS Code API calls needed.
 
 For full details see the [CHANGELOG](./CHANGELOG.md).
 
