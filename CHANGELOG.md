@@ -12,6 +12,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.7.0] — 2026-06-30
+
+> **Unified entity wizard, connection overhaul, and visual polish.** No breaking changes to settings, commands, or output format.
+
+### Added
+
+#### Agent Builder Wizard — unified entity creation
+
+- **All 6 node types in one wizard** — steering, hook, skill, subagent, agent and feature-spec are now created from the Agent Builder Wizard, replacing the old "Add Entity" side panel (`EntitySidePanel` removed).
+- **Guided vs. Advanced mode toggle** — guided mode steps through fields one at a time with per-step validation; advanced mode shows all fields on a single scrollable page. State is shared between modes — switching never resets data.
+- **`StepSteering` / `StepHook` components** — dedicated wizard steps collect `applies_to` and trigger event/script fields. `HarnessWriter.createSteering` writes to `.claude/steering/<name>.md`; `HarnessWriter.createHook` writes to `.claude/hooks/<name>.sh`.
+- **`createSteering` / `createHook` message handlers** added to `WhiteboardCoordinator` and `KNOWN_MESSAGE_TYPES`.
+- **`initialType` prop on `AgentBuilderWizard`** — header buttons ("✨ Generate Spec" → `feature-spec`, "+ New Node" → default) pass a pre-selected type when opening the wizard from any tab.
+- **Wizard at root DOM level** — the modal is no longer rendered inside the whiteboard section; it is not affected by `display:none` on non-whiteboard tabs.
+
+#### Whiteboard connection overhaul
+
+- **Full architectural relationship coverage** — `getCanonicalEdgeForPair` replaces `getCanonicalUsesLinkPair` and now resolves:
+  - `agent ↔ subagent` → **"manages"** (canonical: agent → subagent)
+  - `agent/subagent ↔ skill` → **"uses"** (canonical: owner → skill)
+  - `agent/subagent ↔ steering` → **"governs"** (canonical: steering → owner)
+  - `agent/subagent ↔ hook` → **"triggers"** (canonical: hook → owner)
+- **Connection pills on hover** — OUT/IN pills are now visible on mouse-over for all connectable node types (including steering and hook), without requiring the node detail panel to be open first.
+- **`connectionLineStyle`** — a dashed blue line (`var(--vscode-focusBorder)`) tracks the cursor during drag-to-connect.
+- **`isValidConnection` prop** — invalid drops are blocked at the ReactFlow level before `onConnect` fires.
+- **`onConnectStart` captures any handle type** — previously only source handles registered as drag origin; now both handle types are captured so `isLinkTargetActive` highlights correctly during any drag.
+- **`CUSTOM_EDGES_KEY` (`harness-dashboard.customEdges`)** — new `workspaceState` key persists non-"uses" edges (manages/governs/triggers) across reloads. `sendData` merges these into the graph alongside existing `customUsesEdges`. Delete is handled by `_removeCustomEdge`.
+
+#### WhiteboardCoordinator — new message handlers (FEAT-033 Phase 2)
+
+- `getLmModels`, `generateAgentDescription`, `createNodeFromWizard`
+- `getArchitectureTemplates`, `applyArchitectureTemplate`
+
+### Changed
+
+- **Button style standard** — `harnessActionBtnStyle` (vivid `vscode-button-background` color + 7px rounded, shadow) applied consistently to header buttons and whiteboard toolbar primary action. Secondary toolbar buttons (`⊞ Templates`, `⚙`) use `toolbarBtnSecondaryStyle` (neutral widget background).
+- **Floating expand button** — moved from the tab header to a fixed bottom-right position (`position: fixed`, `zIndex: 2000`). Hidden when `window.__harness_is_full_window` is `true`.
+- **`__harness_is_full_window` injection** — a nonce-tagged inline `<script>` sets this global before the module script loads, allowing React to distinguish sidebar from full-window mode without an extra postMessage round-trip.
+- **`canLinkThroughPills`** — extended to include `steering` and `hook` node types (previously only `agent`, `subagent`, `skill`).
+- **`createEdge` message** — now accepts an optional `label` field. Non-"uses" labels bypass `HarnessWriter.createEdge` and go straight to `_upsertCustomEdge`.
+- **`_deleteEdgeWithFallback`** — non-"uses" labels now also clean up the `CUSTOM_EDGES_KEY` store via `_removeCustomEdge`.
+
+### Removed
+
+- **`EntitySidePanel`** — component no longer imported or rendered; replaced entirely by `AgentBuilderWizard`.
+
+---
+
 ## [0.6.0] — 2026-06-27
 
 > **Tech Debt & Security Hardening (FEAT-030)** — no new end-user features; all changes are security hardening, internal architecture refactoring, and type safety improvements. No breaking changes to settings, commands, or output format. All 372 unit tests pass (+15 new).
