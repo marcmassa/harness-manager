@@ -98,7 +98,16 @@ export type WebviewMessageType =
     // FEAT-033 Phase 2: Toolbar commands
     | 'executeVSCodeCommand'
     // FEAT-033 Provider selector
-    | 'getLmModels' | 'lmModels';
+    | 'getLmModels' | 'lmModels'
+    // FEAT-034: Component Optimizer
+    | 'getOptimizerReport' | 'optimizerReport' | 'runOptimizerScan' | 'applyQuickFix'
+    | 'quickFixResult' | 'dismissOptimizerFinding' | 'restoreOptimizerFindings'
+    // FEAT-035: Assisted Component Fixes
+    | 'aiRefineFinding' | 'aiRefineResult' | 'delegateFinding' | 'delegateResult'
+    | 'getOptimizerAiModels' | 'optimizerAiModels' | 'setOptimizerAiModel'
+    | 'handoffToChat' | 'handoffResult'
+    // FEAT-036: spec generation chat handoff
+    | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt';
 
 export interface WebviewMessage {
     type: WebviewMessageType;
@@ -130,6 +139,15 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'executeVSCodeCommand',
     // FEAT-033 Provider selector
     'getLmModels', 'lmModels',
+    // FEAT-034: Component Optimizer
+    'getOptimizerReport', 'optimizerReport', 'runOptimizerScan', 'applyQuickFix',
+    'quickFixResult', 'dismissOptimizerFinding', 'restoreOptimizerFindings',
+    // FEAT-035: Assisted Component Fixes
+    'aiRefineFinding', 'aiRefineResult', 'delegateFinding', 'delegateResult',
+    'getOptimizerAiModels', 'optimizerAiModels', 'setOptimizerAiModel',
+    'handoffToChat', 'handoffResult',
+    // FEAT-036: spec generation chat handoff
+    'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
 ]);
 
 export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {

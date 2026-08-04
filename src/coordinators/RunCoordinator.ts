@@ -1,5 +1,6 @@
 // FEAT-033: RunCoordinator — handles agent run messages from the webview
 import * as vscode from 'vscode';
+import { sendWhenShellReady } from '../terminalUtils.js';
 import type { WebviewMessage } from '../types.js';
 import type { RunAdapterRegistry } from '../run/runAdapterRegistry.js';
 import type { RunHistoryEntry, RunNode, RunOptions } from '../run/types.js';
@@ -128,17 +129,22 @@ export class RunCoordinator {
 
         // Reuse terminal if still open, otherwise create a new one
         let terminal = this._terminals.get(params.nodeId);
+        let isNewTerminal = false;
         if (!terminal || terminal.exitStatus !== undefined) {
             terminal = vscode.window.createTerminal({
                 name: termName,
                 cwd: this._root,
             });
             this._terminals.set(params.nodeId, terminal);
+            isNewTerminal = true;
         }
 
         this._startTimes.set(params.nodeId, Date.now());
-        terminal.sendText(cmd);
         terminal.show();
+        // A freshly created terminal is not listening yet, so an immediate
+        // sendText is swallowed and nothing runs. A reused one is already warm
+        // and must not pay the wait on every subsequent run.
+        await sendWhenShellReady(terminal, cmd, isNewTerminal);
 
         // Persist run history entry
         const entry: RunHistoryEntry = {

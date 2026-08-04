@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -94,6 +94,11 @@
       {
         "command": "harness-dashboard.syncFromFilesystem",
         "title": "Harness: Sync Agents from Filesystem",
+        "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.optimizeComponents",
+        "title": "Harness: Optimize Components",
         "category": "Harness Dashboard"
       }
     ],
@@ -228,6 +233,82 @@
           "scope": "resource",
           "default": "gpt-4o-mini",
           "description": "Model identifier for the OpenAI-compatible API (R5). Sent as the 'model' field in the request body."
+        },
+        "harness-dashboard.optimizer.enabled": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Enable the Component Optimizer: scores every agent, subagent, skill, steering and hook file and reports structural, context-budget, integration and hygiene findings."
+        },
+        "harness-dashboard.optimizer.tokenBudget.skill": {
+          "type": "number",
+          "scope": "resource",
+          "default": 500,
+          "description": "Fallback token budget for a skill, used only when the workspace has fewer than 5 skills. Above that, budgetMedianMultiple x the corpus median applies."
+        },
+        "harness-dashboard.optimizer.tokenBudget.subagent": {
+          "type": "number",
+          "scope": "resource",
+          "default": 1500,
+          "description": "Fallback token budget for a subagent or agent file, used only when the workspace has fewer than 5 of that type."
+        },
+        "harness-dashboard.optimizer.tokenBudget.steering": {
+          "type": "number",
+          "scope": "resource",
+          "default": 800,
+          "description": "Fallback token budget for a steering file, used only when the workspace has fewer than 5 steering files."
+        },
+        "harness-dashboard.optimizer.tokenBudget.agentRollup": {
+          "type": "number",
+          "scope": "resource",
+          "default": 8000,
+          "description": "Estimated token budget for an agent plus everything it reaches over 'uses' and 'governs' edges. Exceeding it raises OPT-B03."
+        },
+        "harness-dashboard.optimizer.overlapThreshold": {
+          "type": "number",
+          "scope": "resource",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "TF-IDF cosine similarity at or above which two same-typed components are reported as overlapping (OPT-O01). Lower values report more pairs."
+        },
+        "harness-dashboard.optimizer.disabledRules": {
+          "type": "array",
+          "scope": "resource",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Optimizer rule IDs to skip entirely, e.g. [\"OPT-H03\", \"OPT-O02\"]. Disabled rules contribute no findings and no score deduction."
+        },
+        "harness-dashboard.optimizer.budgetMedianMultiple": {
+          "type": "number",
+          "scope": "resource",
+          "default": 2.5,
+          "minimum": 1,
+          "description": "Multiple of the median same-typed component above which OPT-B01/OPT-B02 report a component as unusually large. Judging against your own corpus avoids penalising a workspace whose components are uniformly large. Used once the workspace has at least 5 components of that type; below that the absolute tokenBudget values apply."
+        },
+        "harness-dashboard.optimizer.assistedFixes.enabled": {
+          "type": "boolean",
+          "scope": "resource",
+          "default": true,
+          "description": "Offer AI-assisted and delegated fixes on optimizer findings. AI Refine proposes content that you review in a diff before anything is written; Delegate hands a scoped task to an installed terminal agent, which edits files directly with no diff preview."
+        },
+        "harness-dashboard.optimizer.assistedFixes.mode": {
+          "type": "string",
+          "scope": "resource",
+          "default": "both",
+          "enum": [
+            "both",
+            "ai-only",
+            "delegate-only"
+          ],
+          "enumDescriptions": [
+            "Offer both AI Refine and Delegate.",
+            "Offer only AI Refine, which always previews its proposal in a diff before writing.",
+            "Offer only delegation to a terminal agent. Note that this mode has no diff preview."
+          ],
+          "description": "Which assisted fix modes to offer."
         }
       }
     }

@@ -12,6 +12,7 @@ import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
 // FEAT-033: Agent Run Panel
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
+import { OptimizerCoordinator, OPTIMIZER_DIFF_SCHEME } from './coordinators/OptimizerCoordinator.js';
 import { RunAdapterRegistry } from './run/runAdapterRegistry.js';
 import { ClaudeCodeAdapter } from './run/adapters/claudeCodeAdapter.js';
 import { GeminiCliAdapter } from './run/adapters/geminiCliAdapter.js';
@@ -96,7 +97,15 @@ export function activate(context: vscode.ExtensionContext) {
 
     // FEAT-029 Phase 4: Agentic Architecture Detector singleton
     const agenticDetector = new AgenticDetector(root, log, context.workspaceState);
-    const scheduleScan = () => agenticDetector.scheduleScan(buildGraphContext());
+    // FEAT-034 T42: the optimizer report rides the SAME debounce as the advisory
+    // scan — no second timer. Any coordinator write that already calls
+    // scheduleScan() therefore refreshes the optimizer too (R47).
+    const scheduleScan = () => {
+        agenticDetector.scheduleScan(buildGraphContext());
+        void provider.optimizerCoordinator
+            .refresh(msg => provider.postToWebview(msg))
+            .catch((e: unknown) => log.error(`[Optimizer] refresh failed: ${String(e)}`));
+    };
     agenticDetector.setGetGraphContext(() => {
         const data = provider.getCachedData();
         return data ? buildGraphContext() : undefined;
@@ -108,11 +117,28 @@ export function activate(context: vscode.ExtensionContext) {
     runCoordinator.activate(context);
     runCoordinator.setPostToWebview(msg => provider.postToWebview(msg));
     provider.setRunCoordinator(runCoordinator);
+    // FEAT-035 T16: the optimizer delegates to the same detected CLIs.
+    provider.optimizerCoordinator.setRunRegistry(runRegistry);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
             await agenticDetector.scan(buildGraphContext());
         })
+    );
+
+    // FEAT-034 T41/T43: virtual document backing the quick-fix diff preview,
+    // plus the user-facing "Optimize Components" command.
+    context.subscriptions.push(
+        vscode.workspace.registerTextDocumentContentProvider(
+            OPTIMIZER_DIFF_SCHEME,
+            provider.optimizerCoordinator.diffProvider,
+        ),
+        vscode.commands.registerCommand('harness-dashboard.optimizeComponents', async () => {
+            await vscode.commands.executeCommand('harness-dashboard.dashboard.focus');
+            provider.postToWebview({ type: 'activateTab', tab: 'optimizer' });
+            const report = await provider.optimizerCoordinator.runScan();
+            provider.postToWebview({ type: 'optimizerReport', report });
+        }),
     );
 
     // FEAT-029: Open dashboard in a full-window editor panel
@@ -319,6 +345,8 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private readonly _whiteboardCoordinator: WhiteboardCoordinator;
     private readonly _sddCoordinator: SddCoordinator;
     private readonly _advisoryCoordinator: AdvisoryCoordinator;
+    // FEAT-034
+    private readonly _optimizerCoordinator: OptimizerCoordinator;
     // FEAT-033
     private _runCoordinator?: RunCoordinator;
     private _cachedData: import('./types.js').DashboardData | null = null;
@@ -338,6 +366,17 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._whiteboardCoordinator = new WhiteboardCoordinator(this._writer, this._parser, this._context, this._workspaceRoot, this._log);
         this._sddCoordinator = new SddCoordinator(this._workspaceRoot, this._log);
         this._advisoryCoordinator = new AdvisoryCoordinator(this._context, this._workspaceRoot, this._log);
+        // FEAT-034: reads the graph through getCachedData() so it always scores
+        // the same model the whiteboard is showing.
+        this._optimizerCoordinator = new OptimizerCoordinator(
+            this._writer, this._context, this._workspaceRoot, this._log,
+            () => this._cachedData,
+        );
+    }
+
+    /** FEAT-034: exposed so activate() can register the diff provider and the command. */
+    public get optimizerCoordinator(): OptimizerCoordinator {
+        return this._optimizerCoordinator;
     }
 
     /** Return the last parsed DashboardData for GraphContext building (FEAT-031). */
@@ -474,6 +513,7 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         // FEAT-031 T17: inject scheduleScan callback into mutating coordinators
         this._whiteboardCoordinator.setScheduleScan(scheduleScan);
         this._sddCoordinator.setScheduleScan(scheduleScan);
+        this._optimizerCoordinator.setScheduleScan(scheduleScan);
     }
 
     // FEAT-033: inject RunCoordinator (setter pattern matching other coordinators)
@@ -530,7 +570,9 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         await this._sddCoordinator.handle(data, postMessage, sendData) ||
                         await this._advisoryCoordinator.handle(data, postMessage, sendData) ||
                         // FEAT-033: RunCoordinator only needs postMessage (no sendData)
-                        (this._runCoordinator ? await this._runCoordinator.handle(data, postMessage) : false);
+                        (this._runCoordinator ? await this._runCoordinator.handle(data, postMessage) : false) ||
+                        // FEAT-034
+                        await this._optimizerCoordinator.handle(data, postMessage, sendData);
                     if (!handled) {
                         this._log.warn(`[Webview] Unhandled known message type: ${data.type}`);
                     }

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { AskHostButton } from './components/AskHostButton.js';
 import { SPACE } from './styles.js';
 
 export interface AiAssistBarProps {
@@ -7,6 +8,11 @@ export interface AiAssistBarProps {
     onCreateFromTemplate: () => void;
     onEnterEditMode: () => void;
     onGenerateWithAI: () => void;
+    /** FEAT-036 — false when the host exposes no model and no API key is set. */
+    canGenerateDirectly?: boolean;
+    /** Name of the host's own chat agent, when it exposes one. */
+    chatHostName?: string;
+    onAskEditor?: () => void;
 }
 
 export const AiAssistBar = ({
@@ -15,7 +21,15 @@ export const AiAssistBar = ({
     onCreateFromTemplate,
     onEnterEditMode,
     onGenerateWithAI,
+    canGenerateDirectly = true,
+    chatHostName,
+    onAskEditor,
 }: AiAssistBarProps) => {
+    // Offering "Generate with AI" in a host with no model and no key is a button
+    // that can only fail. Where the host has its own chat, hand the prompt there
+    // instead; the user already has a model and an account in it.
+    const showAsk = Boolean(chatHostName) && Boolean(onAskEditor);
+    const showGenerate = canGenerateDirectly || !showAsk;
     return (
         <div style={{
             display: 'flex',
@@ -66,6 +80,16 @@ export const AiAssistBar = ({
                     ✏ Edit
                 </button>
             )}
+            {showAsk && (
+                <AskHostButton
+                    hostName={chatHostName}
+                    onClick={() => onAskEditor?.()}
+                    primary={!canGenerateDirectly}
+                    subject="this spec prompt"
+                    style={{ fontSize: '0.72em', minHeight: '24px', padding: '5px 11px' }}
+                />
+            )}
+            {showGenerate && (
             <button
                 type="button"
                 onClick={onGenerateWithAI}
@@ -91,6 +115,7 @@ export const AiAssistBar = ({
             >
                 {aiLoading ? '⏳ Generating...' : '🤖 Generate with AI'}
             </button>
+            )}
         </div>
     );
 };

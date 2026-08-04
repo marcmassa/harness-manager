@@ -1,9 +1,36 @@
 import esbuild from "esbuild";
 import path from "path";
+import fs from "fs";
 
 const watch = process.argv.includes("--watch");
 
+/**
+ * Remove build outputs that no entry point produces any more.
+ *
+ * Without this, a bundle from a removed entry point lingers in dist/ forever and
+ * is swept into the VSIX by `vsce package`: 0.8.0 was about to ship a 57 KB
+ * extension.js from the 0.1.0 era and a 335 KB sddManager.js whose entry point
+ * was deleted months ago — ~390 KB of code that never executes. dist/ is
+ * gitignored, so nothing else would ever have caught it.
+ */
+function pruneStaleDistOutputs(expected) {
+  if (!fs.existsSync("dist")) return;
+  const keep = new Set(expected);
+  for (const name of fs.readdirSync("dist")) {
+    if (keep.has(name)) continue;
+    fs.rmSync(path.join("dist", name), { recursive: true, force: true });
+    console.log(`Pruned stale build output: dist/${name}`);
+  }
+}
+
 async function main() {
+  // Every file the build legitimately produces. webview.css is emitted by the
+  // CSS loader alongside webview.js; sourcemaps only exist in watch mode.
+  pruneStaleDistOutputs([
+    "extension.cjs", "webview.js", "webview.css",
+    "extension.cjs.map", "webview.js.map", "webview.css.map",
+  ]);
+
   const extensionCtx = await esbuild.context({
     entryPoints: ["src/extension.ts"],
     bundle: true,

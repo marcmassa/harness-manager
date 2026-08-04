@@ -153,9 +153,11 @@ interface Props {
     // FEAT-033 Phase 2: Architecture Studio toolbar
     onCreateNode?: () => void;
     onOpenTemplates?: () => void;
+    // FEAT-034: per-node optimizer score chip (R45)
+    scoresByNodeId?: Map<string, { score: number; tier: string; findingCount: number }>;
 }
 
-export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes, runningNodeIds, lastRunByNodeId, onRunNode, onCreateNode, onOpenTemplates }: Props) => {
+export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes, runningNodeIds, lastRunByNodeId, onRunNode, onCreateNode, onOpenTemplates, scoresByNodeId }: Props) => {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const manualPositionsRef = React.useRef<ManualPositionMap>({});
@@ -650,10 +652,10 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                 ...n,
                 selected: isActive,
                 className: classes,
-                data: { ...n.data, isActive, isRunning },
+                data: { ...n.data, isActive, isRunning, optimizerScore: scoresByNodeId?.get(n.id) },
             };
         }));
-    }, [selectedNodeId, runningNodeIds]);
+    }, [selectedNodeId, runningNodeIds, scoresByNodeId]);
 
     React.useEffect(() => {
         const linkSourceId = pendingLinkSourceId || dragLinkSourceId;

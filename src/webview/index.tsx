@@ -14,6 +14,9 @@ import type { RunHistoryEntry } from '../run/types.js';
 import { AgentBuilderWizard } from './AgentBuilderWizard.js';
 import { ArchitectureTemplatePanel } from './ArchitectureTemplatePanel.js';
 import type { ArchitectureTemplate } from '../whiteboard/architectureTemplates.js';
+// FEAT-034: Component Optimizer
+import { OptimizerPanel } from './OptimizerPanel.js';
+import type { OptimizerFinding, OptimizerReport } from '../optimizer/types.js';
 import { MDViewer } from './components/MDViewer.js';
 import { DashboardData, MarkdownFileContent } from '../types.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
@@ -340,6 +343,24 @@ const App = () => {
     const [architectureSummary, setArchitectureSummary] = React.useState<any>(null);
     // FEAT-032: per-action button states keyed by `"${suggestionId}::${actionId}"`
     const [actionStates, setActionStates] = React.useState<Record<string, ActionButtonState>>({});
+    // FEAT-034: Component Optimizer report + scan state
+    const [optimizerReport, setOptimizerReport] = React.useState<OptimizerReport | null>(null);
+    const [isOptimizerScanning, setIsOptimizerScanning] = React.useState(false);
+    // The host owns the `optimizer.enabled` setting; a disabled report is
+    // indistinguishable from an empty one, so the flag travels with the report.
+    const [optimizerEnabled, setOptimizerEnabled] = React.useState(true);
+    // FEAT-035: assisted fixes
+    const [assistedEnabled, setAssistedEnabled] = React.useState(false);
+    const [assistedMode, setAssistedMode] = React.useState<'both' | 'ai-only' | 'delegate-only'>('both');
+    const [hasTerminalAgent, setHasTerminalAgent] = React.useState(false);
+    const [chatHostName, setChatHostName] = React.useState<string | undefined>(undefined);
+    // FEAT-036: what this host can actually do for AI generation.
+    const [aiCapabilities, setAiCapabilities] = React.useState<
+        { hasEditorModel: boolean; chatHostName?: string; hasApiKey: boolean } | undefined
+    >(undefined);
+    const [aiModels, setAiModels] = React.useState<string[]>([]);
+    const [selectedAiModel, setSelectedAiModel] = React.useState('');
+    const [assistStates, setAssistStates] = React.useState<Record<string, { state: 'idle' | 'pending' | 'ok' | 'error'; reason?: string }>>({});
 
     // Phase 5: Discovered nodes from AgenticProfile — transformed for the whiteboard
     const [discoveredNodes, setDiscoveredNodes] = React.useState<{ nodes: any[]; edges: any[] }>({ nodes: [], edges: [] });
@@ -403,6 +424,59 @@ const App = () => {
                     setArchitectureSummary(message);
                     setIsAdvisoryScanning(message.isScanning === true);
                     break;
+                // FEAT-034: Component Optimizer
+                case 'optimizerReport':
+                    setOptimizerReport(message.report);
+                    setOptimizerEnabled(message.enabled !== false);
+                    setAssistedEnabled(message.assistedEnabled === true);
+                    if (message.assistedMode) setAssistedMode(message.assistedMode);
+                    setHasTerminalAgent(message.hasTerminalAgent === true);
+                    setChatHostName(message.chatHostName);
+                    setIsOptimizerScanning(false);
+                    break;
+                case 'optimizerAiModels':
+                    setAiModels(message.models ?? []);
+                    setSelectedAiModel(message.selected ?? '');
+                    break;
+                case 'aiRefineResult': {
+                    const key = `${message.ruleId}::${message.nodeId}`;
+                    setAssistStates(prev => ({
+                        ...prev,
+                        [key]: message.ok ? { state: 'ok' } : { state: 'error', reason: message.reason },
+                    }));
+                    break;
+                }
+                case 'aiCapabilities':
+                    setAiCapabilities({
+                        hasEditorModel: message.hasEditorModel === true,
+                        chatHostName: message.chatHostName,
+                        hasApiKey: message.hasApiKey === true,
+                    });
+                    break;
+                case 'handoffResult': {
+                    const key = `${message.ruleId}::${message.nodeId}`;
+                    setAssistStates(prev => ({
+                        ...prev,
+                        [key]: message.ok
+                            ? { state: 'ok', reason: `sent to ${message.host}` }
+                            : { state: 'error', reason: message.reason },
+                    }));
+                    break;
+                }
+                case 'delegateResult':
+                    if (!message.ok && message.reason !== 'cancelled') {
+                        console.warn('[Optimizer] delegation failed:', message.reason);
+                    }
+                    break;
+                case 'quickFixResult':
+                    // A successful fix triggers a re-scan host-side, whose report
+                    // arrives as its own 'optimizerReport' message. A cancel or a
+                    // failure only needs to clear the pending state.
+                    if (!message.ok) setIsOptimizerScanning(false);
+                    break;
+                case 'activateTab':
+                    if (typeof message.tab === 'string') setActiveTab(message.tab);
+                    break;
                 // FEAT-032: advisory action result
                 case 'advisoryActionResult': {
                     const { suggestionId, actionId, ok } = message as { suggestionId: string; actionId: string; ok: boolean };
@@ -453,6 +527,8 @@ const App = () => {
 
         window.addEventListener('message', handleMessage);
         vscode.postMessage({ type: 'ready' });
+        // FEAT-036: probe once — the webview cannot inspect the host itself.
+        vscode.postMessage({ type: 'getAiCapabilities' });
         // FEAT-033: Request available adapters on load
         vscode.postMessage({ type: 'getRunAdapters' });
         vscode.postMessage({ type: 'getRunHistory' });
@@ -561,6 +637,83 @@ const App = () => {
         setIsAdvisoryScanning(true);
         vscode.postMessage({ type: 'rescanAgentic' });
     }, []);
+
+    // ── FEAT-034: Component Optimizer handlers ──────────────────────────────
+    // Score lookup for the whiteboard chips (R45). Empty when the optimizer is
+    // off or has not scanned yet, which renders no chips at all.
+    const optimizerScoresByNodeId = React.useMemo(() => {
+        const map = new Map<string, { score: number; tier: string; findingCount: number }>();
+        if (!optimizerEnabled || !optimizerReport?.ok) return map;
+        for (const c of optimizerReport.components) {
+            map.set(c.nodeId, { score: c.score, tier: c.tier, findingCount: c.findingCount });
+        }
+        return map;
+    }, [optimizerReport, optimizerEnabled]);
+
+    const handleAiRefine = React.useCallback((finding: OptimizerFinding) => {
+        const key = `${finding.ruleId}::${finding.nodeId}`;
+        setAssistStates(prev => ({ ...prev, [key]: { state: 'pending' } }));
+        vscode.postMessage({ type: 'aiRefineFinding', nodeId: finding.nodeId, ruleId: finding.ruleId });
+    }, []);
+
+    const handleHandoffToChat = React.useCallback((finding: OptimizerFinding) => {
+        vscode.postMessage({ type: 'handoffToChat', nodeId: finding.nodeId, ruleId: finding.ruleId });
+    }, []);
+
+    const handleDelegate = React.useCallback((scope: { kind: string; nodeId?: string; ruleId?: string }) => {
+        vscode.postMessage({ type: 'delegateFinding', scope: scope.kind, nodeId: scope.nodeId, ruleId: scope.ruleId });
+    }, []);
+
+    const handleSelectAiModel = React.useCallback((model: string) => {
+        setSelectedAiModel(model);
+        vscode.postMessage({ type: 'setOptimizerAiModel', model });
+    }, []);
+
+    const handleOptimizerRescan = React.useCallback(() => {
+        setIsOptimizerScanning(true);
+        vscode.postMessage({ type: 'runOptimizerScan' });
+    }, []);
+
+    const handleApplyQuickFix = React.useCallback((finding: OptimizerFinding) => {
+        vscode.postMessage({
+            type: 'applyQuickFix',
+            nodeId: finding.nodeId,
+            ruleId: finding.ruleId,
+            fix: finding.fix,
+        });
+    }, []);
+
+    const handleDismissFinding = React.useCallback((finding: OptimizerFinding) => {
+        setIsOptimizerScanning(true);
+        vscode.postMessage({
+            type: 'dismissOptimizerFinding',
+            ruleId: finding.ruleId,
+            nodeId: finding.nodeId,
+        });
+    }, []);
+
+    const handleRestoreFindings = React.useCallback(() => {
+        setIsOptimizerScanning(true);
+        vscode.postMessage({ type: 'restoreOptimizerFindings' });
+    }, []);
+
+    const handleOpenFindingFile = React.useCallback((finding: OptimizerFinding) => {
+        vscode.postMessage({
+            type: 'openInEditor',
+            filePath: finding.filePath,
+            line: finding.line,
+        });
+    }, []);
+
+    // Fetch the report the first time the Optimizer tab is opened, so the scan
+    // cost is not paid by users who never visit it.
+    React.useEffect(() => {
+        if (activeTab === 'optimizer' && optimizerReport === null) {
+            setIsOptimizerScanning(true);
+            vscode.postMessage({ type: 'getOptimizerReport' });
+            vscode.postMessage({ type: 'getOptimizerAiModels' });
+        }
+    }, [activeTab, optimizerReport]);
 
     // FEAT-032: Execute an advisory suggestion action
     const handleExecuteAction = React.useCallback((suggestionId: string, actionId: string) => {
@@ -713,8 +866,11 @@ const App = () => {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {(['whiteboard', 'timeline', 'advisory'] as const).map(tab => {
-                        const label = tab === 'timeline' ? 'Specs Manager' : tab === 'advisory' ? 'Advisory' : 'Whiteboard';
+                    {(['whiteboard', 'timeline', 'advisory', 'optimizer'] as const).map(tab => {
+                        const label = tab === 'timeline' ? 'Specs Manager'
+                            : tab === 'advisory' ? 'Advisory'
+                            : tab === 'optimizer' ? 'Optimizer'
+                            : 'Whiteboard';
                         return (
                             <div
                                 key={tab}
@@ -780,6 +936,7 @@ const App = () => {
                             onRunNode={handleRunNode}
                             onCreateNode={handleOpenWizard}
                             onOpenTemplates={handleOpenTemplates}
+                            scoresByNodeId={optimizerScoresByNodeId}
                         />
                     </ReactFlowProvider>
                 )}
@@ -833,7 +990,7 @@ const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'timeline' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <FeatureSpecPanel milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} />
+                <FeatureSpecPanel milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} aiCapabilities={aiCapabilities} />
             </section>
 
             <section style={{ 
@@ -845,6 +1002,40 @@ const App = () => {
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
                 <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} />
+            </section>
+
+            {/* FEAT-034: Component Optimizer */}
+            <section style={{
+                flex: 1,
+                display: activeTab === 'optimizer' ? 'flex' : 'none',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                minHeight: 0,
+                animation: activeTab === 'optimizer' ? 'fadeIn 0.22s ease-out' : 'none',
+            }}>
+                <OptimizerPanel
+                    report={optimizerReport}
+                    isScanning={isOptimizerScanning}
+                    enabled={optimizerEnabled}
+                    onRescan={handleOptimizerRescan}
+                    onApplyFix={handleApplyQuickFix}
+                    onDismissFinding={handleDismissFinding}
+                    onRestoreFindings={handleRestoreFindings}
+                    onOpenFile={handleOpenFindingFile}
+                    onOpenSettings={() => vscode.postMessage?.({ type: 'openSettings', query: 'harness-dashboard.optimizer' })}
+                    assistedEnabled={assistedEnabled}
+                    assistedMode={assistedMode}
+                    hasTerminalAgent={hasTerminalAgent}
+                    aiModels={aiModels}
+                    selectedAiModel={selectedAiModel}
+                    assistStates={assistStates}
+                    chatHostName={chatHostName}
+                    aiCapabilities={aiCapabilities}
+                    onHandoffToChat={handleHandoffToChat}
+                    onAiRefine={handleAiRefine}
+                    onDelegate={handleDelegate}
+                    onSelectAiModel={handleSelectAiModel}
+                />
             </section>
             </div>{/* end left column */}
 
@@ -1329,6 +1520,8 @@ const App = () => {
                 @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
                 @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
                 @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+                /* FEAT-034: Optimizer re-scan spinner */
+                @keyframes harnessSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
                 /* FEAT-033: Running node pulse animation (R12) */
                 @keyframes runPulse {

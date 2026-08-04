@@ -9,6 +9,19 @@ interface SkillOption {
     alreadyConnected: boolean;
 }
 
+// FEAT-034 R45: tier → chip colour. Must stay identical to TIER_COLORS in
+// OptimizerPanel.tsx — these are the validated four-role status steps. The
+// original five hand-picked hues were replaced after A and B measured ΔE 10.2
+// in normal vision (floor 15), i.e. indistinguishable. A and B now share "good";
+// the chip always shows the numeric score, so colour never carries it alone.
+const TIER_CHIP_COLORS: Record<string, string> = {
+    A: '#0ca30c', // good
+    B: '#0ca30c', // good
+    C: '#fab219', // warning
+    D: '#ec835a', // serious
+    F: '#d03b3b', // critical
+};
+
 // FEAT-033: Format a Unix timestamp as a relative time string (R15)
 function formatRelativeTime(timestamp: number): string {
     const diffMs = Date.now() - timestamp;
@@ -164,6 +177,11 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
         borderLeft: `4px solid ${frameworkAccentColor}`,
         boxShadow: `inset 2px 0 0 color-mix(in srgb, ${frameworkAccentColor} 28%, transparent)`,
     } : {};
+
+    // FEAT-034 R45: optimizer score for this node, when the report covers it.
+    const optimizerScore = data.optimizerScore as
+        | { score: number; tier: string; findingCount: number }
+        | undefined;
 
     // T12 (R7): accent color derived from node type
     const accent = HANDLE_ACCENT[type] ?? '#888888';
@@ -330,11 +348,44 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                 />
             </div>
 
+            {/* FEAT-034 R45/R46: optimizer score chip. Absent score → no chip,
+                so nodes the optimizer does not cover stay visually unchanged. */}
+            {optimizerScore && (
+                <div
+                    title={`Optimizer score ${optimizerScore.score}/100 — tier ${optimizerScore.tier} — ${optimizerScore.findingCount} finding${optimizerScore.findingCount === 1 ? '' : 's'}`}
+                    style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        zIndex: 21,
+                        minWidth: '22px',
+                        height: '15px',
+                        padding: '0 5px',
+                        borderRadius: '999px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        letterSpacing: '0.2px',
+                        color: '#fff',
+                        background: TIER_CHIP_COLORS[optimizerScore.tier] ?? '#888',
+                        border: '1px solid rgba(0,0,0,0.35)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                        pointerEvents: 'auto',
+                        userSelect: 'none',
+                    }}
+                >
+                    {optimizerScore.score}
+                </div>
+            )}
+
             {/* Header */}
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: SPACE.sm,
                 borderBottom: '1px solid rgba(128,128,128,0.18)',
                 paddingBottom: SPACE.xs,

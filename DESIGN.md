@@ -50,18 +50,31 @@ extension. This is intentional "dogfooding".
    invariants (one feature in `in_progress`, no `done` without green
    tests, no missing spec files for SDD features).
 
-3. **Frugal AI, no surprises** — semantic matching uses TF-IDF
+3. **Deterministic analysis, AI only as a proposer** — anything that
+   produces a *score*, a *classification* or a *finding* is a pure,
+   table-driven rule that yields the same output for the same input and
+   is testable against fixtures (maturity classification, idoneity,
+   the Component Optimizer). An LLM may only ever *propose* content the
+   user then reviews — never silently judge. A score you cannot
+   reproduce is a score you cannot trust.
+   The one path where content is **not** reviewed before it lands is
+   delegation to an external terminal agent: there the user explicitly
+   hands control to another tool, and the weaker contract must be stated
+   at the point of handoff rather than implied. That is a deliberate
+   exception to the review rule, not a loophole in it.
+
+4. **Frugal AI, no surprises** — semantic matching uses TF-IDF
    + cosine similarity computed locally, not an embedding model.
    When an LLM enhancement is available, it uses VS Code's built-in
    `vscode.lm` API (no API keys, no HTTP). This keeps the VSIX
    under 300 KB and respects user privacy.
 
-4. **Single source of truth** — the runtime graph model is built
+5. **Single source of truth** — the runtime graph model is built
    from `agentic.json` (canonical) and the on-disk Markdown
    (`SUBAGENT.md`, `SKILL.md`). The graph is **derived state**; it is
    never the source of truth.
 
-5. **Testable, by construction** — every requirement R<n> maps to at
+6. **Testable, by construction** — every requirement R<n> maps to at
    least one test; every task T<n> references the R<n> it covers.
    Unit tests (Vitest) cover the semantic layer and adapters;
    `./check.sh` covers the harness invariants; the new CI workflow
@@ -123,7 +136,9 @@ process on their own machine.
 | **Semantic Layer** | TF-IDF vectorizer, cosine similarity, name-boost, n-gram tokenization | `src/semanticMatcher.ts` | pure functions, no I/O |
 | **Idoneity Layer** | Bidirectional semantic idoneity matrix, best-owner-by-skill, mismatch detection | `src/idoneity.ts` | reuses `semanticMatcher.ts` |
 | **Webview UI** | React Flow whiteboard, node types (agent/subagent/skill/steering/hook — features are in the SDD panel, not the canvas), per-type edge styling, timeline view, detail panel, side panel, context menus | `src/webview/*` | React 18, React Flow 11, `@vscode/webview-ui-toolkit` |
-| **Persistence** | Per-workspace state (dismissed suggestions, disabled connections, manual node positions) | `context.workspaceState` | VS Code API |
+| **Component Optimizer** | Deterministic scoring of every architecture component (agent/subagent/skill/steering/hook) across six dimensions; 19 table-driven rules tagged by epistemic confidence; thresholds calibrated against the workspace's own corpus; five pure quick-fix transforms | `src/optimizer/*` | pure TypeScript, no `vscode` import, no new dependency; reuses `semanticMatcher.ts`, `idoneity.ts`, `parserLogic.scanCrossReferences()` |
+| **Assisted Fixes** | For findings with no mechanical fix: AI Refine (proposal → existing diff preview → confirm) and Delegate (scoped task → installed terminal agent, no preview, stated as such) | `src/optimizer/aiRefine.ts`, `src/optimizer/delegateTask.ts`, `src/coordinators/OptimizerCoordinator.ts` | pure prompt/task construction; reuses `lmUtils.ts` provider chain and the FEAT-033 `RunAdapter` registry; no new dependency |
+| **Persistence** | Per-workspace state (dismissed suggestions, disabled connections, manual node positions, dismissed optimizer findings) | `context.workspaceState` | VS Code API |
 | **Output Channel** | Diagnostic logs visible in *Output > Harness Dashboard*, severity-filtered | `vscode.LogOutputChannel` | built-in |
 | **CI Workflow** | Re-runs `npm ci && build && test && check.sh` on every push and PR to `main` | `.github/workflows/ci.yml` | GitHub Actions, ubuntu-latest, Node 20.x |
 | **Harness SDD** | The framework that ships inside this repo: `agentic.json`, `bootstrap.sh`, `check.sh`, `specs/`, `feature_list.json` | `.agents/`, `check.sh`, `AGENTS.md` | CLI-agnostic manifest, Python renderer |
