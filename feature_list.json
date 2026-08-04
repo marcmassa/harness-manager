@@ -6,7 +6,13 @@
     "requireSpec": true,
     "requireTests": true,
     "requireCheck": true,
-    "validStatus": ["pending", "spec_ready", "in_progress", "done", "blocked"]
+    "validStatus": [
+      "pending",
+      "spec_ready",
+      "in_progress",
+      "done",
+      "blocked"
+    ]
   },
   "features": [
     {
@@ -273,67 +279,67 @@
       "agent": "spec-author-vscode",
       "sprint": "Next"
     },
-  {
-    "id": "FEAT-023",
-    "name": "adapter-config-paths-and-kiro-and-whiteboard-polish",
-    "title": "Configurable adapter paths + Kiro adapter + whiteboard UX polish (animations, no overlap)",
-    "description": "Three-part feature: (1) introduce a general 'Configuration Registry' pattern that lets the user override the detection paths of any adapter via VS Code settings (extensible, not Kiro-specific), so users with custom installs (e.g., a Kiro IDE install in a non-standard path) can still see their agents on the whiteboard; (2) add a Kiro adapter (detection file: .kiro/) as the FIRST consumer of the Configuration Registry; (3) polish the whiteboard UX: smoother, more professional node animations, and an explicit no-overlap guarantee for node positions. The Configuration Registry is the lasting architectural contribution; the Kiro adapter is its first payoff; the whiteboard polish closes two long-standing UX gaps.",
-    "type": "feat",
-  "status": "done",
-  "sdd": true,
-  "priority": "P1",
-  "agent": "typescript-implementer",
-  "sprint": "Current"
-  },
-  {
-    "id": "FEAT-024",
-    "name": "steering-and-hooks-observability",
-    "title": "Steering & Hooks Observability — visualise agent/file relationships on the whiteboard",
-    "description": "Add 'steering' and 'hook' as new node types on the whiteboard. Parse agentic.json#steering[] and agentic.json#hooks[] resources, read the actual steering markdown files and hook scripts, and create edges showing their relationships: steering → subagent (based on applies_to), hook → agent. Each steering file and hook script gets a distinct visual style (icon, colour, shape) so users can see their full agentic workflow at a glance.",
-    "type": "feat",
-    "status": "done",
-    "sdd": true,
-    "priority": "P1",
-    "agent": "typescript-implementer",
-    "sprint": "Next"
-  },
-  {
-    "id": "FEAT-025",
-    "name": "enhanced-sdd-panel",
-    "title": "Enhanced SDD Panel — spec viewer, editor, and AI-assisted feature initiation",
-    "description": "Create a dedicated SDD management panel alongside the whiteboard. Display spec files (requirements.md, design.md, tasks.md) for each feature in feature_list.json, show their chronology/status with visual state badges, allow editing spec files inline, and support initiating new specs directly from the panel. Integrate with the VS Code LLM API (vscode.lm) to assist in writing spec content — similar to how the Git extension generates commit messages — so users can generate EARS requirements, design decisions, or task lists with one click.",
-    "type": "feat",
-    "status": "done",
-    "sdd": true,
-    "priority": "P1",
-    "agent": "typescript-implementer",
-    "sprint": "Next"
-  },
-  {
-    "id": "FEAT-026",
-    "name": "cross-framework-hooks-steering",
-    "title": "Cross-framework hooks & steering discovery (Kiro, Claude Code, etc.)",
-    "description": "Closes the FEAT-024 gap: projects that use Kiro, Claude Code, Cursor, Gemini, Copilot, or Windsurf — without Harness SDD's agentic.json — can have hooks and steering files under their framework root (e.g., .kiro/hooks/) or even the project root (e.g., hooks/). Add a discovery layer that scans both locations, deduplicates, creates hook/steering nodes, and wires them to the adapter's root agent and subagents. Per-adapter settings (hooksPath, steeringPath, discoverHooks, discoverSteering) and global settings (rootHooks, rootSteering) make the behaviour fully configurable. Backward-compatible with FEAT-024's Harness-SDD handling.",
-    "type": "feat",
-    "status": "done",
-    "sdd": true,
-    "priority": "P1",
-    "agent": "typescript-implementer",
-    "sprint": "Next"
-  },
-  {
-    "id": "FEAT-027",
-    "name": "code-quality-on-save-hooks",
-    "title": "Code Quality On-Save Hooks (KISS + DRY) — enforce principles from the steering files",
-    "description": "Two hooks that run on every TypeScript save in src/ and enforce the KISS and DRY principles documented in steering/kiss-principle.md and steering/dry-principle.md. The KISS hook checks for overengineering: long files (>400 lines), long functions (>80 lines), deep nesting (>4 levels), unused parameters, and excessive swallowed exceptions. The DRY hook checks for duplication: repeated string literals (>=12 chars, 3+ times), repeated magic numbers, near-duplicate functions (Jaccard >= 0.85), and duplicate interface/type definitions. Each hook is its own bash + python3 script, registered in agentic.json#hooks[] under events on_file_saved_kiss and on_file_saved_dry, and reports issues to VS Code's Problems panel and an OutputChannel. A single JSON catalog (hooks/code-quality-checks.json) lists the rules and serves as the runtime form of the steering principles. Configurable via 5 settings: verifyOnSave, blockOnSave, kissEnabled, dryEnabled, severity. Plus a manual command to verify a chosen file.",
-    "type": "feat",
-    "status": "done",
-    "sdd": true,
-    "priority": "P1",
-    "agent": "typescript-implementer",
-    "sprint": "Current"
-  },
-  {
+    {
+      "id": "FEAT-023",
+      "name": "adapter-config-paths-and-kiro-and-whiteboard-polish",
+      "title": "Configurable adapter paths + Kiro adapter + whiteboard UX polish (animations, no overlap)",
+      "description": "Three-part feature: (1) introduce a general 'Configuration Registry' pattern that lets the user override the detection paths of any adapter via VS Code settings (extensible, not Kiro-specific), so users with custom installs (e.g., a Kiro IDE install in a non-standard path) can still see their agents on the whiteboard; (2) add a Kiro adapter (detection file: .kiro/) as the FIRST consumer of the Configuration Registry; (3) polish the whiteboard UX: smoother, more professional node animations, and an explicit no-overlap guarantee for node positions. The Configuration Registry is the lasting architectural contribution; the Kiro adapter is its first payoff; the whiteboard polish closes two long-standing UX gaps.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Current"
+    },
+    {
+      "id": "FEAT-024",
+      "name": "steering-and-hooks-observability",
+      "title": "Steering & Hooks Observability — visualise agent/file relationships on the whiteboard",
+      "description": "Add 'steering' and 'hook' as new node types on the whiteboard. Parse agentic.json#steering[] and agentic.json#hooks[] resources, read the actual steering markdown files and hook scripts, and create edges showing their relationships: steering → subagent (based on applies_to), hook → agent. Each steering file and hook script gets a distinct visual style (icon, colour, shape) so users can see their full agentic workflow at a glance.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-025",
+      "name": "enhanced-sdd-panel",
+      "title": "Enhanced SDD Panel — spec viewer, editor, and AI-assisted feature initiation",
+      "description": "Create a dedicated SDD management panel alongside the whiteboard. Display spec files (requirements.md, design.md, tasks.md) for each feature in feature_list.json, show their chronology/status with visual state badges, allow editing spec files inline, and support initiating new specs directly from the panel. Integrate with the VS Code LLM API (vscode.lm) to assist in writing spec content — similar to how the Git extension generates commit messages — so users can generate EARS requirements, design decisions, or task lists with one click.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-026",
+      "name": "cross-framework-hooks-steering",
+      "title": "Cross-framework hooks & steering discovery (Kiro, Claude Code, etc.)",
+      "description": "Closes the FEAT-024 gap: projects that use Kiro, Claude Code, Cursor, Gemini, Copilot, or Windsurf — without Harness SDD's agentic.json — can have hooks and steering files under their framework root (e.g., .kiro/hooks/) or even the project root (e.g., hooks/). Add a discovery layer that scans both locations, deduplicates, creates hook/steering nodes, and wires them to the adapter's root agent and subagents. Per-adapter settings (hooksPath, steeringPath, discoverHooks, discoverSteering) and global settings (rootHooks, rootSteering) make the behaviour fully configurable. Backward-compatible with FEAT-024's Harness-SDD handling.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-027",
+      "name": "code-quality-on-save-hooks",
+      "title": "Code Quality On-Save Hooks (KISS + DRY) — enforce principles from the steering files",
+      "description": "Two hooks that run on every TypeScript save in src/ and enforce the KISS and DRY principles documented in steering/kiss-principle.md and steering/dry-principle.md. The KISS hook checks for overengineering: long files (>400 lines), long functions (>80 lines), deep nesting (>4 levels), unused parameters, and excessive swallowed exceptions. The DRY hook checks for duplication: repeated string literals (>=12 chars, 3+ times), repeated magic numbers, near-duplicate functions (Jaccard >= 0.85), and duplicate interface/type definitions. Each hook is its own bash + python3 script, registered in agentic.json#hooks[] under events on_file_saved_kiss and on_file_saved_dry, and reports issues to VS Code's Problems panel and an OutputChannel. A single JSON catalog (hooks/code-quality-checks.json) lists the rules and serves as the runtime form of the steering principles. Configurable via 5 settings: verifyOnSave, blockOnSave, kissEnabled, dryEnabled, severity. Plus a manual command to verify a chosen file.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Current"
+    },
+    {
       "id": "FEAT-028",
       "name": "universal-ai-provider",
       "title": "Universal AI Provider — configurable LM fallback for any IDE",
@@ -398,6 +404,30 @@
       "name": "agent-run-studio",
       "title": "Agent Run & Architecture Studio",
       "description": "Phase 1 — Agent Run Panel: launch any whiteboard node as an agent from any installed CLI (Claude Code, Gemini CLI, generic fallback) via VS Code integrated terminal. No vendor lock-in — RunAdapter interface is extensible. Includes run history, pulsing running indicator on nodes, feature attachment from SDD specs, and command preview. Phase 2 — Architecture Studio: Agent Builder Wizard (multi-step, AI-assisted), Architecture Templates (solo/coordinator/pipeline), scaffold-missing and sync-from-filesystem commands. Makes the whiteboard a real development and operations tool.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-034",
+      "name": "component-optimizer",
+      "title": "Component Optimizer",
+      "description": "Deterministic linter and refactoring assistant for the architecture's own files. Scores every component (agent, subagent, skill, steering, hook) 0–100 across four dimensions — structure, context budget, integration, hygiene — from a table of pure rules (OPT-S/B/O/D/H families). Detects missing frontmatter contracts, skill descriptions without trigger conditions, token-budget waste and extractable reference content, semantic overlap between components, orphans, manifest/filesystem drift, broken cross-references, machine-specific paths and credential-shaped strings. Surfaces results in a fourth Optimizer tab plus a score chip on each whiteboard node, with deterministic quick fixes previewed in a native VS Code diff before any write. No LLM in detection or scoring; reuses semanticMatcher, idoneity and scanCrossReferences; adds no npm dependency.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
+    },
+    {
+      "id": "FEAT-035",
+      "name": "assisted-component-fixes",
+      "title": "Assisted Component Fixes",
+      "description": "AI-assisted correction for Component Optimizer findings that have no deterministic fix. Two clearly separated modes reusing existing infrastructure and adding no npm dependency. AI Refine goes through the lmUtils provider chain (vscode.lm first, so Copilot/Kiro work with the user's own subscription and no API key) and returns proposed content into FEAT-034's existing diff-preview flow, preserving the guarantee that nothing is written without explicit confirmation. Delegate hands a scoped task to an installed terminal agent (Claude Code, Gemini CLI) via the existing RunAdapter registry for batch and multi-file refactors; because an agentic CLI edits the working tree directly it cannot offer a diff preview, so it warns on a dirty tree and states that contract explicitly rather than presenting the two modes as interchangeable. No LLM participates in detection or scoring — FEAT-034's deterministic stance is unchanged. Extended post-approval to the SDD spec-generation surface: the same handoff serves generateWithAI, generateSpecDraft and generateFeatureDescription, with prompt builders extracted to a pure module so the direct route and the handoff cannot send different text.",
       "type": "feat",
       "status": "done",
       "sdd": true,

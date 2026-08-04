@@ -12,6 +12,108 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.0] — 2026-08-03
+
+> **Component Optimizer**, plus assisted fixes for the findings it cannot correct mechanically. No breaking changes to settings, commands, or output format; both features ship enabled and can be switched off entirely.
+
+### Added
+
+#### Component Optimizer — per-component quality scoring
+
+Until now the tool told you *what exists* in your agent architecture. It never told you *whether it is well built*. The three existing analysis layers all sit at the wrong granularity for that: the Advisory scans the workspace, idoneity scores relationships, and the KISS/DRY hooks only look at TypeScript source. Nothing read a `SKILL.md`.
+
+- **`src/optimizer/` module** — 19 files, entirely pure: nothing in it imports `vscode`, and its only I/O is an injected `readFile` callback. Adds **no npm dependency**.
+- **Scores every component** (`agent`, `subagent`, `skill`, `steering`, `hook`) from 0–100 across six dimensions — structure, clarity, context budget, integration, hygiene, consistency — plus an architecture-wide rollup. Scoring is deduction-based (`error` −25, `warning` −10, `info` −3) so it is explainable in one line, and fully deterministic: the same inputs always produce the same report.
+- **19 rules in six families**, each with a stable ID that will never be reused:
+  - `OPT-S01`–`OPT-S03`, `S05`, `S06` **structure** — missing or unparseable frontmatter, `name` not matching its directory, description length bounds, required sections per type, hook `event`/`script` contract, steering `appliesTo`.
+  - `OPT-B01`–`OPT-B03` **context budget** — per-component token estimate against a self-calibrating threshold (see *Calibration* below), extractable reference content, and an agent rollup over everything reachable by `uses` and `governs` edges.
+  - `OPT-C01`–`OPT-C02` **consistency** — divergence from the conventions of your *own* same-typed components, with the convention derived from the corpus rather than prescribed.
+  - `OPT-O01`–`OPT-O03` **integration** — TF-IDF cosine overlap between same-typed components, orphan skills and under-connected subagents, and ownership mismatch.
+  - `OPT-D01`–`OPT-D02` **drift** — manifest-declared but missing files, duplicate names across frameworks, broken cross-references.
+  - `OPT-H01`–`OPT-H02` **hygiene** — absolute machine-specific paths, credential-shaped strings.
+  - `OPT-S04` + `OPT-H03` **clarity** — `OPT-S04` deserves its own mention: progressive disclosure selects a skill from its description alone, so a description that never says *when* to use it is unlikely to ever be loaded — a silent failure that is invisible in the graph. `OPT-H03` reports vague-quantifier density as one aggregate, never per occurrence.
+- **Reuses the existing semantic layer rather than duplicating it** — `OPT-O01` builds its corpus from `tokenize`/`computeIdf`/`buildTfidfVectors`/`cosineSimilarity` in `semanticMatcher.ts`, `OPT-O03` delegates to `computeIdoneityMatrix()` + `detectMismatches()` in `idoneity.ts`, and `OPT-D02` uses `scanCrossReferences()` from `parserLogic.ts`.
+- **Local token estimation** (`tokenEstimator.ts`) — prose at 4 chars/token, fenced code at 3, no tokenizer package. `tiktoken` would have added megabytes of WASM for accuracy the use case does not need; every estimate is labelled "est." in the UI.
+
+#### Optimizer panel and whiteboard chips
+
+- **Fourth "Optimizer" tab** — architecture score header with a Re-scan button, component table sorted worst-first, expandable rows listing each component's findings, and filters by type / severity / dimension that compose with AND.
+- **Score chip on whiteboard nodes** — tier-coloured, with a tooltip stating score, tier and finding count. Nodes the report does not cover render no chip, so uncovered node types look exactly as before.
+- **Finding dismissal** — persisted per workspace under `harness-dashboard.dismissedOptimizerFindings` as `<ruleId>::<nodeId>`, with a restore-all control. Dismissed findings are filtered *before* scoring, so dismissing one actually raises the score.
+
+#### Quick fixes
+
+- **Five deterministic transforms** — `insert-frontmatter`, `set-frontmatter-field`, `append-section-stubs`, `extract-to-references`, `relativize-path` — each a pure `string → string` function.
+- **Diff preview before any write** — the proposed content is served through a `TextDocumentContentProvider` on the `harness-optimizer:` scheme and shown in a native diff editor. Nothing reaches disk until the user confirms a modal. A temp file would have polluted the workspace and the user's git status.
+- **`extract-to-references` refuses to overwrite** an existing target rather than clobbering it, and writes both files (the trimmed component and the new `references/<slug>.md`) when applied.
+
+#### Calibration — thresholds judged against your corpus, not a constant
+
+The first cut used fixed budgets (500 tokens for a skill). Measured against the five real skills in this repository — 472, 719, 939, 1093 and 1991 estimated tokens — that constant flagged **four of the five**, one as an `error`. A rule that reports 80% of a competent author's corpus measures the constant, not the corpus.
+
+- **Relative budgets** — `OPT-B01`/`OPT-B02` now fire above `2.5× the median of your same-typed components`, falling back to a configurable absolute budget only below five components of that type. A percentile was rejected: a percentile always reports a fixed fraction, so a uniformly good corpus would still be flagged. A median multiple can legitimately report nothing — and on this repository it now reports **0 of 5**.
+- **Confidence tiers** — every rule declares whether it verifies a `fact` (the file exists or it does not), applies a `heuristic` (real mechanism, approximate detection), or fires on an unvalidated threshold (`opinion`).
+- **Severity ceiling** — the engine clamps each finding to its rule's tier: `fact` may reach `error`, `heuristic` caps at `warning`, `opinion` caps at `info`. An invented constant can no longer deduct as much as a genuinely broken frontmatter.
+
+#### Dimension radar and legend
+
+- **Radar chart** at architecture level and per component: six fixed axes, every axis direct-labelled with its value, radial scale numbered 0/25/50/75/100, banded ranges and marked ring vertices. Inline SVG, no charting dependency, theme-aware.
+- Its reason for existing: a component at 100/100/40/100 and one at 85/85/85/85 average the same and mean opposite things. The single number cannot show that; the polygon shows it instantly.
+- **Collapsible legend** — per dimension: the question it asks, the rule IDs feeding it, the current value, the finding count, plus the deduction model and the confidence ceiling.
+
+#### Accessibility
+
+- **Tier palette replaced.** The original five hand-picked hues failed validation: tiers A (`#22bb66`) and B (`#88cc33`) measured ΔE 10.2 in *normal* vision against a floor of 15, and 3.4 under deuteranopia — two adjacent tiers were effectively one colour. Tiers now use the validated four-role status palette with A and B sharing `good`; the tier letter carries the five-way distinction and a tier colour never appears without its numeric score.
+
+#### Assisted fixes — two modes, two different contracts
+
+`fact`-tier rules already have mechanical fixes: `name` is missing, so write `name`. `heuristic`- and `opinion`-tier rules frequently have none — "this skill is 1 991 tokens" has no arithmetic answer, because someone must decide *what* to extract. Those findings were reported and then abandoned. Two modes close that gap, both reusing infrastructure that already shipped and adding **no npm dependency**.
+
+- **AI Refine** — proposes a rewrite through the existing `lmUtils` provider chain, so `vscode.lm` is tried first and works on your existing subscription with no API key **wherever the host exposes a model**. Verified in smoke testing: VS Code with Copilot does; **Kiro does not implement `vscode.lm`**, and there an API key is required. The failure message distinguishes the two cases instead of reporting only the last provider's error. The proposal is handed to the *same* diff-preview code path as the deterministic fixes, which is what preserves the guarantee that nothing reaches disk before you confirm. A model selector in the panel header overrides the workspace default.
+- **Delegate** — hands a scoped task to an installed terminal agent (Claude Code, Gemini CLI) via the `RunAdapter` registry FEAT-033 already built. Available for one finding, all findings on a component, or all occurrences of one rule across components.
+
+**A third mode where neither works.** `vscode.lm` is not the universal contract it looks like — verified against the installed editors, Kiro runs on a VS Code base new enough to have the API but its agent neither registers a model provider nor consumes one, and exposes no extension API. But the user is already signed in there with a model chosen. So **Ask &lt;host&gt;** places the prompt in the host editor's own chat input: no credentials, no configuration, no per-host model plumbing. It is strictly one-way — nothing comes back, nothing is written — which makes it the safest of the three and the least automated. Host detection probes the live command list (`kiroAgent.focusChatInput`, `workbench.action.chat.open`) rather than sniffing the product name, so an unrecognised fork simply does not offer the action. Each host's payload mirrors the shape that host's own actions use — for Kiro that means `newSession: true`, without which the prompt only landed when the chat input was already empty. Antigravity was verified to expose no chat command at all: its agent runs outside the extension host.
+
+**The same fallback covers spec generation.** The SDD panel's three AI paths hit the identical wall in Kiro. Where the host offers no model and no API key is set, "Generate with AI" is replaced by "Ask &lt;host&gt;". Prompt construction moved to a pure shared module so the direct route and the handoff send byte-identical text — two copies would drift, and the symptom would be subtly different specs depending on which button the host allowed.
+
+**The two write-capable modes are not interchangeable, and the UI says so.** An agentic CLI edits the working tree itself and returns no content, so delegation *cannot* offer a diff preview. Hiding both behind one "Fix with AI" button would mean the same click sometimes shows a diff and sometimes silently rewrites files. Delegation therefore states its contract in the confirmation and warns when the working tree is dirty — or when no version control is detected at all, where there is no way back.
+
+- **Guardrails** — a refine abandons after 30 s without writing anything; a second refine on the same finding is refused rather than racing two writes to one file; a batch above 20 components needs a second confirmation naming the count; every failure path posts a reason and leaves the deterministic fix available.
+- **Promotion follows the evidence** — AI Refine is offered everywhere but promoted to the primary action only where a finding has no mechanical fix *and* its rule involves judgement. A `fact` finding with no fix is a gap in our own rules, not a question worth handing to a model.
+
+### Changed
+
+- **`HarnessWriter.writeFileAtPath(relPath, content)`** — new generic write method with a path-traversal guard, so quick fixes can rewrite an arbitrary component file without bypassing the writer.
+- **`openFileInEditor(root, filePath, line?)`** — now accepts an optional 1-based line and reveals it, clamped to the document length so a stale finding cannot throw. `openInEditor` passes it through.
+- **`OptimizerCoordinator`** joins the coordinator chain as the fifth handler, following the same `handle(msg, postMessage, sendData)` contract as the other four.
+- **The optimizer report rides the existing `scheduleScan` debounce** rather than adding a second timer, so any coordinator write that already refreshes the advisory now refreshes the optimizer too.
+- **`_previewAndWrite()`** — the stage → diff → modal → write → rescan tail is now shared by the deterministic fixes and AI Refine. They must not drift: that function *is* the no-write-without-confirmation guarantee.
+- **Findings carry their rule's `confidence`**, stamped by the engine, so the UI can say what kind of claim a finding makes without consulting the rule registry.
+
+### Fixed
+
+- **Terminal commands raced the shell.** `sendText` immediately after `createTerminal()` is typed into a shell that has not finished starting and is silently swallowed — the terminal opened and nothing ran. New `src/terminalUtils.ts#sendWhenShellReady` waits for the shell-integration signal where that API exists and falls back to a bounded delay otherwise. Applied to the optimizer's delegation **and** to the FEAT-033 Run panel (`RunCoordinator`), which carried the same latent defect; a reused terminal skips the wait.
+- **`OPT-O02` was mis-tagged `fact`.** It asks whether the *derived graph* holds a `uses` edge, and that graph is built by eight adapters from heterogeneous sources. Smoke testing surfaced a skill declared in `skills[]` for three subagents and still reported as an orphan. `DESIGN.md` principle 5 is explicit that the graph is derived and never the source of truth, so the rule is now `heuristic` and its message says the claim comes from the graph — making a false positive diagnosable instead of authoritative.
+- **`OPT-D01` reported a populated directory as missing.** Adapters may root a synthetic node at a config directory (Kiro does, at `.kiro`), and the loader could not tell a directory from an absent path. Since `OPT-D01` is `fact`-tier at `error` severity, this was a false claim from the one tier that must not make one. `ComponentSource.pathKind` now distinguishes `file` / `directory` / `missing` / `unresolved` via a real `stat`, and the rule fires only on `missing`.
+
+- **~390 KB of dead code removed from the package.** `dist/` held two bundles no entry point produces — `extension.js` from the 0.1.0 era and `sddManager.js` whose entry point was deleted months ago — and `vsce` sweeps the whole directory. The build now prunes anything in `dist/` that is not a declared output, so a removed entry point cannot leave a passenger behind again.
+
+### Settings
+
+Ten new keys, all under `harness-dashboard.optimizer.*`: `enabled` (default `true`), `budgetMedianMultiple` (`2.5`), `tokenBudget.skill` (`1500`), `tokenBudget.subagent` (`2500`), `tokenBudget.steering` (`1500`), `tokenBudget.agentRollup` (`12000`), `overlapThreshold` (`0.8`), `disabledRules` (`[]`), `assistedFixes.enabled` (`true`) and `assistedFixes.mode` (`both` | `ai-only` | `delegate-only`, default `both`). The `tokenBudget.*` values are fallbacks used only below five components of a type; above that, `budgetMedianMultiple × the corpus median` applies. Setting `enabled` to `false` restores exactly the 0.7.0 behaviour: no scan runs, no chip renders.
+
+### Commands
+
+- `harness-dashboard.optimizeComponents` — "Harness: Optimize Components".
+
+### Notes
+
+- **No LLM participates in detection or scoring.** Every finding comes from a pure, table-driven rule. AI-assisted *rewriting* was deliberately deferred: a score you cannot reproduce is a score you cannot trust or test. See `.kiro/specs/component-optimizer/design.md` § Discarded Alternatives.
+- **Credential findings never reproduce the matched secret** — only the pattern name and line number, with a test asserting the match appears nowhere in the serialized finding.
+- Test count: 421 → 681.
+
+---
+
 ## [0.7.0] — 2026-06-30
 
 > **Unified entity wizard, connection overhaul, and visual polish.** No breaking changes to settings, commands, or output format.

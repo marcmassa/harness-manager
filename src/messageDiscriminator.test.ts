@@ -13,6 +13,14 @@ const KNOWN: WebviewMessageType[] = [
     'openInEditor', 'createFeature', 'generateFeatureDescription', 'deleteFeature',
     'dismissAgenticSuggestion', 'applyHarnessSDD',
     'openFullWindow', 'openSettings',
+    // FEAT-034: Component Optimizer
+    'getOptimizerReport', 'optimizerReport', 'runOptimizerScan', 'applyQuickFix',
+    'quickFixResult', 'dismissOptimizerFinding', 'restoreOptimizerFindings',
+    // FEAT-035: Assisted Component Fixes
+    'aiRefineFinding', 'aiRefineResult', 'delegateFinding', 'delegateResult',
+    'getOptimizerAiModels', 'optimizerAiModels', 'setOptimizerAiModel',
+    'handoffToChat', 'handoffResult',
+    'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
 ];
 
 describe('isKnownWebviewMessage — FEAT-030 R5, R6', () => {

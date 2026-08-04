@@ -23,9 +23,11 @@ export interface SpecEditorProps {
     feature: FeatureEntry;
     vscode: VscodeApi;
     taskCounts: Record<string, { total: number; done: number }>;
+    /** FEAT-036 — what this host can actually do, probed by the extension. */
+    aiCapabilities?: { hasEditorModel: boolean; chatHostName?: string; hasApiKey: boolean };
 }
 
-export const SpecEditor = ({ feature, vscode, taskCounts }: SpecEditorProps) => {
+export const SpecEditor = ({ feature, vscode, taskCounts, aiCapabilities }: SpecEditorProps) => {
     const [activeTab, setActiveTab] = React.useState<SpecFile>('requirements');
     const [specContent, setSpecContent] = React.useState<Record<SpecFile, MarkdownFileContent>>({
         requirements: EMPTY_SPEC, design: EMPTY_SPEC, tasks: EMPTY_SPEC,
@@ -124,6 +126,20 @@ export const SpecEditor = ({ feature, vscode, taskCounts }: SpecEditorProps) => 
         setSaveResult(null);
         vscode.postMessage?.({ type: 'generateWithAI', featureName: feature.name, file: activeTab });
     }
+
+    // FEAT-036: where the host exposes no model, the same prompt goes to its own
+    // chat instead of failing with "no API key configured".
+    function handleAskEditor(): void {
+        vscode.postMessage?.({
+            type: 'handoffSpecPrompt', kind: 'generateWithAI',
+            featureName: feature.name, file: activeTab,
+        });
+    }
+
+    const canGenerateDirectly = aiCapabilities
+        ? aiCapabilities.hasEditorModel || aiCapabilities.hasApiKey
+        : true;
+    const chatHost = aiCapabilities?.chatHostName;
 
     return (
         <>
@@ -285,6 +301,9 @@ export const SpecEditor = ({ feature, vscode, taskCounts }: SpecEditorProps) => 
                             onCreateFromTemplate={handleCreateFromTemplate}
                             onEnterEditMode={handleEnterEditMode}
                             onGenerateWithAI={handleGenerateWithAI}
+                            canGenerateDirectly={canGenerateDirectly}
+                            chatHostName={chatHost}
+                            onAskEditor={handleAskEditor}
                         />
                         <div style={{ flex: 1, overflow: 'auto' }}>
                             {specLoading[activeTab] ? (

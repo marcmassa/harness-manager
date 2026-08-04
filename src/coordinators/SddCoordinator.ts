@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import type { WebviewMessage } from '../types.js';
 import { generateText } from '../lmUtils.js';
+import { sendPromptToHostChat, detectChatHostName } from '../chatHandoffHost.js';
+import { buildSpecDraftPrompt, buildFeatureDescriptionPrompt } from '../sdd/specPrompts.js';
 import {
     getFallbackTemplate,
     buildAIPrompt,
@@ -103,6 +105,48 @@ export class SddCoordinator {
                 return true;
             }
 
+            case 'getAiCapabilities': {
+                // The webview cannot probe the host, so it asks. Each panel then
+                // renders the action it can actually perform rather than one that
+                // will fail.
+                let hasEditorModel = false;
+                try {
+                    hasEditorModel = (await vscode.lm.selectChatModels()).length > 0;
+                } catch {
+                    hasEditorModel = false;
+                }
+                const chatHostName = await detectChatHostName();
+                const apiKey = vscode.workspace.getConfiguration('harness-dashboard').get<string>('ai.apiKey', '');
+                postMessage({ type: 'aiCapabilities', hasEditorModel, chatHostName, hasApiKey: Boolean(apiKey) });
+                return true;
+            }
+
+            case 'handoffSpecPrompt': {
+                const kind = msg.kind as string;
+                let prompt = '';
+                if (kind === 'specDraft') {
+                    const { featureName, file, userPrompt, contextContent } = msg as unknown as
+                        { featureName: string; file: 'requirements' | 'design' | 'tasks'; userPrompt: string; contextContent?: string };
+                    prompt = await this._buildSpecDraftPromptFor(featureName, file, userPrompt, contextContent);
+                } else if (kind === 'generateWithAI') {
+                    const { featureName, file } = msg as unknown as { featureName: string; file: 'requirements' | 'design' | 'tasks' };
+                    prompt = await this._buildGenerateWithAiPromptFor(featureName, file);
+                } else {
+                    prompt = buildFeatureDescriptionPrompt({
+                        title: (msg.title as string) || '',
+                        mode: (msg.mode as string) || 'generate',
+                        currentDescription: (msg.currentDescription as string) || '',
+                        target: (msg.target as string) || 'createDescription',
+                    });
+                }
+
+                postMessage({
+                    type: 'handoffResult',
+                    ...(await sendPromptToHostChat(prompt, { log: this._log, context: 'SDD' })),
+                });
+                return true;
+            }
+
             case 'generateSpecDraft': {
                 const { featureName, file, userPrompt, contextContent } = msg as unknown as { featureName: string; file: 'requirements' | 'design' | 'tasks'; userPrompt: string; contextContent?: string };
                 const result = await this._generateSpecDraft(featureName, file, userPrompt, contextContent);
@@ -111,11 +155,13 @@ export class SddCoordinator {
             }
 
             case 'openInEditor': {
+                // FEAT-034 R42: optional 1-based line, used by optimizer findings.
+                const line = typeof msg.line === 'number' ? msg.line : undefined;
                 const resolved = await resolveInWorkspace(this._workspaceRoot, msg.filePath as string);
                 if (resolved) {
-                    await openFileInEditor(this._workspaceRoot, resolved.fsPath);
+                    await openFileInEditor(this._workspaceRoot, resolved.fsPath, line);
                 } else {
-                    await openFileInEditor(this._workspaceRoot, msg.filePath as string);
+                    await openFileInEditor(this._workspaceRoot, msg.filePath as string, line);
                 }
                 return true;
             }
@@ -132,16 +178,7 @@ export class SddCoordinator {
                 const mode = (msg.mode as string) || 'generate';
                 const currentDescription = (msg.currentDescription as string) || '';
                 const target = (msg.target as string) || 'createDescription';
-                let prompt: string;
-                if (mode === 'refine' && currentDescription) {
-                    prompt = `Refine and improve the following text. Keep it concise and professional.\n\nTitle: ${title}\n\nCurrent text:\n${currentDescription}\n\nReturn only the refined text, no preamble.`;
-                } else if (target === 'wizardPrompt' && title) {
-                    prompt = `Write a detailed prompt (2-4 sentences) describing what to generate for a software feature titled "${title}". The prompt should describe the feature's purpose, key functionality, and expected outcomes. Return only the prompt text, no preamble.`;
-                } else if (target === 'editContent' && currentDescription) {
-                    prompt = `Refine and improve the following specification content. Maintain the structure and markdown formatting. Improve clarity and completeness.\n\nTitle: ${title}\n\nCurrent content:\n${currentDescription}\n\nReturn only the refined content, no preamble.`;
-                } else {
-                    prompt = `Write a concise, one-paragraph description (2-3 sentences) for a software feature titled "${title}". Return only the description text, no preamble.`;
-                }
+                const prompt = buildFeatureDescriptionPrompt({ title, mode, currentDescription, target });
                 const result = await generateText(prompt, this._log);
                 postMessage({ type: 'featureDescriptionResult', ...result, target });
                 return true;
@@ -201,6 +238,35 @@ export class SddCoordinator {
         }
     }
 
+    /**
+     * The prompt `_generateWithAI` would send. Shared with the handoff path so
+     * both routes carry byte-identical text — a prompt that differed by button
+     * would silently produce different specs.
+     */
+    private async _buildGenerateWithAiPromptFor(featureName: string, file: 'requirements' | 'design' | 'tasks'): Promise<string> {
+        const features = await this._getFeatureList();
+        const feature = features.find((f) => f.name === featureName);
+        if (!feature) return '';
+        const tplFound = await tryReadInWorkspace(this._workspaceRoot, `specs/templates/${file}.md`);
+        const templateContent = tplFound ? tplFound.content : getFallbackTemplate(file);
+        const existing = await this._getSpecFile(featureName, file);
+        return buildAIPrompt(feature, file, templateContent, existing.content);
+    }
+
+    /** Same contract as above, for the draft path. */
+    private async _buildSpecDraftPromptFor(
+        featureName: string,
+        file: 'requirements' | 'design' | 'tasks',
+        userPrompt: string,
+        contextContent?: string,
+    ): Promise<string> {
+        const features = await this._getFeatureList();
+        const feature = features.find((f) => f.name === featureName);
+        const tplFound = await tryReadInWorkspace(this._workspaceRoot, `specs/templates/${file}.md`);
+        const templateContent = tplFound ? tplFound.content : getFallbackTemplate(file);
+        return buildSpecDraftPrompt({ file, userPrompt, templateContent, contextContent, feature });
+    }
+
     private async _generateWithAI(featureName: string, file: 'requirements' | 'design' | 'tasks'): Promise<{ ok: boolean; text?: string; error?: string }> {
         const features = await this._getFeatureList();
         const feature = features.find((f) => f.name === featureName);
@@ -220,11 +286,7 @@ export class SddCoordinator {
         const tplFound = await tryReadInWorkspace(this._workspaceRoot, `specs/templates/${file}.md`);
         const templateContent = tplFound ? tplFound.content : getFallbackTemplate(file);
 
-        let prompt = `You are writing a ${file} file for a software feature.\n\n## User's Feature Description\n${userPrompt}\n\n## Template (follow this structure)\n${templateContent}\n`;
-        if (contextContent) prompt += `\n## Previously Approved Content (use this as context)\n${contextContent.slice(0, 4096)}\n`;
-        if (feature) prompt += `\n## Feature Metadata\n- ID: ${feature.id}\n- Title: ${feature.title}\n- Description: ${feature.description}\n- Priority: ${feature.priority}\n`;
-        prompt += '\n## Output\nReturn only the markdown body, no preamble. Follow the template\'s structure exactly.';
-        if (prompt.length > 8192) prompt = prompt.slice(0, 8192) + '\n\n[... truncated ...]';
+        const prompt = buildSpecDraftPrompt({ file, userPrompt, templateContent, contextContent, feature });
 
         const result = await generateText(prompt, this._log);
         if (result.ok && result.text) {

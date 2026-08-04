@@ -201,6 +201,29 @@ export class HarnessWriter {
         await vscode.workspace.fs.writeFile(file, Buffer.from(header + scriptContent));
     }
 
+    /**
+     * FEAT-034 (T39): write full content to an arbitrary workspace-relative
+     * path, creating parent directories as needed. Used by the Component
+     * Optimizer's quick fixes, which rewrite an existing component file (and,
+     * for `extract-to-references`, create a sibling references/<slug>.md).
+     *
+     * Kept generic on purpose: the optimizer computes the exact final content
+     * as a pure transform, so the writer only has to persist it.
+     */
+    public async writeFileAtPath(relPath: string, content: string): Promise<void> {
+        const normalized = relPath.replace(/\\/g, '/').replace(/^\.?\//, '');
+        if (!normalized || normalized.split('/').includes('..')) {
+            throw new Error(`Refusing to write outside the workspace: "${relPath}"`);
+        }
+        const segments = normalized.split('/');
+        const file = vscode.Uri.joinPath(this.workspaceRoot, ...segments);
+        if (segments.length > 1) {
+            const dir = vscode.Uri.joinPath(this.workspaceRoot, ...segments.slice(0, -1));
+            await vscode.workspace.fs.createDirectory(dir);
+        }
+        await vscode.workspace.fs.writeFile(file, Buffer.from(content, 'utf8'));
+    }
+
     public async deleteNode(id: string, type: string): Promise<void> {
         if (type === 'subagent') {
             const agenticUri = vscode.Uri.joinPath(this.workspaceRoot, '.agents', 'agentic.json');

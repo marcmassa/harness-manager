@@ -12,9 +12,11 @@ export interface FeatureSpecPanelProps {
     milestones?: any[];
     startWizard?: number;
     targetFeature?: string | null;
+    /** FEAT-036 — host AI capability probe, forwarded to SpecEditor. */
+    aiCapabilities?: { hasEditorModel: boolean; chatHostName?: string; hasApiKey: boolean };
 }
 
-export const FeatureSpecPanel = ({ milestones, startWizard, targetFeature }: FeatureSpecPanelProps) => {
+export const FeatureSpecPanel = ({ milestones, startWizard, targetFeature , aiCapabilities }: FeatureSpecPanelProps) => {
     const vscode = React.useMemo(() => {
         try { return (window as any).__harness_vscode_api ?? (window as any).acquireVsCodeApi?.() ?? {}; }
         catch { return {}; }
@@ -168,7 +170,7 @@ export const FeatureSpecPanel = ({ milestones, startWizard, targetFeature }: Fea
                             onClose={() => setWizardOpen(false)}
                         />
                     ) : selectedFeature ? (
-                        <SpecEditor
+                        <SpecEditor aiCapabilities={aiCapabilities}
                             feature={selectedFeature}
                             vscode={vscode}
                             taskCounts={taskCounts}
