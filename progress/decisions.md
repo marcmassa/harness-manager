@@ -446,3 +446,56 @@ made at the time* even after it is reversed.
 
 ---
 
+### ADR-005: Amend the VSIX budget from 300,000 B to 400,000 B (with a utilization review signal)
+- **Status:** Accepted
+- **Context:** FEAT-038 (VSIX Asset Diet) executed its STOP
+  clause exactly as specified: after removing ~1.71 MB of
+  README screenshots from the package (1,899,264 B →
+  361,604 B, −81%), the artifact still measured
+  361,604 B ≥ the literal <300 KB budget. Measurement
+  falsified the spec's premise "the code payload zips to
+  ~190 KB": the `dist/` trio alone compresses to
+  309,467 B with `minify` already active — the budget is
+  arithmetically unreachable by asset or code diet without
+  cutting real features (React 19 + @xyflow/react 12 + the
+  full webview). The 300 KB figure dates from the 0.1.2 era
+  (whole VSIX: 256 KB) and predates the whiteboard,
+  optimizer, run studio, and the v12 migration.
+- **Decision:** Amend the budget to **400,000 decimal
+  bytes**, human-approved (2026-09-09, option "A" of the
+  STOP report) with the T9 measurement as the evidence the
+  spec's §6 amendment path demands. Current utilization is
+  90.4% of the amended gate, so the amendment ships with a
+  non-blocking **review signal**: `vsix-gate.sh` prints
+  budget utilization and flags ≥80% for review — it fires
+  on day one, deliberately: the payload is genuinely close
+  to its envelope and the next UI-dependency growth must be
+  a conscious decision, not a surprise gate failure.
+- **Impact:**
+  - **Positive** — the gate becomes pass-able and thus
+    permanently enforced (a budget that fails on every PR
+    by construction is theatre); FEAT-037's R12 waiver can
+    be retired; the utilization line institutionalises the
+    "watch the payload" conversation.
+  - **Cost** — the amendment concedes that the original
+    300 KB intent is no longer honoured verbatim; DESIGN.md
+    §2.4 reworded; a backlog item tracks payload-watch
+    (code-splitting the webview is the eventual path back
+    toward smaller, if ever desired).
+- **Discarded Alternatives:**
+  - Keep 300,000 B and open a code-diet feature —
+    rejected: needs ≥10% off already-minified code with
+    proven-doubtful feasibility, leaves CI red meanwhile,
+    and 361 KB of payload is legitimate for the feature
+    surface shipped.
+  - Restate the budget as code-only bytes — rejected by
+    arithmetic: the dist trio alone (309,467 B) already
+    exceeds 300,000 B; the redefinition wouldn't pass
+    either.
+  - Raise the threshold to an arbitrary comfortable number
+    (e.g. 600 KB) — rejected: the spec's own §6 clause
+    forbids raising to green; 400,000 B is measurement-
+    anchored (~10% headroom over the observed artifact).
+
+---
+

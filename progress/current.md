@@ -1,18 +1,26 @@
 # Current Session State
 
 ## Active Feature
-_(none — FEAT-037 react-flow-12-migration completed and closed 2026-09-09;
-see progress/progress.md and progress/impl_react-flow-12-migration.md)_
+_(none in_progress — FEAT-038 `vsix-asset-diet` completed 2026-09-09 and
+closed with the ADR-005 budget amendment; release **0.8.1** is now
+FEAT-036 + FEAT-037 + FEAT-038, ready to tag)_
 
 ## Status
-- `./check.sh`: green (build + 819 tests / 57 files + governance + adapters in sync).
-- Release 0.8.1 (shared FEAT-036 + FEAT-037) consolidated in CHANGELOG/README;
-  version stays 0.8.1 — ready to tag/publish when the human decides.
-- Next: open the follow-ups recorded at closure (vsix-asset-diet spec;
-  e2e test-electron infra backlog item).
+- Branch `chore/vsix-asset-diet`: implementation + ADR-005 amendment +
+  closeout committed locally. Push / PR for this branch is handled by the
+  orchestrator — not this session's work.
+- VSIX gate: **PASSED at 361,604 B (90% of the amended 400,000 B
+  budget)**; ≥80% review signal fires by design (ADR-005). FEAT-037's
+  R12 waiver formally retired.
+- `npm test`: 819/819 (57 files). `./check.sh`: exit 0.
+- Pending human: (a) **landing-page screenshot render eyeball post-merge**
+  (GitHub half of R3 — raw URLs verified live programmatically);
+  (b) **Marketplace listing render post-publish** (Marketplace half of
+  R3, handed off at T11).
+- Backlog standing: **P2 payload-watch** (budget utilization ≥80% since
+  ADR-005 — next UI-dependency bump crossing the gate ⇒ webview
+  code-splitting feature, not a second amendment) and **P1 e2e harness
+  fix** against current VS Code stable.
 
 ## Notes
-- R12 human decision recorded: +27.2 KB migration delta ACCEPTED; the literal
-  <300 KB budget is only meaningful after the asset-diet feature (baseline
-  VSIX already breaches it with ~1.71 MB of README screenshots).
-- M1–M7 (F5 host, light+dark): VERIFIED-BY-HUMAN 2026-09-09.
+- _(clean)_
