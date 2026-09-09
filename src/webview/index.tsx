@@ -625,7 +625,7 @@ const App = () => {
         }
         return Array.from(frameworkSet);
     }, [data]);
-    const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph.nodes.length === 0;
+    const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph?.nodes.length === 0;
 
     // Handle node selection from whiteboard — FEAT nodes navigate to Specs Manager
     const handleNodeSelect = React.useCallback((node: any) => {

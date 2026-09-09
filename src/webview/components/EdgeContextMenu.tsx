@@ -16,6 +16,23 @@ interface EdgeContextMenuProps {
 
 const EDGE_LABELS: EdgeLabel[] = ['manages', 'uses', 'executing'];
 
+/**
+ * FEAT-037 §5: typed projection of the edge data bag built by
+ * WhiteboardCanvas (`data: { metadata, originalLabel }`) — replaces the
+ * untyped `edge.data?.metadata?.x` reads that v11's `data: any` allowed.
+ */
+interface HarnessEdgeData extends Record<string, unknown> {
+    originalLabel?: string;
+    metadata?: {
+        disabled?: boolean;
+        _mismatch?: boolean;
+        score?: number;
+        method?: string;
+        idoneity?: number;
+        [key: string]: unknown;
+    };
+}
+
 export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcceptSuggestion, onDismissSuggestion, onToggleConnection, onClose }: EdgeContextMenuProps) => {
     const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,11 +64,12 @@ export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcc
     if (!edge) return null;
 
     // T8 (R7): use originalLabel to correctly detect edge type, regardless of display label
-    const originalLabel = (edge.data as any)?.originalLabel as string | undefined;
+    const edgeData = edge.data as HarnessEdgeData | undefined;
+    const originalLabel = edgeData?.originalLabel;
     const isSuggested = originalLabel === 'suggested';
     const isUses = originalLabel === 'uses';
-    const isDisabled = isUses && edge.data?.metadata?.disabled === true;
-    const isMismatchEdge = isUses && edge.data?.metadata?._mismatch === true && !isDisabled;
+    const isDisabled = isUses && edgeData?.metadata?.disabled === true;
+    const isMismatchEdge = isUses && edgeData?.metadata?._mismatch === true && !isDisabled;
 
     const menuStyle: React.CSSProperties = {
         position: 'fixed',
@@ -115,26 +133,26 @@ export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcc
             </div>
 
             {/* Show score if suggested (FEAT-010) */}
-            {isSuggested && edge.data?.metadata?.score && (
+            {isSuggested && edgeData?.metadata?.score && (
                 <div style={{
                     padding: '6px 16px',
                     fontSize: '0.75em',
                     opacity: 0.6,
                     borderBottom: '1px solid var(--vscode-dropdown-border)',
                 }}>
-                    Similarity: {edge.data.metadata.score} ({edge.data.metadata.method || 'tfidf'})
+                    Similarity: {edgeData.metadata.score} ({edgeData.metadata.method || 'tfidf'})
                 </div>
             )}
 
             {/* Show idoneity score for uses edges (FEAT-011 R3) */}
-            {isUses && edge.data?.metadata?.idoneity !== undefined && (
+            {isUses && edgeData?.metadata?.idoneity !== undefined && (
                 <div style={{
                     padding: '6px 16px',
                     fontSize: '0.75em',
                     borderBottom: '1px solid var(--vscode-dropdown-border)',
                     lineHeight: 1.6,
                 }}>
-                    <div style={{ opacity: 0.5 }}>Idoneity: {edge.data.metadata.idoneity}</div>
+                    <div style={{ opacity: 0.5 }}>Idoneity: {edgeData.metadata.idoneity}</div>
                     {isMismatchEdge && (
                         <div style={{ color: '#e86f4a', fontWeight: 600, fontSize: '0.9em' }}>
                             ⚠️ Mismatch — better owner exists
@@ -205,14 +223,14 @@ export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcc
             )}
 
             {/* Show idoneity score for suggested edges too (now available) */}
-            {isSuggested && edge.data?.metadata?.idoneity !== undefined && (
+            {isSuggested && edgeData?.metadata?.idoneity !== undefined && (
                 <div style={{
                     padding: '6px 16px',
                     fontSize: '0.75em',
                     opacity: 0.6,
                     borderBottom: '1px solid var(--vscode-dropdown-border)',
                 }}>
-                    Idoneity: {edge.data.metadata.idoneity}
+                    Idoneity: {edgeData.metadata.idoneity}
                 </div>
             )}
 

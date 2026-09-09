@@ -1,3 +1,4 @@
+import { Position } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 
 const nodeWidth = 200;
@@ -56,7 +57,8 @@ export function paletteFor(providerId: string): { tint: string; border: string; 
 }
 
 function providerOf(node: Node): string {
-    const fw = (node.data as any)?.metadata?._framework;
+    // Typed projection of the FEAT-030 union read (FEAT-037 §5: no `as any`).
+    const fw = (node.data?.metadata as { _framework?: string } | undefined)?._framework;
     if (typeof fw === 'string' && fw.length > 0) return fw;
     return 'harness-sdd';
 }
@@ -81,14 +83,14 @@ function rankFor(node: Node): number {
  * Nodes are grouped into rows of MAX_NODES_PER_ROW, each row centred on
  * `centreX`. Rows stack vertically with NODE_V_GAP between them.
  */
-function layoutRank(
-    rankNodes: Node[],
+function layoutRank<T extends Node>(
+    rankNodes: T[],
     startY: number,
     centreX: number,
-): { placedNodes: Node[]; rankHeight: number } {
+): { placedNodes: T[]; rankHeight: number } {
     if (rankNodes.length === 0) return { placedNodes: [], rankHeight: 0 };
 
-    const placedNodes: Node[] = [];
+    const placedNodes: T[] = [];
     const rows = Math.ceil(rankNodes.length / MAX_NODES_PER_ROW);
     let maxRowY = startY;
 
@@ -100,8 +102,8 @@ function layoutRank(
         maxRowY = rowY;
 
         slice.forEach((n, i) => {
-            n.targetPosition = 'top' as any;
-            n.sourcePosition = 'bottom' as any;
+            n.targetPosition = Position.Top;
+            n.sourcePosition = Position.Bottom;
             n.position = {
                 x: rowStartX + i * (nodeWidth + NODE_H_GAP),
                 y: rowY,
@@ -114,10 +116,10 @@ function layoutRank(
     return { placedNodes, rankHeight };
 }
 
-export function getLayoutedElementsByProvider(
-    nodes: Node[],
+export function getLayoutedElementsByProvider<T extends Node>(
+    nodes: T[],
     edges: Edge[],
-): { nodes: Node[]; edges: Edge[]; groups: ProviderGroup[] } {
+): { nodes: T[]; edges: Edge[]; groups: ProviderGroup[] } {
 
     // ── Filter: only architectural nodes go to the whiteboard ──────────────
     const archNodes    = nodes.filter((n) => ARCH_TYPES.has(n.type ?? ''));
@@ -129,7 +131,7 @@ export function getLayoutedElementsByProvider(
     );
 
     // ── Group arch nodes by provider ───────────────────────────────────────
-    const groupsMap = new Map<string, Node[]>();
+    const groupsMap = new Map<string, T[]>();
     for (const n of archNodes) {
         const fw = providerOf(n);
         if (!groupsMap.has(fw)) groupsMap.set(fw, []);
@@ -140,7 +142,7 @@ export function getLayoutedElementsByProvider(
         paletteFor(a).label.localeCompare(paletteFor(b).label),
     );
 
-    const placed: Node[] = [];
+    const placed: T[] = [];
     const groups: ProviderGroup[] = [];
     let cursorY = 0;
 
@@ -199,8 +201,8 @@ export function getLayoutedElementsByProvider(
                 groupFeatures.forEach((n, i) => {
                     const col = i % cols;
                     const row = Math.floor(i / cols);
-                    n.targetPosition = 'top' as any;
-                    n.sourcePosition = 'bottom' as any;
+                    n.targetPosition = Position.Top;
+                    n.sourcePosition = Position.Bottom;
                     n.position = {
                         x: GROUP_HORIZONTAL_PADDING + col * cellW,
                         y: gridStartY + row * cellH,
