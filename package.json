@@ -332,7 +332,7 @@
     "@types/dagre": "^0.7.54",
     "@types/mocha": "^10.0.10",
     "@types/vscode": "^1.85.0",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^5.0.0",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "^3.9.2",
     "canvas": "^3.2.3",
