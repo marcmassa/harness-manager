@@ -38,7 +38,9 @@ const nodeTypes = {
 };
 
 // ===== EDGE VISUAL STYLES — maximum contrast & visibility =====
-const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolean; markerEnd: any }> = {
+// FEAT-037 T6: exported for the per-edge-type parity assertions in
+// reactFlow12Migration.test.ts (same precedent as EDGE_TYPE_ROUTING).
+export const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolean; markerEnd: any }> = {
     'manages': {
         style: { 
             stroke: '#4a7dff',

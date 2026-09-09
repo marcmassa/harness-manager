@@ -7,20 +7,20 @@
 
 ## Baseline
 
-- [ ] **T1** — Measure and record the pre-migration baseline: `npm test`
+- [x] **T1** — Measure and record the pre-migration baseline: `npm test`
       (expect 773/56), `npm run package`, write the VSIX byte size into
       `.kiro/specs/react-flow-12-migration/size-report.md`. _(R1, R12)_
 
 ## Dependency swap
 
-- [ ] **T2** — `package.json`: remove `reactflow`, add `@xyflow/react@^12.11.6`,
+- [x] **T2** — `package.json`: remove `reactflow`, add `@xyflow/react@^12.11.6`,
       bump `react`/`react-dom` to `^19.0.0`; add devDependencies
       `@types/react@^19`, `@types/react-dom@^19`. Keep `version: "0.8.1"`.
       Run `npm install` and commit the lockfile diff. _(R2, R10, R13)_
 
 ## Import rewrite (design §2)
 
-- [ ] **T3** — Rewrite all 7 reactflow touchpoints to `@xyflow/react`:
+- [x] **T3** — Rewrite all 7 reactflow touchpoints to `@xyflow/react`:
       default→named `ReactFlow` import in `WhiteboardCanvas.tsx`; CSS path in
       `index.tsx`; type-only imports in `layoutUtils.ts`, `layoutUtils.test.ts`,
       `EdgeContextMenu.tsx`; `ReactFlowProvider` in `index.tsx`. Grep-verify
@@ -28,7 +28,7 @@
 
 ## Typing migration (design §5)
 
-- [ ] **T4** — Introduce `FlowNodeData` / `HarnessFlowNode` / `HarnessNodeProps`
+- [x] **T4** — Introduce `FlowNodeData` / `HarnessFlowNode` / `HarnessNodeProps`
       (small `src/webview/nodeTypes.ts`), re-type `CustomNode.tsx` and
       `DiscoveredNode.tsx` with generic `NodeProps<>`, `useNodesState<>` /
       `useEdgesState<>` / `NodeChange<>` generics in `WhiteboardCanvas.tsx`,
@@ -38,7 +38,7 @@
 
 ## Behavioral reconciliation (design §3, §4, §6)
 
-- [ ] **T5** — Add explicit `nodeDragThreshold={1}` to the `<ReactFlow>` JSX
+- [x] **T5** — Add explicit `nodeDragThreshold={1}` to the `<ReactFlow>` JSX
       (decision + rationale in design §4). Verify pill stopPropagation still
       prevents drag takeover. _(R5, R6)_
 - [ ] **T6** — Reconciliation audit with tests: (a) no mutation-based
