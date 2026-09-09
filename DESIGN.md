@@ -140,7 +140,7 @@ process on their own machine.
 | **Assisted Fixes** | For findings with no mechanical fix: AI Refine (proposal → existing diff preview → confirm) and Delegate (scoped task → installed terminal agent, no preview, stated as such) | `src/optimizer/aiRefine.ts`, `src/optimizer/delegateTask.ts`, `src/coordinators/OptimizerCoordinator.ts` | pure prompt/task construction; reuses `lmUtils.ts` provider chain and the FEAT-033 `RunAdapter` registry; no new dependency |
 | **Persistence** | Per-workspace state (dismissed suggestions, disabled connections, manual node positions, dismissed optimizer findings) | `context.workspaceState` | VS Code API |
 | **Output Channel** | Diagnostic logs visible in *Output > Harness Dashboard*, severity-filtered | `vscode.LogOutputChannel` | built-in |
-| **CI Workflow** | Re-runs `npm ci && build && test && check.sh` on every push and PR to `main` | `.github/workflows/ci.yml` | GitHub Actions, ubuntu-latest, Node 20.x |
+| **CI Workflow** | Re-runs `npm ci && build && test && check.sh` on every push and PR to `main` | `.github/workflows/ci.yml` | GitHub Actions, ubuntu-latest, Node 22.x |
 | **Harness SDD** | The framework that ships inside this repo: `agentic.json`, `bootstrap.sh`, `check.sh`, `specs/`, `feature_list.json` | `.agents/`, `check.sh`, `AGENTS.md` | CLI-agnostic manifest, Python renderer |
 
 ---
@@ -196,7 +196,9 @@ models via `vscode.lm`.
 - **Language / Stack**:
   - TypeScript 5.x with `strict: true` (`tsconfig.json`).
   - React 18 (not 19 — React Flow 11 compatibility).
-  - Node 20.x in CI (matches `engines.vscode ^1.85.0`).
+  - Node 22.x in CI (raised from 20.x for `vitest@5`'s `engines`
+    floor `^22.12.0`; dev tooling only — the extension runtime
+    target remains `engines.vscode ^1.85.0`).
   - esbuild for bundling (not Webpack, not Rollup).
   - Vitest for unit tests (not Jest, not Mocha).
   - `yaml` (npm package) + `src/frontmatter.ts` (internal adapter) for YAML frontmatter — replaces the removed `gray-matter` dependency; exposes the same `.data`/`.content` API.
