@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
+import type { HarnessNodeProps } from '../nodeTypes.js';
 import {
   SPACE,
   EASE_SMOOTH,
@@ -135,12 +136,12 @@ const EvidencePopup = ({
 
 // ── DiscoveredNode component ─────────────────────────────────────────────────
 
-export const DiscoveredNode = ({ id, data, type, selected }: NodeProps) => {
+export const DiscoveredNode = ({ id, data, type, selected }: HarnessNodeProps) => {
   const [showEvidence, setShowEvidence] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
 
   const isAcknowledged = data.metadata?._acknowledged === true;
-  const evidence: string | undefined = data.metadata?._evidence;
+  const evidence: string | undefined = data.metadata?._evidence as string | undefined;
 
   // Layer badges
   const badges = getLayerBadges(type, data.metadata);

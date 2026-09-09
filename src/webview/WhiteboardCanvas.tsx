@@ -1,5 +1,6 @@
 import * as React from 'react';
-import ReactFlow, { 
+import {
+    ReactFlow, 
     Background, 
     Controls, 
     useNodesState, 
@@ -11,9 +12,10 @@ import ReactFlow, {
     MarkerType,
     SelectionMode,
     NodeChange,
-} from 'reactflow';
+} from '@xyflow/react';
 import { CustomNode } from './components/CustomNode.js';
 import { DiscoveredNode } from './components/DiscoveredNode.js';
+import type { HarnessFlowNode } from './nodeTypes.js';
 import { LayerLegend } from './components/LayerLegend.js';
 import { EdgeContextMenu } from './components/EdgeContextMenu.js';
 import { getLayoutedElementsByProvider, type ProviderGroup } from './layoutUtils.js';
@@ -36,7 +38,9 @@ const nodeTypes = {
 };
 
 // ===== EDGE VISUAL STYLES — maximum contrast & visibility =====
-const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolean; markerEnd: any }> = {
+// FEAT-037 T6: exported for the per-edge-type parity assertions in
+// reactFlow12Migration.test.ts (same precedent as EDGE_TYPE_ROUTING).
+export const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolean; markerEnd: any }> = {
     'manages': {
         style: { 
             stroke: '#4a7dff',
@@ -158,8 +162,8 @@ interface Props {
 }
 
 export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discoveredNodes, runningNodeIds, lastRunByNodeId, onRunNode, onCreateNode, onOpenTemplates, scoresByNodeId }: Props) => {
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<HarnessFlowNode>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const manualPositionsRef = React.useRef<ManualPositionMap>({});
     const [highlightEdgeId, setHighlightEdgeId] = React.useState<string | null>(null);
     const [hoveredEdgeId, setHoveredEdgeId] = React.useState<string | null>(null);
@@ -453,7 +457,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         setDragLinkSourceId(null);
     }, [createUsesEdge, isValidUsesLinkPair]);
 
-    const handleNodesChange = React.useCallback((changes: NodeChange[]) => {
+    const handleNodesChange = React.useCallback((changes: NodeChange<HarnessFlowNode>[]) => {
         onNodesChange(changes);
 
         for (const change of changes) {
@@ -634,7 +638,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         previousNodeSignatureRef.current = nodeSignature;
 
         if (shouldFitView) {
-            window.requestAnimationFrame(() => fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' }));
+            window.requestAnimationFrame(() => fitView({ padding: 0.2, duration: 400 }));
             hasInitialFitRef.current = true;
         }
     }, [mergedGraph, fitView, allSkills, allOwners, connectedSkills, connectedOwners, createUsesEdge, handleSourcePillClick, handleTargetPillClick, handleDragLinkHoverChange, handleDragLinkDropOnNode, setEdges, suggestedCounts, selectedNodeId]);
@@ -888,8 +892,13 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                     }
                 }}
                 nodeTypes={nodeTypes}
+                // FEAT-037 R6 / design §4: adopt v12's threshold explicitly so a
+                // press-release under 1 px stays a click and never persists a
+                // jitter-nudge into manualPositionsRef (same rationale as the
+                // explicit deleteKeyCode={null} below).
+                nodeDragThreshold={1}
                 fitView
-                fitViewOptions={{ padding: 0.2, duration: 400, ease: 'ease-in-out' }}
+                fitViewOptions={{ padding: 0.2, duration: 400 }}
                 nodesDraggable={true}
                 nodesConnectable={true}
                 elementsSelectable={true}
@@ -915,8 +924,9 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
             </ReactFlow>
 
             {/* Provider area overlay — SVG sibling of ReactFlow, transformed
-                by the viewport. This avoids custom node types (which crash
-                React Flow 11.11.4) and useStore (which also crashes). */}
+                by the viewport. This avoids custom node types (which crashed
+                React Flow 11.11.4, the pre-FEAT-037 runtime, and useStore
+                (which also crashed). The overlay is flow-version-agnostic. */}
             {providerGroups.length > 0 && (
                 <svg
                     style={{
@@ -1076,13 +1086,13 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                                 const v = e.target.value;
                                 setFocusedProvider(v === '__all__' ? null : v);
                                 if (v === '__all__') {
-                                    fitView({ padding: 0.2, duration: 400, ease: 'ease-in-out' });
+                                    fitView({ padding: 0.2, duration: 400 });
                                 } else {
                                     const nodeIds = nodes
                                         .filter((n: any) => (n.data as any)?.metadata?._framework === v)
                                         .map((n: any) => n.id);
                                     if (nodeIds.length > 0) {
-                                        fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400, ease: 'ease-in-out' });
+                                        fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400 });
                                     }
                                 }
                             }}
@@ -1244,7 +1254,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                                         subagentId: nodeId,
                                         suggestions: suggestedEdges.map(e => ({
                                             skillId: e.target,
-                                            score: e.metadata?.score || 0,
+                                            score: (e.metadata?.score as number) || 0,
                                             idoneity: e.metadata?.idoneity as number | undefined,
                                         })),
                                     });

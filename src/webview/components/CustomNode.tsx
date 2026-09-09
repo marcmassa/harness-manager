@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
+import type { HarnessNodeProps } from '../nodeTypes.js';
 import { FRAMEWORK_ACCENT_BY_ID } from '../../frameworks.js';
 import { SPACE, EASE_SMOOTH, NODE_STYLES, HANDLE_ACCENT, HANDLE_PILL_BASE, HIDDEN_HANDLE_STYLE, activeNodeShadow } from '../styles.js';
 
@@ -34,7 +35,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 
-export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
+export const CustomNode = ({ id, data, type, selected }: HarnessNodeProps) => {
     const [showSkillPicker, setShowSkillPicker] = React.useState(false);
     const [isHovered, setIsHovered] = React.useState(false);
     const nodeRef = React.useRef<HTMLDivElement>(null);
@@ -423,7 +424,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         title="Run agent in terminal"
                         onClick={(e) => {
                             e.stopPropagation();
-                            data.onRunNode(id);
+                            data.onRunNode?.(id);
                         }}
                         style={{
                             width: '24px', height: '24px', borderRadius: '50%',
@@ -519,7 +520,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
             )}
 
             {/* Suggestion badge — shows on subagents with pending semantic suggestions (FEAT-010, R6) */}
-            {(type === 'agent' || type === 'subagent') && data.suggestedCount > 0 && (
+            {(type === 'agent' || type === 'subagent') && (data.suggestedCount ?? 0) > 0 && (
                 <div style={{ marginTop: SPACE.xs, display: 'flex', gap: SPACE.xs }}>
                     <span style={{ 
                         fontSize: '0.55em', 
@@ -530,12 +531,12 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         fontWeight: 600,
                         letterSpacing: '0.5px',
                         border: '1px solid rgba(212, 168, 74, 0.3)',
-                    }}>💡 {data.suggestedCount} suggestion{data.suggestedCount > 1 ? 's' : ''}</span>
+                    }}>💡 {data.suggestedCount} suggestion{(data.suggestedCount ?? 0) > 1 ? 's' : ''}</span>
                 </div>
             )}
 
             {/* Status badge */}
-            {data.metadata?.status && (
+            {Boolean(data.metadata?.status) && (
                 <div style={{ marginTop: SPACE.sm }}>
                     <span style={{ 
                         fontSize: '0.6em', 
@@ -545,12 +546,12 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         color: 'var(--vscode-badge-foreground)',
                         fontWeight: 'bold',
                         letterSpacing: '0.5px',
-                    }}>{data.metadata.status}</span>
+                    }}>{data.metadata.status as string}</span>
                 </div>
             )}
 
             {/* Progressive Disclosure badge: shows discovery stage for skill nodes */}
-            {type === 'skill' && data.metadata?._discovery && (
+            {type === 'skill' && Boolean(data.metadata?._discovery) && (
                 <div style={{ marginTop: SPACE.xs, display: 'flex', gap: SPACE.xs, justifyContent: 'center' }}>
                     {data.metadata._discovery === 'orphan' && (
                         <span style={{ 
@@ -580,7 +581,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
             )}
 
             {/* FEAT-011: Best semantic owner badge on skill nodes (R4) */}
-            {type === 'skill' && data.metadata?._bestOwner && (
+            {type === 'skill' && Boolean(data.metadata?._bestOwner) && (
                 <div style={{ marginTop: SPACE.xs, display: 'flex', gap: SPACE.xs, justifyContent: 'center' }}>
                     <span style={{
                         fontSize: '0.55em',
@@ -595,7 +596,7 @@ export const CustomNode = ({ id, data, type, selected }: NodeProps) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                     }}>
-                        → {data.metadata._bestOwner} ({data.metadata._bestOwnerScore?.toFixed(2) || '?'})
+                        → {(data.metadata._bestOwner as string | undefined)} ({(data.metadata._bestOwnerScore as number | undefined)?.toFixed(2) || '?'})
                     </span>
                 </div>
             )}
