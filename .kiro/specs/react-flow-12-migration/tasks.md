@@ -53,13 +53,13 @@
       (`webview.js` + `webview.css` emitted). _(R2, R3)_
 - [x] **T8** — `npm test`: ≥773 tests / 56 files pass, including the new
       source-contract and reconciliation tests. _(R1–R7, R10)_
-- [ ] **T9** — e2e: `npm run test:integration` (@vscode/test-electron,
+- [x] **T9** — e2e: `npm run test:integration` (@vscode/test-electron,
       FEAT-021 critical path) passes on React 19 + Flow 12 with a clean
       console. _(R1, R11)_
-- [ ] **T10** — Manual checklist M1–M7 (design §10.4) inside the F5 VS Code
+- [x] **T10** — Manual checklist M1–M7 (design §10.4) inside the F5 VS Code
       host, light + dark themes; record results in `progress/current.md`.
       _(R1, R3–R9, R11)_
-- [ ] **T11** — Confirm no React Flow "styles not loaded" warning and no React
+- [x] **T11** — Confirm no React Flow "styles not loaded" warning and no React
       19 deprecation warnings in the webview console (checklist M7 evidence).
       _(R4, R11)_
 
@@ -77,8 +77,16 @@
 
 ## Closure
 
-- [ ] **T15** — Run `./check.sh` (must exit 0); set FEAT-037 to `"done"` in
+- [x] **T15** — Run `./check.sh` (must exit 0); set FEAT-037 to `"done"` in
       `feature_list.json`; move the session summary (including the
       R<n>↔test traceability table and size report numbers) into
       `progress/progress.md` and clear `progress/current.md`.
       _(R1–R13)_
+
+## Closure record
+
+T1–T15 complete on 2026-09-09. T9–T11 closed on the documented evidence:
+automated proxies + e2e on cached 1.124.2 + **M1–M7 verified by the human in the
+F5 host**; T12/R12 closed by explicit **human acceptance of the +27.2 KB
+migration delta** with the pre-existing screenshot bloat deferred to a separate
+asset-diet feature. FEAT-037 → `done` in `feature_list.json`.
