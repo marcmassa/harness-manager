@@ -14,6 +14,8 @@
  * @requirement R3  v12 stylesheet imported
  * @requirement R6  nodeDragThreshold={1}
  * @requirement R7  edge styling / z-index layering preserved
+ * @requirement R8  edge context menu opens from the edge-click handler (source pin)
+ * @requirement R9  acceptSuggestion / dismissSuggestion handler posts (source pin)
  * @requirement R10 React 19 runtime, no removed APIs
  * @requirement R11 no defaultProps / ReactDOM.render
  * @requirement R13 version stays 0.8.1
@@ -262,6 +264,30 @@ describe('FEAT-037 R7 — per-edge-type routing, styling and z-index parity (FEA
     it('edge label + hover/select bookkeeping live in edge.data (originalLabel), not on handle fields', () => {
         expect(wbSrc).toMatch(/data: \{ metadata: e\.metadata, originalLabel: label \}/);
         expect(wbSrc).not.toMatch(/\.sourceHandle\b|\.targetHandle\b/);
+    });
+});
+
+// ─── R8 / R9 — edge context menu open + suggestion accept/dismiss posts ──────
+
+describe('FEAT-037 R8/R9 — edge context menu and suggestion handlers (source contract)', () => {
+    it('the edge-click handler opens the menu (sets contextMenuEdge + contextMenuPos)', () => {
+        expect(wbSrc).toMatch(/const onEdgeClick = React\.useCallback\(\(event: React\.MouseEvent, edge: Edge\) => \{[\s\S]*?setContextMenuEdge\(edge\);[\s\S]*?setContextMenuPos\(\{ x: event\.clientX, y: event\.clientY \}\);[\s\S]*?\}, \[\]\);/);
+    });
+    it('the click handler is wired into the <ReactFlow> element', () => {
+        expect(wbSrc).toMatch(/<ReactFlow[\s\S]*?onEdgeClick=\{onEdgeClick\}[\s\S]*?\/>/);
+    });
+    it('the menu renders from the state ({contextMenuEdge && ( <EdgeContextMenu ...)', () => {
+        expect(wbSrc).toMatch(/\{contextMenuEdge && \(\s*\n\s*<EdgeContextMenu/);
+    });
+    it('handleAcceptSuggestion posts { type: acceptSuggestion, subagentId, skillId } and closes the menu', () => {
+        expect(wbSrc).toMatch(/const handleAcceptSuggestion = React\.useCallback\([\s\S]*?vscode\.postMessage\(\{\s*\n\s*type: 'acceptSuggestion',\s*\n\s*subagentId: edge\.source,\s*\n\s*skillId: edge\.target,\s*\n\s*\}\);[\s\S]*?setContextMenuEdge\(null\);[\s\S]*?\}, \[setEdges\]\);/);
+    });
+    it('handleDismissSuggestion posts { type: dismissSuggestion, subagentId, skillId }', () => {
+        expect(wbSrc).toMatch(/const handleDismissSuggestion = React\.useCallback\([\s\S]*?vscode\.postMessage\(\{ type: 'dismissSuggestion', subagentId: source, skillId: target \}\);[\s\S]*?\}, \[setEdges\]\);/);
+    });
+    it('the menu is wired to the suggestion handlers (onAcceptSuggestion / onDismissSuggestion props)', () => {
+        expect(wbSrc).toMatch(/onAcceptSuggestion=\{handleAcceptSuggestion\}/);
+        expect(wbSrc).toMatch(/onDismissSuggestion=\{\(edge\) => handleDismissSuggestion\(edge\.source, edge\.target\)\}/);
     });
 });
 

@@ -18,7 +18,7 @@ decides; `feature_list.json` untouched this session.
 | T5 threshold | ✅ | `nodeDragThreshold={1}` explicit; pill stopPropagation sites verified unchanged (CustomNode handles + picker pointerdown) |
 | T6 reconciliation | ✅ | 40 new tests (`reactFlow12Migration.test.ts`): updater mutation scan, .measured/.sourceHandle/.targetHandle/node.width/height grep-audit, 8-edge-kind styling + z-index parity. Commit 9e5b107 |
 | T7 build | ✅ | esbuild green; webview.js + webview.css emitted; CSS loader unchanged (esbuild 0.28 handles @xyflow/react with the existing `loader: {'.css':'css'}`) |
-| T8 unit | ✅ | **813 tests / 57 files pass** (≥773 baseline + 40 new) |
+| T8 unit | ✅ | **819 tests / 57 files pass** (≥773 baseline + 46 new; +6 review-condition pins for R8/R9) |
 | T9 e2e | ✅ (env-restricted) | See e2e note below. Critical path PASSED in real VS Code on React 19 + v12 |
 | T10 M1–M7 | ⚠ partial | automated proxies done; manual F5 items **PENDING-HUMAN** (list below) |
 | T11 console | ⚠ partial | automated proxies (R4 stylesheet-in-bundle, React-19 hygiene); live webview console **PENDING-HUMAN (M7)** |
@@ -57,31 +57,33 @@ decides; `feature_list.json` untouched this session.
 - **M2** drag node → reload window → position persisted — PENDING-HUMAN (recording rules pinned by tests).
 - **M3** click node with jitter → selected, **no** position drift (nodeDragThreshold=1) — PENDING-HUMAN (prop presence pinned).
 - **M4** edge hover/select → colors/dash/marker per type, no flicker/remount — PENDING-HUMAN (config + spread-only zIndex update pinned).
-- **M5** edge context menu: change label, delete-confirm; suggestion accept/dismiss → `acceptSuggestion`/`dismissSuggestion` posts — PENDING-HUMAN (handlers pinned in source-contract tests).
+- **M5** edge context menu: change label, delete-confirm; suggestion accept/dismiss → `acceptSuggestion`/`dismissSuggestion` posts — PENDING-HUMAN (handler wiring + post message-types now pinned by the real source-contract tests `FEAT-037 R8/R9 — edge context menu and suggestion handlers (source contract)`: `the edge-click handler opens the menu (sets contextMenuEdge + contextMenuPos)`, `the click handler is wired into the <ReactFlow> element`, `the menu renders from the state ({contextMenuEdge && ( <EdgeContextMenu ...)`, `handleAcceptSuggestion posts { type: acceptSuggestion, subagentId, skillId } and closes the menu`, `handleDismissSuggestion posts { type: dismissSuggestion, subagentId, skillId }`, `the menu is wired to the suggestion handlers (onAcceptSuggestion / onDismissSuggestion props)`).
 - **M6** handle-pill click-link and drag-link (stopPropagation takeover guard) — PENDING-HUMAN (stopPropagation presence pinned).
 - **M7** DevTools webview console: **no errors, no v12 "styles not loaded" warning, no React 19 deprecation warnings** — *proxy verified-automated* (style.css in bundle + linked by webview HTML; zero ReactDOM.render/defaultProps audits); live console read PENDING-HUMAN.
 
 ### R↔test traceability (for the eventual progress.md entry)
 | R | Verified by |
 |---|---|
-| R1 parity | 813 unit suite green; layout geometry tests untouched-green; e2e PASSED; M1/M2/M4 proxies + pending |
+| R1 parity | 819 unit suite green; layout geometry tests untouched-green; e2e PASSED; M1/M2/M4 proxies + pending |
 | R2 | reactFlow12Migration: zero-package-reference audit, named-import, package.json contract |
 | R3 | style.css import contract + dist css `.react-flow__*` content test |
 | R4 | stylesheet-in-bundle proxy; live console = M7 |
 | R5 | recording-rule tests (delete/final-position/dragstop) + pill stopPropagation; e2e; M2 |
 | R6 | `nodeDragThreshold={1}` source pin + e2e click path; M3 |
 | R7 | 8-kind routing/stroke/dash/marker/animated tests + zIndex 1000/500/0 + spread-only update |
-| R8/R9 | handler source-contract pins; live menus = M5 |
+| R8/R9 | reactFlow12Migration `FEAT-037 R8/R9 — edge context menu and suggestion handlers (source contract)` — 6 pins: onEdgeClick→setContextMenuEdge/Pos, `<ReactFlow onEdgeClick={onEdgeClick}>` wiring, `{contextMenuEdge && <EdgeContextMenu`, acceptSuggestion post {subagentId,skillId}+menu close, dismissSuggestion post {subagentId,skillId}, menu→handler prop wiring; live menus = M5 |
 | R10 | package.json contract + createRoot test |
 | R11 | createRoot/no-ReactDOM.render/no-defaultProps audits; e2e host alive; M7 |
 | R12 | size-report.md before/after — **gate breached, closure held** |
 | R13 | DESIGN 249 lines §3/§4/§6 updated; CHANGELOG [0.8.1] extended, no [0.9.0]; README consolidated; version 0.8.1 |
 
 ### Verification snapshot
-- `./check.sh`: **Result: ✅ All checks passed** (terraform, build, 813/57 tests,
+- `./check.sh`: **Result: ✅ All checks passed** (terraform, build, 819/57 tests,
   adapters in sync, feature-list JSON, governance, subagent roles).
 - Commits on `feat/react-flow-12` (not pushed, per instructions): 7c3623f spec → 611e57e
-  deps → 420e7f4 imports → 22ac51a typing+threshold → 9e5b107 tests → 9eb7825 docs.
+  deps → 420e7f4 imports → 22ac51a typing+threshold → 9e5b107 tests → 9eb7825 docs →
+  cdffd9a progress → review-condition commit adding the 6 R8/R9 source-contract pins
+  (this session; closes reviewer condition 1 — closure still HELD on T12/T15 human decisions).
 
 ## Notes
 - FEAT-036 supply-chain code untouched (only its CHANGELOG bullets were merged into
