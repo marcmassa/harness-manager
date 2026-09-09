@@ -59,7 +59,7 @@
       >300 KB junk file into a temp copy) — expect non-zero on size.
       Record all three outputs.
       _Covers: R5, R6 (test evidence). Refs: design §§5, 7._
-- [ ] T9. **Measure + record (the payoff task).** `npm run package` on the
+- [x] T9. **Measure + record (the payoff task).** `npm run package` on the
       dieted tree; capture: full artifact bytes, `unzip -l` listing
       (evidence of R1), gate PASS output. Create
       `.kiro/specs/vsix-asset-diet/size-report.md` as the new living
@@ -69,13 +69,19 @@
       If the measured artifact is ≥ 300,000 B: STOP, report — do not
       raise the threshold (design §6).
       _Covers: R1 (evidence), R5, R8. Refs: design §8._
-- [ ] T10. Freeze the old record: prepend a one-line banner to
+      **Amendment note:** STOP fired as designed (361,604 B ≥ 300,000 B,
+      first run 2026-09-09 — FAIL section retained as history). Threshold
+      raised ONLY via the human-approved §6 amendment path (**ADR-005**,
+      300,000→400,000 B, + ≥80% utilization review signal). Re-run
+      2026-09-09: **GATE PASS at 361,604 B (90% utilization)**; waiver
+      retired; see size-report.md "Re-run after ADR-005 amendment — PASS".
+- [x] T10. Freeze the old record: prepend a one-line banner to
       `.kiro/specs/react-flow-12-migration/size-report.md` —
       "HISTORICAL BASELINE — superseded by
       .kiro/specs/vsix-asset-diet/size-report.md (FEAT-038); numbers below
       are pre-diet and must not be edited." No number changes in that file.
       _Covers: R8 (record convention). Refs: design §8._
-- [ ] T11. Non-regression + close-out: `npm test` green; `./check.sh`
+- [x] T11. Non-regression + close-out: `npm test` green; `./check.sh`
       exit 0; `git diff` review shows zero changes under `src/`, zero
       dependency diffs, no `git rm` of screenshots; feature_list FEAT-038
       → done; progress/progress.md entry records the measured size, the
