@@ -5,25 +5,25 @@
 > feature — it produces the new living baseline and retires the FEAT-037
 > R12 waiver (R8). Gate: everything ends with `./check.sh` green.
 
-- [ ] T1. Add `media/screenshots/**` to `.vscodeignore` as a commented
+- [x] T1. Add `media/screenshots/**` to `.vscodeignore` as a commented
       section ("README screenshots — served from GitHub raw; see
       README.md + FEAT-038"). Touch nothing else in the file — the icon
       lines must survive untouched.
       _Covers: R1 (mechanism half). Refs: design §3.1._
-- [ ] T2. Rewrite the five screenshot image targets in `README.md`
+- [x] T2. Rewrite the five screenshot image targets in `README.md`
       (lines 17, 19, 21) from `media/screenshots/<file>.png` to
       `https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/<file>.png`.
       Alt-text, table layout, and the line-10 relative `media/icon.png`
       ref stay as-is. Do not delete the screenshots from git.
       _Covers: R2. Refs: design §§3.2, 4._
-- [ ] T3. Create `scripts/vsix-gate.sh` (executable): size check
+- [x] T3. Create `scripts/vsix-gate.sh` (executable): size check
       (`wc -c < vsix` < 300000, decimal), exclusion check
       (`unzip -l` contains no `extension/media/screenshots/`), presence
       checks (icon.png, icon.svg, dist/extension.cjs, dist/webview.js,
       dist/webview.css); prints offending listing lines and exits non-zero
       on any violation; usage banner when no argument given.
       _Covers: R4, R5, R6. Refs: design §5._
-- [ ] T4. Wire the gate into `package.json` `scripts.package`
+- [x] T4. Wire the gate into `package.json` `scripts.package`
       (`npm run build && vsce package --no-dependencies &&
       scripts/vsix-gate.sh harness-dashboard-vscode-<version>.vsix` —
       resolve the artifact name the same way the script produces it) and
@@ -32,25 +32,25 @@
       only: zero dependency diffs. Confirm `./check.sh` and its runtime
       are unchanged (`git diff check.sh` empty).
       _Covers: R7 (local + check.sh-stays-free halves). Refs: design §6._
-- [ ] T5. CI + publish enforcement: add a `Package VSIX + size gate` step
+- [x] T5. CI + publish enforcement: add a `Package VSIX + size gate` step
       (`npm run package`, which carries T4's gate) to `.github/workflows/ci.yml`;
       add a `bash scripts/vsix-gate.sh harness-dashboard.vsix` step to
       `.github/workflows/publish.yml` between "Package VSIX" and "Publish
       to Marketplace".
       _Covers: R7 (CI + publish halves). Refs: design §6._
-- [ ] T6. Update DESIGN.md §2.4 ("keeps the VSIX under 300 KB") and §6
+- [x] T6. Update DESIGN.md §2.4 ("keeps the VSIX under 300 KB") and §6
       "Distribution" to state the budget is **enforced** at package time
       and in CI by `scripts/vsix-gate.sh` — reword in place to respect
       the file's ≤250-line cap (currently 249: additions must be
       offset).
       _Covers: R9. Refs: design §7 R9 row._
-- [ ] T7. Rendering verification, GitHub side: after the MR merges (or on
+- [x] T7. Rendering verification, GitHub side: after the MR merges (or on
       the branch preview), confirm the repository landing page renders all
       five screenshots from the hosted URLs, and
       `grep -c 'raw/main/media/screenshots/' README.md` = 5 with zero
       remaining relative screenshot refs.
       _Covers: R3 (GitHub half), R2 (evidence). Refs: design §7._
-- [ ] T8. Exercise the gate's failure paths (design §7 R6 row): (a) run it
+- [x] T8. Exercise the gate's failure paths (design §7 R6 row): (a) run it
       against a copy of the pre-diet VSIX if available, or against the
       post-diet artifact with one screenshot re-added via `zip` into a
       temp copy — expect non-zero on the exclusion assertion; (b) same
