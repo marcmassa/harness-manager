@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { FRAMEWORK_ACCENT_BY_ID } from '../../frameworks.js';
 import { SPACE, EASE_SMOOTH, NODE_STYLES, HANDLE_ACCENT, HANDLE_PILL_BASE, HIDDEN_HANDLE_STYLE, activeNodeShadow } from '../styles.js';
 

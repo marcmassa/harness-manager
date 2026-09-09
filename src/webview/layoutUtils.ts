@@ -1,4 +1,4 @@
-import { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 
 const nodeWidth = 200;
 const nodeHeight = 80;

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { Edge } from 'reactflow';
+import type { Edge } from '@xyflow/react';
 import type { EdgeLabel } from '../../types.js';
 
 interface EdgeContextMenuProps {

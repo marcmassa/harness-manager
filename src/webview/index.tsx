@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
 import { FeatureSpecPanel } from './FeatureSpecPanel.js';
 import { AdvisoryPanel } from './AdvisoryPanel.js';
@@ -23,7 +23,7 @@ import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import { SPACE } from './styles.js';
 import { profileToDiscoveredNodes } from '../agentic-detector/profileToNodes.js';
 
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 
 provideVSCodeDesignSystem().register(allComponents);
 

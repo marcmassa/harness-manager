@@ -1,5 +1,6 @@
 import * as React from 'react';
-import ReactFlow, { 
+import {
+    ReactFlow, 
     Background, 
     Controls, 
     useNodesState, 
@@ -11,7 +12,7 @@ import ReactFlow, {
     MarkerType,
     SelectionMode,
     NodeChange,
-} from 'reactflow';
+} from '@xyflow/react';
 import { CustomNode } from './components/CustomNode.js';
 import { DiscoveredNode } from './components/DiscoveredNode.js';
 import { LayerLegend } from './components/LayerLegend.js';
