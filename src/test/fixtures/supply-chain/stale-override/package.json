@@ -1,0 +1,13 @@
+{
+  "name": "stale-override",
+  "version": "1.0.0",
+  "dependencies": {
+    "cheerio": "1.2.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2"
+  },
+  "overrides": {
+    "undici": "7.28.0"
+  }
+}

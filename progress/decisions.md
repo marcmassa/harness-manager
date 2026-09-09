@@ -408,3 +408,41 @@ made at the time* even after it is reversed.
 
 ---
 
+### ADR-004: Extend ActionExecutor `create-file` to open existing files (FEAT-036 R5 resolution)
+- **Status:** Accepted
+- **Context:** During FEAT-036 implementation the
+  approved requirements (R5 second clause: "WHEN a
+  create-file action is executed for a path that
+  already exists … SHALL open it in the editor
+  instead") collided with a factual claim in
+  `design.md` ("actionExecutor.ts needs no change —
+  R5 already holds"). The FEAT-032 executor silently
+  returned on existing files: non-destructive, but
+  never opened the editor. One of the two artefacts
+  had to give.
+- **Decision:** The requirements are the contract;
+  the design's statement was a factual error. The
+  existing-file branch of `create-file` now calls
+  `showTextDocument(uri)` before returning (one
+  line). All other action types keep FEAT-032
+  semantics unchanged.
+- **Impact:**
+  - **Positive** — R5 fully satisfied; a friendlier
+    universal UX for every create-file action
+    (click → see what's there instead of nothing
+    happening); both clauses pinned by tests.
+  - **Cost** — one shared FEAT-032 behavior changed
+    mid-feature; a `design.md` resolution note was
+    added so the audit trail explains the deviation.
+- **Discarded Alternatives:**
+  - Amend `requirements.md` R5 to drop the
+    "open in editor" clause — rejected: the spec is
+    human-approved and the clause is genuinely
+    useful behavior.
+  - Wrap the executor with a supply-chain-specific
+    pre-check — rejected: duplicates the stat call
+    and leaves the shared action still violating
+    R5 for every other caller.
+
+---
+

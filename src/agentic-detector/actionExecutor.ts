@@ -46,7 +46,13 @@ export class ActionExecutor {
             }
             case 'create-file': {
                 const uri = vscode.Uri.joinPath(this._root, payload.relPath);
-                try { await vscode.workspace.fs.stat(uri); return; } catch { /* file doesn't exist — create it */ }
+                // R5 (FEAT-036): existing file is never overwritten — it is
+                // opened in the editor instead. (Non-destructive contract from FEAT-032.)
+                try {
+                    await vscode.workspace.fs.stat(uri);
+                    await vscode.window.showTextDocument(uri);
+                    return;
+                } catch { /* file doesn't exist — create it */ }
                 const content = payload.template ?? '';
                 const parentPath = payload.relPath.split('/').slice(0, -1).join('/');
                 await vscode.workspace.fs.createDirectory(

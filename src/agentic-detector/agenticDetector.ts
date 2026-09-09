@@ -6,6 +6,10 @@ import { analyze } from './patternAnalyzer.js';
 import { generate } from './advisoryEngine.js';
 import { AdapterRegistry } from '../adapters/AdapterRegistry.js';
 import { createDefaultAdapters } from '../adapters/index.js';
+// FEAT-036: supply-chain layer — deterministic static scan + user-triggered audit.
+import { scanWorkspace, type SupplyChainFsDeps } from '../supply-chain/scanner.js';
+import { runNpmAudit, type AuditRunResult } from '../supply-chain/auditRunner.js';
+import { emptyReport, type AuditState, type SupplyChainReport } from '../supply-chain/types.js';
 import type {
   AgenticProfile,
   CLIInstall,
@@ -162,6 +166,16 @@ export class AgenticDetector extends EventEmitter {
   private _previousMethodology: MethodologyInfo | null = null;
 
   /**
+   * FEAT-036 R7: session-only cache of the parsed JSON of the single
+   * user-triggered `npm audit --json` run. Never persisted (non-goal),
+   * never populated by scan() (R6).
+   */
+  private _auditPayload: unknown | null = null;
+
+  /** FEAT-036: audit lifecycle state surfaced on the report. */
+  private _auditState: AuditState = 'not-run';
+
+  /**
    * @param workspaceRoot   The root URI of the workspace to scan.
    * @param log             VS Code log output channel for diagnostic messages.
    * @param workspaceState  Optional memento for persisting dismissed
@@ -238,6 +252,22 @@ export class AgenticDetector extends EventEmitter {
       // ── Layer 3: Detect methodology ──
       const methodology = await this._detectMethodology();
 
+      // ── FEAT-036: Supply-chain static scan ──
+      // Reads ONLY workspace files plus the cached audit payload — it never
+      // launches npm itself (R6). Failures degrade to an empty report so a
+      // broken supply-chain layer can never error the whole scan (R2/R8).
+      let supplyChain: SupplyChainReport;
+      try {
+        supplyChain = await scanWorkspace(
+          this._supplyChainDeps(),
+          this._auditPayload,
+          this._auditState,
+        );
+      } catch (err) {
+        this._log.warn(`[AgenticDetector] Supply-chain scan degraded: ${err}`);
+        supplyChain = emptyReport();
+      }
+
       // ── T21/R58: Emit methodology adoption events ──
       if (methodology.hasMethodology) {
         const wasSdd =
@@ -278,6 +308,7 @@ export class AgenticDetector extends EventEmitter {
         dismissedSuggestionIds: [],
         acknowledgedNodeIds: [],
         graphContext,
+        supplyChain,
       };
 
       // ── Classify maturity level ──
@@ -325,6 +356,32 @@ export class AgenticDetector extends EventEmitter {
    */
   getProfile(): AgenticProfile | null {
     return this._profile;
+  }
+
+  /**
+   * FEAT-036 R6/R7: Run `npm audit --json` exactly once as a bounded local
+   * child process, cache the parsed payload in memory for the session, and
+   * record the audit state. This method is the ONLY path that launches
+   * npm; it must be called exclusively from an explicit user action
+   * (AdvisoryCoordinator via panel button or command palette) — never from
+   * scan(), activation, or file watchers.
+   *
+   * On any failure (spawn / timeout / parse) the state becomes
+   * `unavailable` and audit-derived rules stay silent (R8). The caller is
+   * responsible for scheduling the follow-up re-scan (R7).
+   */
+  async runAudit(): Promise<AuditRunResult> {
+    const result = await runNpmAudit(this._workspaceRoot.fsPath);
+    if (result.ok) {
+      this._auditPayload = result.payload;
+      this._auditState = 'captured';
+      this._log.info('[AgenticDetector] npm audit payload captured (session-only cache).');
+    } else {
+      this._auditPayload = null;
+      this._auditState = 'unavailable';
+      this._log.warn(`[AgenticDetector] npm audit unavailable (reason: ${result.reason}).`);
+    }
+    return result;
   }
 
   /**
@@ -561,6 +618,33 @@ export class AgenticDetector extends EventEmitter {
         this._log.error(`[AgenticDetector] Re-scan failed: ${err}`);
       });
     }, 500);
+  }
+
+  /**
+   * FEAT-036: Filesystem adapter for the supply-chain scanner, wired to
+   * `vscode.workspace.fs`. Absent or unreadable files resolve to `null` —
+   * the scanner's degradation matrix handles them (no throws).
+   */
+  private _supplyChainDeps(): SupplyChainFsDeps {
+    const root = this._workspaceRoot;
+    return {
+      async readFile(relPath: string): Promise<string | null> {
+        try {
+          const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, relPath));
+          return Buffer.from(bytes).toString('utf8');
+        } catch {
+          return null;
+        }
+      },
+      async exists(relPath: string): Promise<boolean> {
+        try {
+          await vscode.workspace.fs.stat(vscode.Uri.joinPath(root, relPath));
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    };
   }
 
   /**

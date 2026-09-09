@@ -14,6 +14,9 @@ type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
 export class AdvisoryCoordinator {
     private _actionExecutor?: ActionExecutor;
 
+    /** FEAT-036 R7: single-run guard — a second request while one is in flight is ignored. */
+    private _auditInFlight = false;
+
     constructor(
         private readonly _context: vscode.ExtensionContext,
         private readonly _workspaceRoot: vscode.Uri,
@@ -69,9 +72,42 @@ export class AdvisoryCoordinator {
                 return true;
             }
 
+            case 'runSupplyChainAudit': {
+                // FEAT-036 R6/R7: the ONLY webview path that may launch npm audit.
+                await this.runAuditAndRescan(_postMessage);
+                return true;
+            }
+
             default:
                 return false;
         }
+    }
+
+    /**
+     * FEAT-036 R7/R8: Run the bounded `npm audit --json` once (in-flight
+     * guard), cache the payload in the detector (session-only), notify the
+     * panel, then schedule a re-scan so the SC rules see the fresh payload.
+     * Shared by the webview button and the command palette entry (R6).
+     */
+    async runAuditAndRescan(postMessage: PostMessageFn): Promise<void> {
+        if (!this._agenticDetector) return;
+        if (this._auditInFlight) {
+            this._log.info('[AdvisoryCoordinator] npm audit already running — request ignored (R7).');
+            return;
+        }
+        this._auditInFlight = true;
+        try {
+            const result = await this._agenticDetector.runAudit();
+            postMessage({
+                type: 'supplyChainAuditResult',
+                ok: result.ok,
+                reason: result.ok ? undefined : result.reason,
+            });
+        } finally {
+            this._auditInFlight = false;
+        }
+        // R7: schedule the re-scan on completion (debounced, coalesced).
+        this._agenticDetector.scheduleScan();
     }
 
     private async _applyHarnessSDD(): Promise<void> {
