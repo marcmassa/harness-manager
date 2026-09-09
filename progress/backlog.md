@@ -15,7 +15,7 @@
 
 ## P0 — Critical (current sprint)
 
-- [ ] **Land the CI workflow on `main` and verify the deferred T7/T11/T12 from the ci-github-actions spec in the first real PR** (workflow appears in PR Checks, concurrency cancels obsolete runs, wall-clock duration < 10 min). Without this verification, the CI workflow is structurally validated but operationally unproven. *(Blocked: requires a real PR to be opened against `main`.)*
+_(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
@@ -39,3 +39,8 @@
 - ✅ **CHANGELOG test-count footnote** — explanatory note added about SDD-driven test count drift (tech-debt).
 - ✅ **npm audit** — re-checked: 0 vulnerabilities in production deps (tech-debt).
 - ✅ **Deprecate npx vitest run** — no references found in `check.sh`, `scripts/`, or elsewhere (tech-debt).
+
+## Completed (cleared in 2026-09-09 session)
+
+- ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T12 of the ci-github-actions spec).
+- ✅ **Dependabot security updates configured on `main`** — `.github/dependabot.yml` landed with the v0.8.1 supply-chain dogfood task (T1); the first `Dependabot Updates` runs (`npm_and_yarn`, `github_actions`) triggered automatically minutes after the merge.
