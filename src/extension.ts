@@ -126,6 +126,15 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // FEAT-036 R6: user-triggered npm audit — palette counterpart of the
+    // AdvisoryPanel button. Shares the coordinator's in-flight guard and
+    // session cache; NEVER invoked from scan()/activation/watchers (R6).
+    context.subscriptions.push(
+        vscode.commands.registerCommand('harness-dashboard.runSupplyChainAudit', async () => {
+            await provider.runSupplyChainAudit();
+        })
+    );
+
     // FEAT-034 T41/T43: virtual document backing the quick-fix diff preview,
     // plus the user-facing "Optimize Components" command.
     context.subscriptions.push(
@@ -505,6 +514,11 @@ class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
     public sendAdvisoryProfile(profile: AgenticProfile): void {
         this.postToWebview({ type: 'advisoryProfile', profile });
+    }
+
+    /** FEAT-036 R6/R7: palette entry point for the user-triggered npm audit. */
+    public async runSupplyChainAudit(): Promise<void> {
+        await this._advisoryCoordinator.runAuditAndRescan(msg => this.postToWebview(msg));
     }
 
     public setAgenticDetector(detector: AgenticDetector, scheduleScan: () => void): void {

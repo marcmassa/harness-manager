@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.8.0-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.8.1-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -61,45 +61,29 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | 🚀 **One-click Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals |
 | 🩺 **Component Optimizer** | Scores every agent, subagent, skill, steering and hook 0–100 across six dimensions — 19 deterministic rules, thresholds calibrated against your own corpus, no LLM — with a dimension radar and quick fixes previewed in a diff |
 | 🤖 **Assisted fixes** | For findings with no mechanical fix: AI Refine proposes a rewrite through your editor's model where the host exposes one (`vscode.lm`), or a configured API; Delegate hands a scoped task to an installed terminal agent |
+| 🔗 **Supply-Chain Health** | Deterministic dependency scan (`package.json`, lockfile, bot config) wired into the advisory loop: flags a missing Dependabot/Renovate config with a one-click `dependabot.yml` scaffold, stale security `overrides` vs patched versions, and prod-vs-dev audit findings — remediation commands included *(new in 0.8.1)* |
 | 🔲 **Full-window Dashboard** | Open the dashboard as a standalone editor panel, detached from the activity bar, for more screen space |
 
 ---
 
-## What's new in 0.8.0
+## What's new in 0.8.1
 
-The **Component Optimizer**: a deterministic linter and refactoring assistant for your architecture's own files. No breaking changes.
+**Supply-Chain Health** (FEAT-036): the advisory loop now sees your dependency graph, not just your agent graph. No breaking changes; **zero new npm dependencies**.
 
 ### Why
 
-Until now the tool told you *what exists* in your agent setup. It never told you *whether it is well built*. A skill whose description never says **when** to use it will never be loaded by progressive disclosure. A subagent carrying 4 000 tokens of inline boilerplate silently burns the context budget of every session that touches it. Two skills overlapping at 90 % similarity fragment the model's routing. All of that was invisible.
+The tool had become the guard of your agent architecture while its own supply chain was ungoverned: this repository was carrying **17 open Dependabot alerts** (all dev-transitive, via `@vscode/vsce` and `vitest → vite`) with **no `dependabot.yml` anywhere**, and a security `overrides` pin (`undici: 7.28.0`) that had itself silently gone stale against the patched `7.29.0`. A pin you forgot you had is worse than no pin at all.
 
 ### What it does
 
-- **Scores every component** — `agent`, `subagent`, `skill`, `steering`, `hook` — from 0–100 across six dimensions: structure, clarity, context budget, integration, hygiene, consistency. Plus an architecture-wide rollup.
-- **19 rules in six families** — missing frontmatter contracts, descriptions without trigger conditions, token-budget waste and extractable reference content, semantic overlap, orphans, manifest/filesystem drift, broken links, machine-specific paths, credential-shaped strings, and divergence from your own conventions.
-- **Dimension radar** — six fixed axes with a numbered radial scale, at architecture level and per component. A component at 100/100/40/100 and one at 85/85/85/85 average the same and mean opposite things; the polygon shows the difference the number hides.
-- **Optimizer tab** — component table sorted worst-first, expandable findings, filters by type / severity / dimension, and a legend explaining what each axis measures and which rules feed it.
-- **Score chips on the whiteboard** — tier-coloured, with score, tier and finding count in the tooltip.
-- **Quick fixes** — five deterministic transforms, always previewed in a native VS Code diff. Nothing is written until you confirm.
-- **Assisted fixes** for what has no mechanical answer — "this skill is 1 991 tokens" needs someone to decide *what* to extract:
-  - **AI Refine** proposes a rewrite through your editor's model. `vscode.lm` is tried first, so where the host exposes a model — VS Code with Copilot, for instance — it works on your existing subscription with no API key. **Not every host implements `vscode.lm`**: Kiro was verified not to expose one, and there AI Refine needs `harness-dashboard.ai.apiKey` set. The panel tells you which case you are in rather than blaming a missing key. The proposal goes through the same diff preview as every other fix.
-  - **Delegate** hands a scoped task to an installed terminal agent (Claude Code, Gemini CLI), for one finding, a whole component, or every occurrence of one rule.
-  - **Ask &lt;host&gt;** puts the prompt straight into your editor's own chat, using the model and account you already have there. No API key, no setup. It is one-way — nothing comes back and nothing is written — and it is what remains available in editors that expose no model to extensions, Kiro among them.
-  - The write-capable two are **not interchangeable and are not presented as such**: an agentic CLI edits your working tree directly, so delegation cannot show a diff. It says so, and warns when your tree is dirty or has no version control.
+- **Deterministic workspace scan** — parses `package.json` (deps / devDeps / `overrides`), `package-lock.json` (resolved versions), and the presence of a Dependabot or Renovate config into a `SupplyChainReport`. No `package.json`? The layer stays silent. No LLM, no heuristics, byte-identical results across runs.
+- **SC rule family in the advisory engine** — `sc-add-update-bot` fires exactly once when neither Dependabot nor Renovate is configured; `sc-stale-override:<pkg>` names the package, your pin and the patched version; `sc-audit-findings` summarizes the rest, split **production vs development**.
+- **One-click remediation, reusing the FEAT-032 action vocabulary** — the missing-bot suggestion carries a `create-file` action that scaffolds a vetted weekly `.github/dependabot.yml` (npm + github-actions, grouped minor/patch, non-destructive); audit findings carry `run-command` actions for `npm audit fix` / `npm outdated`.
+- **`npm audit` on your terms** — the audit JSON is consumed only after an explicit *Run npm audit* (palette or panel button): one bounded local `execFile`, 15 s timeout, session cache. Never during scans, activation or file-watcher events. Zero HTTP from extension code, by test.
 
-**Spec generation uses the same fallback.** Where your editor exposes no model and no API key is configured, "Generate with AI" in the SDD panel becomes "Ask &lt;host&gt;" and hands the identical prompt to your editor's chat.
+### Dogfooded on itself
 
-### Calibrated against your corpus, not against a constant
-
-Budget thresholds judge a component against `2.5× the median of your own same-typed components`, not a number somebody invented. The first cut used a fixed 500-token skill budget; measured against the five real skills in this repository it flagged four of them. A percentile would not have helped — a percentile always reports a fixed fraction, however good the corpus is.
-
-Each rule also declares whether it verifies a **fact**, applies a **heuristic**, or fires on an unvalidated **opinion**, and the engine caps its severity accordingly. An invented threshold can never deduct as much as a genuinely broken frontmatter.
-
-### Deliberately deterministic
-
-No LLM participates in detection or scoring. Every finding comes from a pure, table-driven rule with a stable ID, so the same architecture always produces the same report and every rule is testable against fixtures. Adding an AI scorer would trade that away for judgements you could neither reproduce nor verify. AI-assisted *rewriting* — where you review a proposal in a diff — remains on the backlog as a separate, honest feature.
-
-Fully switchable off via `harness-dashboard.optimizer.enabled`.
+This release ships the fix it prescribes: `.github/dependabot.yml` added to this repo and the stale `undici` override bumped — `npm audit` dev findings went from **12 to 0**.
 
 For full details see the [CHANGELOG](./CHANGELOG.md).
 

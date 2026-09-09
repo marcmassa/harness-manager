@@ -434,6 +434,18 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "Next"
+    },
+    {
+      "id": "FEAT-036",
+      "name": "supply-chain-health",
+      "title": "Supply-Chain Health — dependency observability & Dependabot remediation",
+      "description": "Deterministic supply-chain scanner for any workspace, wired into the FEAT-029/031 advisory loop. Parses package.json (deps, devDeps, overrides), package-lock.json (resolved versions) and dependabot/renovate config presence; emits an SC rule family of suggestions reusing FEAT-032 SuggestionActions — create-file scaffolds a vetted .github/dependabot.yml (npm + github-actions, weekly, grouped minor/patch, dev+prod), run-command offers npm audit fix / npm outdated. Security-audit rules consume a single user-triggered local 'npm audit --json' run (15s timeout, session cache, never automatic, never HTTP from extension code): detects stale security-pinned overrides (e.g. undici 7.28.0 vs patched 7.29.0) and classifies findings prod vs dev, surfaced in an AdvisoryPanel Supply Chain section. Degrades gracefully on non-Node workspaces and unavailable npm. No GitHub API calls, no auto-writes, no new npm dependencies, no LLM in detection or scoring. Phase 0 dogfoods the repo itself: add .github/dependabot.yml and bump the stale undici override to 7.29.0.",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
     }
   ]
 }

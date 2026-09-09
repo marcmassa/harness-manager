@@ -426,6 +426,89 @@ const IconRefresh = () => (
     </svg>
 );
 
+// ===== Supply Chain section (FEAT-036 R12) =====
+
+const AUDIT_STATE_COLORS: Record<string, string> = {
+    'not-run': '#888',
+    'unavailable': '#d4a017',
+    'captured': '#2aa198',
+};
+
+/**
+ * Deterministic supply-chain summary: prod/dev finding counts, the audit
+ * lifecycle badge, and the *user-triggered* Run-npm-audit button (R6 —
+ * nothing here runs audit automatically). Hidden for non-Node workspaces.
+ */
+const SupplyChainSection = ({
+    report,
+    onRunAudit,
+    isAuditRunning,
+}: {
+    report: NonNullable<AgenticProfile['supplyChain']>;
+    onRunAudit?: () => void;
+    isAuditRunning?: boolean;
+}) => {
+    const state = report.audit.state;
+    const stateColor = AUDIT_STATE_COLORS[state] ?? '#888';
+    return (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACE.sm,
+                padding: `${SPACE.xs} ${SPACE.sm}`,
+                borderRadius: '6px',
+                border: '1px solid var(--vscode-panel-border)',
+                background: 'var(--vscode-editorWidget-background, var(--vscode-sideBar-background))',
+                fontSize: '0.75em',
+                flexWrap: 'wrap',
+            }}
+        >
+                <span title="Production-scope audit findings (R11)">
+                    prod: <b>{report.audit.prodCount}</b>
+                </span>
+                <span title="Development-scope audit findings (R11)">
+                    dev: <b>{report.audit.devCount}</b>
+                </span>
+                <vscode-badge
+                    style={{
+                        fontSize: '0.85em',
+                        background: `color-mix(in srgb, ${stateColor} 30%, transparent)`,
+                    }}
+                    title={`npm audit state: ${state} (user-triggered only)`}
+                >
+                    {isAuditRunning ? 'auditing…' : state}
+                </vscode-badge>
+                {report.audit.staleOverrides.length > 0 && (
+                    <span style={{ opacity: 0.8 }} title="Stale security overrides (R9)">
+                        stale overrides: {report.audit.staleOverrides.map(o => o.name).join(', ')}
+                    </span>
+                )}
+                {onRunAudit && (
+                    <button
+                        type="button"
+                        onClick={onRunAudit}
+                        disabled={isAuditRunning}
+                        title="Run npm audit --json locally (one bounded run; results cached for this session)"
+                        style={{
+                            marginLeft: 'auto',
+                            fontSize: '0.9em',
+                            padding: '2px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--vscode-button-border, var(--vscode-focusBorder))',
+                            background: 'var(--vscode-button-background)',
+                            color: 'var(--vscode-button-foreground)',
+                            cursor: isAuditRunning ? 'not-allowed' : 'pointer',
+                            opacity: isAuditRunning ? 0.6 : 1,
+                        }}
+                    >
+                        {isAuditRunning ? 'Running…' : 'Run npm audit'}
+                    </button>
+                )}
+        </div>
+    );
+};
+
 // ===== Panel component =====
 
 interface AdvisoryPanelProps {
@@ -441,11 +524,18 @@ interface AdvisoryPanelProps {
     onExecuteAction?: (suggestionId: string, actionId: string) => void;
     /** Per-action button states keyed by `"${suggestionId}::${actionId}"` (FEAT-032). */
     actionStates?: Record<string, ActionButtonState>;
+    /**
+     * FEAT-036 R6/R12: user-triggered `npm audit`. The panel NEVER runs it
+     * automatically — this callback only posts the runSupplyChainAudit message.
+     */
+    onRunSupplyChainAudit?: () => void;
+    /** FEAT-036: true while a user-triggered audit is in flight. */
+    isAuditRunning?: boolean;
 }
 
 const STALE_THRESHOLD_MS = 120_000;
 
-export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning, onExecuteAction, actionStates }: AdvisoryPanelProps) => {
+export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning, onExecuteAction, actionStates, onRunSupplyChainAudit, isAuditRunning }: AdvisoryPanelProps) => {
     // Optimistic local dismissal tracker
     const [dismissedLocally, setDismissedLocally] = React.useState<Set<string>>(new Set());
     // Stale scan notice (FEAT-031 T19)
@@ -538,6 +628,10 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
 
     const nextLevel = profile.maturity.nextLevel;
     const maturityColor = profile.maturity.color || '#888';
+
+    // FEAT-036 R12: supply-chain report (undefined on non-Node workspaces
+    // and pre-scanner profiles) — section hidden when absent or empty.
+    const supplyChain = profile.supplyChain;
 
     // ===== Section header factory =====
 
@@ -879,6 +973,18 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                             />
                         ))}
                     </div>
+                </>
+            )}
+
+            {/* ===== 5.5 Supply Chain (FEAT-036 R12) ===== */}
+            {supplyChain && (supplyChain.hasPackageJson || supplyChain.audit.state !== 'not-run') && (
+                <>
+                    {sectionHeader('Supply Chain')}
+                    <SupplyChainSection
+                        report={supplyChain}
+                        onRunAudit={onRunSupplyChainAudit}
+                        isAuditRunning={isAuditRunning}
+                    />
                 </>
             )}
 

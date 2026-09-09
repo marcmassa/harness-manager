@@ -1,0 +1,14 @@
+{
+  "name": "node-basic",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^18.2.0",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "form-data": "4.0.6"
+  }
+}
