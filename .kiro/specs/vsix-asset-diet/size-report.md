@@ -1,11 +1,17 @@
 # VSIX Size Report — VSIX Asset Diet (FEAT-038) — LIVING BASELINE
 
-> Gate: DESIGN.md §2.4 — "<300 KB VSIX", **enforced** by `scripts/vsix-gate.sh`
-> (threshold 300,000 decimal bytes, design §6). This file is the living
+> Gate: DESIGN.md §2.4 — **400 KB budget** (300,000 B originally; amended
+> to 400,000 decimal bytes by ADR-005 — see re-run section at the bottom),
+> **enforced** by `scripts/vsix-gate.sh` (design §6). This file is the living
 > size record per design §8: **future** size gates append/update here.
 > Historical pre-diet record (frozen): `.kiro/specs/react-flow-12-migration/size-report.md`.
 >
-> **VERDICT: GATE FAILED — T9 STOP BRANCH TRIGGERED (design §6, tasks T9).**
+> **VERDICT (current): GATE PASSED at 361,604 B / 90% utilization** — after
+> the T9 STOP branch below resolved into the human-approved ADR-005
+> amendment; see "Re-run after ADR-005 amendment — PASS".
+>
+> ~~**VERDICT: GATE FAILED — T9 STOP BRANCH TRIGGERED (design §6, tasks T9).**~~
+> (Original T9 record, kept intact as history below.)
 > The diet removed 1.54 MB of screenshot bytes and every mechanism verified
 > green — but the measured post-diet artifact is **361,604 B ≥ 300,000 B**.
 > The design's "~190 KB code payload" premise (requirements header, design
@@ -120,3 +126,53 @@ any main PR after merge — **red** while the artifact is ≥ 300,000 B. That
 is the budget functioning as intended (design §6: "a budget not run on
 every PR is not a budget"), and it is why the human decision above gates
 the merge.
+
+## Re-run after ADR-005 amendment — PASS
+
+**Supersedes the FAIL verdict above for gate status; the measurement
+section stays intact as history.** Human decision taken (option 1 of the
+list above): budget amended **300,000 B → 400,000 B**, recorded as
+**ADR-005** (progress/decisions.md, Accepted 2026-09-09) via design §6's
+own amendment path. `scripts/vsix-gate.sh` LIMIT updated accordingly,
+plus a new non-blocking ≥80% utilization review signal.
+
+Environment: branch `chore/vsix-asset-diet` @ 8a4cc38 + ADR-005 gate
+amendment (uncommitted at packaging time), version `0.8.1`, vsce 3.9.2,
+`npm run package` → `harness-dashboard-vscode-0.8.1.vsix`.
+
+Fresh measurement: **361,604 B** (identical to the T9 measurement above —
+the diet tree is unchanged; only the threshold moved). Utilization:
+**90%** of the amended 400,000 B budget (~38,396 B / ~10.7% headroom).
+
+Full gate output (exit 0):
+
+```
+GATE PASS [size]: harness-dashboard-vscode-0.8.1.vsix is 361604 bytes (< 400000 B budget).
+budget utilization: 90% (of 400000 B)
+REVIEW: payload ≥80% of budget — growth should be a conscious decision (ADR-005)
+GATE PASS [exclusion]: zero extension/media/screenshots/ entries.
+GATE PASS [presence]: icon.png, icon.svg, dist/extension.cjs, dist/webview.js, dist/webview.css all packaged.
+
+VSIX GATE: PASSED (harness-dashboard-vscode-0.8.1.vsix, 361604 B)
+```
+
+### FEAT-037 R12 waiver — RETIRED (R8 satisfied, 2026-09-09)
+
+R8 required retirement "when the first post-diet VSIX passes
+R1/R4/R5/R6". The re-run above passes **all four**: R1 exclusion green,
+R4 presence green, R5 size green under the amended 400,000 B budget
+(ADR-005), R6 listing assertions green. **FEAT-037's R12 human waiver is
+therefore formally retired as of 2026-09-09.** The waiver had been
+granted on the FEAT-037 migration branch (reviewed and shipped via
+PR #13, merged as commit cde7d98) when the 1,899,264 B artifact
+breached the then-300 KB budget; that breach's dominant term — 1.54 MB
+of packaged README screenshots — is permanently gone (this feature), and
+the residual code-payload term now sits under a measured, enforced
+budget. CI's `Package VSIX + size gate` step goes green with this
+amendment; the "budget is theatre" failure mode from design §6 is closed.
+
+The ≥80% REVIEW signal fires on day one **by design** (ADR-005): 90%
+utilization means the next UI-dependency bump deserves a conscious
+decision — tracked as the P2 payload-watch backlog item, not a second
+amendment.
+

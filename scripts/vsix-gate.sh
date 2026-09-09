@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # scripts/vsix-gate.sh — VSIX packaging gate (FEAT-038 vsix-asset-diet)
 #
-# Single source of assertions for the DESIGN.md §2.4 "<300 KB" budget and
-# the packaging invariants of FEAT-038. Runs against a produced .vsix
+# Single source of assertions for the DESIGN.md §2.4 "400 KB budget"
+# (amended by ADR-005 from the original 300 KB) and the packaging
+# invariants of FEAT-038. Runs against a produced .vsix
 # artifact (the package's own `unzip -l` listing — the manifest, not the
 # repo tree). Enforcement points (design §6, R7):
 #   1. `npm run package` — appended after `vsce package`
@@ -11,10 +12,12 @@
 # NOT wired into ./check.sh by design (check.sh stays free of packaging).
 #
 # Assertions:
-#   GATE: size       artifact < 300000 decimal bytes                → R5
+#   GATE: size       artifact < 400000 decimal bytes            → R5 (ADR-005)
 #   GATE: exclusion  no extension/media/screenshots/… zip entries    → R1/R6
 #   GATE: presence   icon.png, icon.svg + dist/extension.cjs,
 #                    dist/webview.js, dist/webview.css all present   → R4/R6
+#   SIGNAL: utilization  non-blocking — prints budget utilization; at
+#                    ≥80% of LIMIT prints a REVIEW line (never fails).
 #
 # Any violation prints the offending `unzip -l` lines and exits non-zero.
 # `scripts/` is itself .vscodeignore'd — this gate adds zero package bytes.
@@ -36,7 +39,7 @@ if [ -z "$VSIX" ]; then
 	echo "usage: $0 <path-to-vsix>"
 	echo ""
 	echo "FEAT-038 packaging gate — asserts on a produced .vsix artifact:"
-	echo "  size < 300000 B (decimal) | no extension/media/screenshots/ entries"
+	echo "  size < 400000 B (decimal, ADR-005) | no extension/media/screenshots/ entries"
 	echo "  | required media + dist entries present"
 	exit 2
 fi
@@ -47,19 +50,29 @@ if [ ! -f "$VSIX" ]; then
 fi
 
 SIZE=$(wc -c < "$VSIX" | tr -d ' ')
-LIMIT=300000
+LIMIT=400000
 LISTING=$(unzip -l "$VSIX")
 
 fail=0
 
-# --- GATE: size (R5) -------------------------------------------------------
+# --- GATE: size (R5, budget amended to 400,000 B by ADR-005) ----------------
 if [ "$SIZE" -ge "$LIMIT" ]; then
-	echo "GATE FAIL [size]: $VSIX is $SIZE bytes (budget: < $LIMIT B, DESIGN.md §2.4)." >&2
+	echo "GATE FAIL [size]: $VSIX is $SIZE bytes (budget: < $LIMIT B, DESIGN.md §2.4, ADR-005)." >&2
 	echo "  If legitimate code growth breaches the budget, the response is an" >&2
 	echo "  explicit DESIGN.md amendment — never a quietly raised threshold here." >&2
 	fail=1
 else
 	echo "GATE PASS [size]: $VSIX is $SIZE bytes (< $LIMIT B budget)."
+fi
+
+# --- SIGNAL: budget utilization (non-blocking, ADR-005) ----------------------
+# Prints integer percent of the artifact vs LIMIT on every run. At >=80% it
+# ALSO prints a REVIEW line: growth past that point should be a conscious
+# decision. The signal NEVER affects the exit code.
+UTIL=$(( SIZE * 100 / LIMIT ))
+echo "budget utilization: ${UTIL}% (of ${LIMIT} B)"
+if [ "$UTIL" -ge 80 ]; then
+	echo "REVIEW: payload ≥80% of budget — growth should be a conscious decision (ADR-005)"
 fi
 
 # --- GATE: exclusion (R1 / R6) ---------------------------------------------

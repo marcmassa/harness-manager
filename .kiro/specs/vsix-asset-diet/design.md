@@ -153,6 +153,19 @@ exceeds 300,000 B through legitimate code growth, the response is an
 explicit DESIGN.md amendment PR — never a quietly raised threshold in the
 script.
 
+**Amendment record (human-approved 2026-09-09):** the threshold above was
+amended from **300,000 B to 400,000 B** via this section's own prescribed
+path ("an explicit DESIGN.md amendment PR — never a quietly raised
+threshold"). Evidence: the T9 measurement (`.kiro/specs/vsix-asset-diet/
+size-report.md`) — post-diet artifact 361,604 B with the `dist/` trio
+alone at 309,467 B compressed, falsifying the "≈190 KB code payload"
+premise; the 300,000 B gate was arithmetically unreachable by asset diet
+without cutting shipped features. Decision recorded as **ADR-005**
+(`progress/decisions.md`), human-approved option "A" of the T9 STOP
+report. The amendment ships with a non-blocking ≥80% utilization review
+signal in `scripts/vsix-gate.sh` (current utilization ~90%). Prior text
+in this section is left unaltered as the original decision record.
+
 ## 7. Test strategy (how each R is verified)
 
 | R | Verification |
