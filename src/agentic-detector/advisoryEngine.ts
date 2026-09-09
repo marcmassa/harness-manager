@@ -6,10 +6,13 @@ import type {
   SignalCategoryResult,
   MaturityLevel,
 } from './types.js';
+// FEAT-036: supply-chain rule family (same table shape, merged below).
+import { SC_RULES, expandStaleOverrideRules } from './supplyChainRules.js';
 
 // ─── Suggestion rule definition ────────────────────────────────────────────
 
-interface SuggestionRule {
+/** FEAT-036: exported so the SC rule family reuses the exact table shape. */
+export interface SuggestionRule {
   id: string;
   condition: (profile: AgenticProfile) => boolean;
   build: (profile: AgenticProfile) => Omit<Suggestion, 'id'>;
@@ -562,7 +565,12 @@ export function generate(
 
   const suggestions: Suggestion[] = [];
 
-  for (const rule of RULES) {
+  // FEAT-036: RULES ⊕ SC_RULES. The stale-override rules are expanded per
+  // profile because their ids are stable per package (dismissal support);
+  // the rest of the table is static like RULES.
+  const allRules: SuggestionRule[] = [...RULES, ...SC_RULES, ...expandStaleOverrideRules(profile)];
+
+  for (const rule of allRules) {
     if (dismissed.has(rule.id)) continue;
 
     try {

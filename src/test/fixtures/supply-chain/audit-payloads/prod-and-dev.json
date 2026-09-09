@@ -1,0 +1,39 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "react": {
+      "name": "react",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [{ "source": 1, "name": "react", "severity": "moderate", "range": "<18.3.0", "fixVersion": "18.3.0" }],
+      "effects": [],
+      "range": "<18.3.0",
+      "nodes": ["node_modules/react"],
+      "fixAvailable": { "name": "react", "version": "18.3.0", "isSemVerMajor": true }
+    },
+    "yaml": {
+      "name": "yaml",
+      "severity": "high",
+      "isDirect": true,
+      "via": [{ "source": 2, "name": "yaml", "severity": "high", "range": "<2.9.1" }],
+      "effects": [],
+      "range": "<2.9.1",
+      "nodes": ["node_modules/yaml"],
+      "fixAvailable": true
+    },
+    "vitest": {
+      "name": "vitest",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [{ "source": 3, "name": "vitest", "severity": "moderate", "range": "<4.1.9", "fixVersion": "4.1.9" }],
+      "effects": [],
+      "range": "<4.1.9",
+      "nodes": ["node_modules/vitest"],
+      "fixAvailable": { "name": "vitest", "version": "4.1.9", "isSemVerMajor": false }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": { "info": 0, "low": 0, "moderate": 2, "high": 1, "critical": 0, "total": 3 },
+    "dependencies": { "prod": 2, "dev": 1, "optional": 0, "peer": 0, "peerOptional": 0, "total": 3 }
+  }
+}

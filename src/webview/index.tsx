@@ -343,6 +343,9 @@ const App = () => {
     const [architectureSummary, setArchitectureSummary] = React.useState<any>(null);
     // FEAT-032: per-action button states keyed by `"${suggestionId}::${actionId}"`
     const [actionStates, setActionStates] = React.useState<Record<string, ActionButtonState>>({});
+    // FEAT-036: user-triggered npm audit in-flight flag (button state only —
+    // the audit itself is bounded + guarded host-side).
+    const [isAuditRunning, setIsAuditRunning] = React.useState(false);
     // FEAT-034: Component Optimizer report + scan state
     const [optimizerReport, setOptimizerReport] = React.useState<OptimizerReport | null>(null);
     const [isOptimizerScanning, setIsOptimizerScanning] = React.useState(false);
@@ -484,6 +487,15 @@ const App = () => {
                     const newState: ActionButtonState = ok ? 'success' : 'error';
                     setActionStates(prev => ({ ...prev, [key]: newState }));
                     setTimeout(() => setActionStates(prev => ({ ...prev, [key]: 'idle' })), 2500);
+                    break;
+                }
+                // FEAT-036: user-triggered npm audit completion (R7). The
+                // refreshed profile arrives separately via 'advisoryProfile'.
+                case 'supplyChainAuditResult': {
+                    setIsAuditRunning(false);
+                    if (!message.ok && message.reason !== undefined) {
+                        console.warn('[SupplyChain] npm audit unavailable:', message.reason);
+                    }
                     break;
                 }
                 // FEAT-033: Agent Run Panel messages
@@ -725,6 +737,12 @@ const App = () => {
     // FEAT-029 T34: Apply Harness+SDD scaffold action
     const handleApplyHarnessSDD = React.useCallback(() => {
         vscode.postMessage({ type: 'applyHarnessSDD' });
+    }, []);
+
+    // FEAT-036 R6/R12: user-triggered npm audit (explicit click only).
+    const handleRunSupplyChainAudit = React.useCallback(() => {
+        setIsAuditRunning(true);
+        vscode.postMessage({ type: 'runSupplyChainAudit' });
     }, []);
 
     // FEAT-033: Open Run Agent Panel from whiteboard node toolbar
@@ -1001,7 +1019,7 @@ const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} />
+                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} onRunSupplyChainAudit={handleRunSupplyChainAudit} isAuditRunning={isAuditRunning} />
             </section>
 
             {/* FEAT-034: Component Optimizer */}

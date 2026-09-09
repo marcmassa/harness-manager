@@ -298,3 +298,73 @@ describe('AdvisoryPanel — integration edge cases (T37)', () => {
         expect(html).toContain('scanned');
     });
 });
+
+// ─── FEAT-036: Supply Chain section (R12) ─────────────────────────────────────
+
+import { emptyReport, type SupplyChainReport } from '../supply-chain/types.js';
+
+function makeSupplyChain(overrides: Partial<SupplyChainReport> = {}): SupplyChainReport {
+    return { ...emptyReport(), hasPackageJson: true, ...overrides };
+}
+
+describe('AdvisoryPanel — Supply Chain section (FEAT-036 R12)', () => {
+    it('renders prod/dev counts and audit state when the report is non-empty', () => {
+        const profile = makeProfile();
+        profile.supplyChain = makeSupplyChain({
+            audit: { state: 'captured', prodCount: 3, devCount: 5, staleOverrides: [], findings: [] },
+        });
+        const html = render(profile);
+        expect(html).toContain('Supply Chain');
+        expect(html).toContain('prod:');
+        expect(html).toContain('dev:');
+        expect(html).toContain('captured');
+    });
+
+    it('shows the not-run badge and the Run npm audit button', () => {
+        const profile = makeProfile();
+        profile.supplyChain = makeSupplyChain();
+        const html = renderToString(
+            React.createElement(AdvisoryPanel, {
+                profile,
+                onDismissSuggestion: vi.fn(),
+                onRunSupplyChainAudit: vi.fn(),
+            }),
+        );
+        expect(html).toContain('not-run');
+        expect(html).toContain('Run npm audit');
+    });
+
+    it('shows the unavailable state without error', () => {
+        const profile = makeProfile();
+        profile.supplyChain = makeSupplyChain({
+            audit: { state: 'unavailable', prodCount: 0, devCount: 0, staleOverrides: [], findings: [] },
+        });
+        const html = render(profile);
+        expect(html).toContain('unavailable');
+    });
+
+    it('lists stale override package names (R9 surfacing)', () => {
+        const profile = makeProfile();
+        profile.supplyChain = makeSupplyChain({
+            audit: {
+                state: 'captured', prodCount: 0, devCount: 1, findings: [],
+                staleOverrides: [{ name: 'undici', pinned: '7.28.0', patched: '7.29.0' }],
+            },
+        });
+        const html = render(profile);
+        expect(html).toContain('stale overrides: <!-- -->undici');
+    });
+
+    it('is hidden when the profile has no supplyChain', () => {
+        const profile = makeProfile();
+        const html = render(profile);
+        expect(html).not.toContain('Supply Chain');
+    });
+
+    it('is hidden for an empty (non-Node) report', () => {
+        const profile = makeProfile();
+        profile.supplyChain = emptyReport();
+        const html = render(profile);
+        expect(html).not.toContain('Supply Chain');
+    });
+});

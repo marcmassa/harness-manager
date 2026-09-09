@@ -1,0 +1,36 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "undici": {
+      "name": "undici",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 11127,
+          "name": "undici",
+          "dependency": "undici",
+          "title": "undici vulnerable to HTTP header injection via non-token characters in `set-cookie`",
+          "url": "https://github.com/advisories/GHSA-example-undici",
+          "severity": "high",
+          "cwe": ["CWE-113"],
+          "cvss": { "score": 7.5, "vectorString": "CVSS:3.1/AV:N/..." },
+          "range": "<7.29.0",
+          "fixVersion": "7.29.0"
+        }
+      ],
+      "effects": [],
+      "range": "<7.29.0",
+      "nodes": ["node_modules/undici"],
+      "fixAvailable": {
+        "name": "undici",
+        "version": "7.29.0",
+        "isSemVerMajor": false
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 1, "critical": 0, "total": 1 },
+    "dependencies": { "prod": 1, "dev": 2, "optional": 0, "peer": 0, "peerOptional": 0, "total": 3 }
+  }
+}

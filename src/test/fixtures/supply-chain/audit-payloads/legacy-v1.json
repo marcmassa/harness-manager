@@ -1,0 +1,27 @@
+{
+  "advisories": {
+    "1001": {
+      "id": 1001,
+      "name": "undici",
+      "moduleName": "undici",
+      "severity": "high",
+      "vulnerable_versions": "<7.29.0",
+      "findings": [
+        { "version": "7.28.0", "dev": true }
+      ]
+    },
+    "1002": {
+      "id": 1002,
+      "name": "postcss",
+      "moduleName": "postcss",
+      "severity": "moderate",
+      "vulnerable_versions": "<8.4.31",
+      "findings": [
+        { "version": "8.4.30", "dev": false }
+      ]
+    }
+  },
+  "metadata": {
+    "vulnerabilities": { "info": 0, "low": 0, "moderate": 1, "high": 1, "critical": 0, "total": 2 }
+  }
+}

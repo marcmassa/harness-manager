@@ -107,7 +107,10 @@ export type WebviewMessageType =
     | 'getOptimizerAiModels' | 'optimizerAiModels' | 'setOptimizerAiModel'
     | 'handoffToChat' | 'handoffResult'
     // FEAT-036: spec generation chat handoff
-    | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt';
+    | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt'
+    // FEAT-036: supply-chain health — user-triggered npm audit (R6, R7)
+    | 'runSupplyChainAudit'
+    | 'supplyChainAuditResult';
 
 export interface WebviewMessage {
     type: WebviewMessageType;
@@ -148,6 +151,8 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'handoffToChat', 'handoffResult',
     // FEAT-036: spec generation chat handoff
     'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
+    // FEAT-036: supply-chain health
+    'runSupplyChainAudit', 'supplyChainAuditResult',
 ]);
 
 export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {

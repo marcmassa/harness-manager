@@ -12,6 +12,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.1] — 2026-09-09
+
+> **Supply-Chain Health** (FEAT-036): the advisory loop gains a deterministic view of your dependency graph — missing update-bot config, stale security `overrides`, and prod-vs-dev audit findings — with one-click remediation. No breaking changes; **zero new npm dependencies**. All 773 unit tests pass.
+
+### Added
+
+#### Supply-chain scanner (`src/supply-chain/`)
+
+- **Pure, deterministic modules** — `packageJsonParser` (deps / devDeps / `overrides` maps), `lockfileParser` (resolved versions + dev flags), `botConfigDetector` (Dependabot YAML parsed with the existing `yaml` package; Renovate presence), `semverLite` (numeric-dot compare — chosen over a `semver` dependency, see spec Discarded Alternatives), `auditReducer`, and a `scanner` orchestrating them behind an injected `{readFile, exists}` — the same DI pattern as `SignalScanner`. No `vscode` import anywhere; non-Node workspaces degrade to silence.
+- **`SupplyChainReport`** attached to the advisory profile: declared and resolved versions, bot-config map, and an `AuditSummary` exposing prod/dev finding **counts and list** plus audit state (`not-run` / `unavailable` / `captured`).
+
+#### SC rule family in the advisory engine
+
+- `sc-add-update-bot` (SC-01) — fires exactly once when a Node workspace has neither a Dependabot `npm` config nor Renovate. Carries a `create-file` action scaffolding a vetted `.github/dependabot.yml` (npm + github-actions, weekly, grouped minor/patch, prod+dev).
+- `sc-stale-override:<pkg>` (SC-02) — when a cached audit reports a patched version higher than a pinned `package.json#overrides` entry, names package, current pin and patched version. Stable per-package IDs keep dismissal persistence working.
+- `sc-audit-findings` (SC-03) — aggregate summary with remediation actions while any finding remains.
+- Actions reuse the FEAT-032 `SuggestionAction` vocabulary unchanged: `create-file` (non-destructive — an existing file is opened in the editor, never overwritten) and `run-command` (`npm audit fix`, `npm outdated`).
+
+#### Audit execution edge — user-triggered, bounded
+
+- `harness-dashboard.runSupplyChainAudit` command (palette + AdvisoryPanel button) runs **one** `execFile('npm', ['audit','--json'])` with a 15 s timeout, caches the payload for the session, and schedules a re-scan. Never launched during scans, activation, or watcher events (`noAutoAudit.test.ts` pins it); spawn/timeout/parse failures degrade to `unavailable` without breaking the scan.
+- AdvisoryPanel gains a *Supply Chain* section: prod/dev counts, audit-state badge, Run-audit button — hidden for non-Node workspaces.
+
+### Security / dogfooding
+
+- **This repository now ships the config SC-01 prescribes**: `.github/dependabot.yml` added (npm + github-actions ecosystems, weekly, grouped minor/patch, dev + prod).
+- **Stale security override fixed**: `overrides.undici` `7.28.0` → `7.29.0` (GHSA-4cwx-7wf7-3272 and four others), lockfile refreshed.
+- `npm audit` — **0 vulnerabilities** (was 8: 7 high + 1 moderate, all dev-transitive at write-time, 12 alerts open on the default branch before this release).
+
+### Changed
+
+- `ActionExecutor` `create-file` existing-file branch now opens the file in the editor before returning (ADR-004) — completes R5's second clause for every action caller; write/skip semantics otherwise unchanged.
+
+### Technical
+
+- 92 new tests (773 total, 56 files); `./check.sh` green including adapter-sync and governance gates.
+- Zero new dependencies; extension code still performs no external HTTP.
+
+---
+
 ## [0.8.0] — 2026-08-03
 
 > **Component Optimizer**, plus assisted fixes for the findings it cannot correct mechanically. No breaking changes to settings, commands, or output format; both features ship enabled and can be switched off entirely.
