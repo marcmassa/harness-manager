@@ -41,7 +41,7 @@
 - [x] **T5** — Add explicit `nodeDragThreshold={1}` to the `<ReactFlow>` JSX
       (decision + rationale in design §4). Verify pill stopPropagation still
       prevents drag takeover. _(R5, R6)_
-- [ ] **T6** — Reconciliation audit with tests: (a) no mutation-based
+- [x] **T6** — Reconciliation audit with tests: (a) no mutation-based
       `setNodes`/`setEdges` updates (design §3 #4 — add a pinning test);
       (b) confirm no code reads `edge.sourceHandle`/`targetHandle` or
       `node.width/height/measured` (grep evidence in PR); (c) z-index layering
@@ -49,9 +49,9 @@
 
 ## Verification
 
-- [ ] **T7** — `npm run build` (esbuild) green with unchanged dist allowlist
+- [x] **T7** — `npm run build` (esbuild) green with unchanged dist allowlist
       (`webview.js` + `webview.css` emitted). _(R2, R3)_
-- [ ] **T8** — `npm test`: ≥773 tests / 56 files pass, including the new
+- [x] **T8** — `npm test`: ≥773 tests / 56 files pass, including the new
       source-contract and reconciliation tests. _(R1–R7, R10)_
 - [ ] **T9** — e2e: `npm run test:integration` (@vscode/test-electron,
       FEAT-021 critical path) passes on React 19 + Flow 12 with a clean
@@ -65,12 +65,12 @@
 
 ## Sizing & release governance
 
-- [ ] **T12** — Post-migration `npm run package`; append the after-size to
+- [x] **T12** — Post-migration `npm run package`; append the after-size to
       `size-report.md`; assert < 300 KB (R12 gate — if exceeded, stop and
       report, do not proceed to closure). _(R12)_
-- [ ] **T13** — DESIGN.md §3/§4/§6 amendments to "React 19 + React Flow 12"
+- [x] **T13** — DESIGN.md §3/§4/§6 amendments to "React 19 + React Flow 12"
       — in-place replacements only, file stays ≤ 250 lines. _(R13)_
-- [ ] **T14** — Extend the existing `CHANGELOG.md` `[0.8.1]` section with the
+- [x] **T14** — Extend the existing `CHANGELOG.md` `[0.8.1]` section with the
       migration (### Changed subsection + updated summary line naming FEAT-036
       AND FEAT-037; **no new [0.9.0]**); consolidate README "What's new in
       0.8.1" to cover both features. Version remains 0.8.1. _(R13)_

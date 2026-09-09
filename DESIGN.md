@@ -90,7 +90,7 @@ extension. This is intentional "dogfooding".
 │                                                                     │
 │  ┌──────────────────────┐         ┌──────────────────────────┐      │
 │  │   Extension Host     │ ◀─────▶ │       Webview            │      │
-│  │   (Node.js)          │  msgs   │   (React 18 + Flow 11)   │      │
+│  │   (Node.js)          │  msgs   │   (React 19 + Flow 12)   │      │
 │  │                      │         │                          │      │
 │  │  • activate()        │         │  • WhiteboardCanvas      │      │
 │  │  • HarnessParser     │         │  • TimelineView          │      │
@@ -135,7 +135,7 @@ process on their own machine.
 | **Adapters** | Detect + parse agent architectures from non-Harness sources (Claude Code, Gemini CLI, Cursor, Copilot, OpenCode, and the deprecated Windsurf) into the common graph model | `src/adapters/*.ts` | pattern: `IAgentAdapter` + 7 implementations (one of which — `WindsurfAdapter` — is retained for legacy workspaces; see ADR-003) |
 | **Semantic Layer** | TF-IDF vectorizer, cosine similarity, name-boost, n-gram tokenization | `src/semanticMatcher.ts` | pure functions, no I/O |
 | **Idoneity Layer** | Bidirectional semantic idoneity matrix, best-owner-by-skill, mismatch detection | `src/idoneity.ts` | reuses `semanticMatcher.ts` |
-| **Webview UI** | React Flow whiteboard, node types (agent/subagent/skill/steering/hook — features are in the SDD panel, not the canvas), per-type edge styling, timeline view, detail panel, side panel, context menus | `src/webview/*` | React 18, React Flow 11, `@vscode/webview-ui-toolkit` |
+| **Webview UI** | React Flow whiteboard, node types (agent/subagent/skill/steering/hook — features are in the SDD panel, not the canvas), per-type edge styling, timeline view, detail panel, side panel, context menus | `src/webview/*` | React 19, React Flow 12, `@vscode/webview-ui-toolkit` |
 | **Component Optimizer** | Deterministic scoring of every architecture component (agent/subagent/skill/steering/hook) across six dimensions; 19 table-driven rules tagged by epistemic confidence; thresholds calibrated against the workspace's own corpus; five pure quick-fix transforms | `src/optimizer/*` | pure TypeScript, no `vscode` import, no new dependency; reuses `semanticMatcher.ts`, `idoneity.ts`, `parserLogic.scanCrossReferences()` |
 | **Assisted Fixes** | For findings with no mechanical fix: AI Refine (proposal → existing diff preview → confirm) and Delegate (scoped task → installed terminal agent, no preview, stated as such) | `src/optimizer/aiRefine.ts`, `src/optimizer/delegateTask.ts`, `src/coordinators/OptimizerCoordinator.ts` | pure prompt/task construction; reuses `lmUtils.ts` provider chain and the FEAT-033 `RunAdapter` registry; no new dependency |
 | **Persistence** | Per-workspace state (dismissed suggestions, disabled connections, manual node positions, dismissed optimizer findings) | `context.workspaceState` | VS Code API |
@@ -195,7 +195,7 @@ models via `vscode.lm`.
 
 - **Language / Stack**:
   - TypeScript 5.x with `strict: true` (`tsconfig.json`).
-  - React 18 (not 19 — React Flow 11 compatibility).
+  - React 19 + @xyflow/react 12 (migrated from reactflow 11 / React 18 — FEAT-037).
   - Node 22.x in CI (raised from 20.x for `vitest@5`'s `engines`
     floor `^22.12.0`; dev tooling only — the extension runtime
     target remains `engines.vscode ^1.85.0`).
