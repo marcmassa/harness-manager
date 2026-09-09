@@ -44,3 +44,9 @@ package-lock.json
 # ===== EXTRAS =====
 media/icon-color.svg
 scripts/
+
+# ===== README SCREENSHOTS (FEAT-038) =====
+# README screenshots — served from GitHub raw; see README.md + FEAT-038.
+# Only the screenshots are excluded: media/icon.png, media/icon.svg and
+# the dist/ bundles are runtime-required and pinned by scripts/vsix-gate.sh.
+media/screenshots/**

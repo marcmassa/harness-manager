@@ -14,11 +14,11 @@
 
 | Whiteboard | SDD Panel |
 |---|---|
-| ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](media/screenshots/sdd-panel.png) |
+| ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/sdd-panel.png) |
 | **Architecture Analysis & Advisory** | **Full-window Dashboard** |
-| ![Advisory tab with maturity badge, SVG signal bars, suggestions and CLI detection](media/screenshots/achitecture-advisory.png) | ![Harness Dashboard opened as a full editor panel, detached from the activity bar](media/screenshots/full-window.png) |
+| ![Advisory tab with maturity badge, SVG signal bars, suggestions and CLI detection](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/achitecture-advisory.png) | ![Harness Dashboard opened as a full editor panel, detached from the activity bar](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/full-window.png) |
 | **Component Optimizer** *(new in 0.8.0)* | |
-| ![Optimizer tab: six-axis dimension radar, the legend naming what each axis measures and which rules feed it, per-rule batch actions, and the component table scored worst-first](media/screenshots/optimizer-panel.png) | |
+| ![Optimizer tab: six-axis dimension radar, the legend naming what each axis measures and which rules feed it, per-rule batch actions, and the component table scored worst-first](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/optimizer-panel.png) | |
 <!-- Second cell awaits media/screenshots/chat-handoff.png — a finding's prompt arriving prefilled in the host editor's chat. See progress/backlog.md. -->
 
 ---

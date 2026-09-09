@@ -324,8 +324,8 @@
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest",
     "test:integration": "npm run build && node ./out/test/integration/runIntegrationTests.cjs",
-    "package": "npm run build && vsce package --no-dependencies",
-    "publish": "npm run build && vsce publish --no-dependencies",
+    "package": "npm run build && vsce package --no-dependencies && bash scripts/vsix-gate.sh harness-dashboard-vscode-$(node -p \"require('./package.json').version\").vsix",
+    "publish": "npm run package && vsce publish --packagePath harness-dashboard-vscode-$(node -p \"require('./package.json').version\").vsix",
     "vsce:prepublish": "npm run build"
   },
   "devDependencies": {
