@@ -1,5 +1,16 @@
 # Progress Log
 
+## [2026-09-09] FEAT-037: react-flow-12-migration (COMPLETED)
+
+- **Objective:** Migrate the whiteboard from `reactflow@11` + React 18 to `@xyflow/react@12.11.6` + React 19 with full behavior parity (rendering, FEAT-017 drag & persistence, FEAT-016 edge styling/z-index, context menus, suggestion flows). Shares release **0.8.1** with FEAT-036 — version NOT bumped.
+- **Status:** All tasks T1–T15 complete. **819 tests / 57 files pass** (46 new guard tests). Build green; `dist/webview.css` verified to carry the v12 stylesheet (85 `--xy-*` vars). e2e critical path PASSED (React 19 + v12 real render).
+- **Key decisions:** explicit `nodeDragThreshold={1}` (R6 — also closes a latent click-jitter→bogus-persisted-position path from FEAT-017); fitView `ease:'ease-in-out'` string removed (never a valid d3 name; v12 types `ease` as function); `environment.d.ts`/`css.d.ts` added for React 19 typed JSX.
+- **Size gate (R12):** full VSIX 1,871,439 → 1,899,264 B (+27.2 KB migration delta). The literal <300 KB budget was ALREADY breached at baseline by ~1.71 MB of pre-existing README screenshot PNGs (DESIGN.md §2.4 budget predates them; the same gate fails on untouched main). **Human accepted the delta; closure proceeded.** Follow-up: `vsix-asset-diet` feature opened to make the budget meaningful again.
+- **Bonus:** adding `@types/react` revealed the repo had never type-checked against React types — repo-wide tsc error lines fell 2364 → 233; the 8 touched files carry zero new error signatures.
+- **Traceability:** R1–R13 ↔ evidence in `progress/impl_react-flow-12-migration.md` (source-contract pins for R8/R9 added post-review at commit c910d8b).
+- **Reviewer:** reviewer-vscode — **PASSED-WITH-CONDITIONS** → all 3 conditions closed (condition 1 fixed with 6 real tests in-session; M1–M7 **verified by the human in the F5 host**, light+dark, 2026-09-09; R12 accepted as above).
+- **Branch:** `feat/react-flow-12` (9 commits) → PR, squash-merged to main; DESIGN.md §3/§4/§6 + CHANGELOG [0.8.1] + README consolidated (both 0.8.1 features, no [0.9.0]).
+
 ## [2026-09-09] FEAT-036: supply-chain-health (COMPLETED)
 
 - **Objective:** Deterministic supply-chain observability & remediation wired into the FEAT-029/031 advisory loop. Zero new npm deps, zero HTTP from extension code, no LLM in detection/scoring; `npm audit` runs ONLY as a bounded (15 s) local child process on explicit user action.

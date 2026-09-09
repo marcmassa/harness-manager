@@ -446,6 +446,18 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "Next"
+    },
+    {
+      "id": "FEAT-037",
+      "name": "react-flow-12-migration",
+      "title": "React Flow 12 & React 19 Migration",
+      "description": "Migrate the whiteboard stack from reactflow@11 + React 18 to @xyflow/react@12.11 + React 19 with full behavior parity: identical rendering, FEAT-017 node-drag & manual-position persistence (adopting the v12 nodeDragThreshold=1 default explicitly, which also closes a latent click-jitter-as-drag corruption path), FEAT-016 per-type edge styling and z-index layering, context menus and suggestion flows. Includes typing migration (generic NodeProps, useNodesState/useEdgesState generics, new nodeTypes module), reconciliation audits with pinning tests, e2e verification under @vscode/test-electron, a VSIX size gate (<300 KB, measured before/after), DESIGN.md §3/§4/§6 amendments, and the consolidated CHANGELOG/README treatment of release 0.8.1 shared with FEAT-036 (version NOT bumped).",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.8.1"
     }
   ]
 }

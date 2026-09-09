@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getLayoutedElementsByProvider } from './layoutUtils.js';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 
 function makeNode(id: string, type: string, framework = 'harness-sdd'): Node {
     return {

@@ -68,7 +68,9 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ## What's new in 0.8.1
 
-**Supply-Chain Health** (FEAT-036): the advisory loop now sees your dependency graph, not just your agent graph. No breaking changes; **zero new npm dependencies**.
+Two features share this release: **Supply-Chain Health** (FEAT-036) and the **React Flow 12 & React 19 migration** (FEAT-037). No breaking changes to settings, commands, or the whiteboard experience; **zero new runtime dependencies** (the migration is a swap plus types-only dev tooling).
+
+**Supply-Chain Health** (FEAT-036): the advisory loop now sees your dependency graph, not just your agent graph.
 
 ### Why
 
@@ -84,6 +86,12 @@ The tool had become the guard of your agent architecture while its own supply ch
 ### Dogfooded on itself
 
 This release ships the fix it prescribes: `.github/dependabot.yml` added to this repo and the stale `undici` override bumped — `npm audit` dev findings went from **12 to 0**.
+
+### Whiteboard on React Flow 12 + React 19 (FEAT-037)
+
+- **Graph runtime modernized, rendering unchanged** — the whiteboard moved from `reactflow@11` + React 18 to `@xyflow/react@12.11` + React 19: same nodes, same automatic layout, same per-type edge styling and layering (verified by parity tests + the FEAT-021 e2e in a real VS Code).
+- **Clicks stop nudging nodes** — React Flow 12's `nodeDragThreshold={1}` is set explicitly: a press–release with sub-pixel pointer jitter is now a pure click and no longer persists a bogus manual position (closing a latent FEAT-017 corruption path). Intentional drags and pill-linking behave as before.
+- **Cleaner under the hood** — generic node/edge typings (`src/webview/nodeTypes.ts`) replace v11's `data: any`, and repo-wide `tsc` error lines dropped from 2 364 to 233 as real React 19 types landed; z-index hover/select no longer remounts edges.
 
 For full details see the [CHANGELOG](./CHANGELOG.md).
 

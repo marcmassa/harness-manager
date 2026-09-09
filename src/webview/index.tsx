@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { provideVSCodeDesignSystem, allComponents } from '@vscode/webview-ui-toolkit';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
 import { FeatureSpecPanel } from './FeatureSpecPanel.js';
 import { AdvisoryPanel } from './AdvisoryPanel.js';
@@ -23,7 +23,7 @@ import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import { SPACE } from './styles.js';
 import { profileToDiscoveredNodes } from '../agentic-detector/profileToNodes.js';
 
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 
 provideVSCodeDesignSystem().register(allComponents);
 
@@ -625,7 +625,7 @@ const App = () => {
         }
         return Array.from(frameworkSet);
     }, [data]);
-    const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph.nodes.length === 0;
+    const shouldShowEmptyState = Boolean(filteredGraph) && detectedFrameworks.length === 0 && filteredGraph?.nodes.length === 0;
 
     // Handle node selection from whiteboard — FEAT nodes navigate to Specs Manager
     const handleNodeSelect = React.useCallback((node: any) => {
