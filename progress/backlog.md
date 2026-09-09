@@ -25,6 +25,8 @@ _(cleared — see Completed sections below)_
 
 ## P2 — Nice to have (whenever possible)
 
+- [ ] **VSIX payload watch** — budget utilization is ≥80% since the ADR-005 amendment (the packaging gate prints the utilization line on every run). When the next UI-dependency bump pushes the artifact over the gate, open a webview code-splitting / bundle-diet feature rather than amending the budget twice.
+
 - [ ] **Capture `media/screenshots/chat-handoff.png`** — a finding's prompt arriving prefilled in the host editor's chat, to fill the empty second cell of the 0.8.0 screenshot row. The optimizer panel shot landed in 0.8.0; only this one is outstanding. *(Blocked: it is the host editor's own chat UI, and `screencapture` from the build environment returns "could not create image from display" for lack of macOS Screen Recording permission.)*
 
 - [ ] **Re-shoot `media/screenshots/optimizer-panel.png` with a component row expanded** (optional polish). The current shot shows the radar, the legend and the table, but every row is collapsed, so the per-finding actions — quick fix, AI refine, Ask &lt;host&gt;, Delegate — are not visible anywhere in the README.

@@ -1,5 +1,16 @@
 # Progress Log
 
+## [2026-09-09] FEAT-038: vsix-asset-diet (COMPLETED)
+
+- **Objective:** Make the DESIGN.md §2.4 VSIX size budget real again — de-bundle the ~1.71 MB of README screenshot PNGs from the package (served instead from GitHub raw URLs), and enforce the budget + listing invariants with a packaging gate at `npm run package`, in CI, and before `vsce publish`. Zero `src/` changes, zero dependency changes; `./check.sh` stays free of packaging.
+- **Measured sizes:** pre-diet full VSIX **1,899,264 B** → post-diet **361,604 B** (−81%; 1,537,660 B of screenshot zip bytes removed). Living baseline: `.kiro/specs/vsix-asset-diet/size-report.md`; the FEAT-037 report is frozen with a HISTORICAL BASELINE banner (T10).
+- **The gate did its job — STOP branch fired (T9):** the first measurement failed the literal 300,000 B budget (361,604 B ≥ 300,000 B; the `dist/` trio alone compresses to 309,467 B — the spec's "~190 KB code payload" premise was **falsified by measurement**). Threshold was NOT quietly raised (design §6); the feature STOPped and reported. **Human chose the amendment path: ADR-005 amends the budget to 400,000 B**, shipped with a non-blocking ≥80% budget-utilization review signal in `vsix-gate.sh` (fires day one at 90% — growth must stay a conscious decision). T9 re-run: **GATE PASS, 361,604 B, utilization 90%**.
+- **Waiver retired (R8):** FEAT-037's R12 human size waiver is **formally retired 2026-09-09** — the first post-diet artifact passes R1/R4/R5/R6 under the amended budget (waiver originally granted on the migration branch, PR #13 / commit cde7d98).
+- **Gate failure paths exercised (T8)** on temp copies before the pass: oversized fixture → size FAIL; re-added screenshot → exclusion FAIL; deleted icon → presence FAIL. All exits correct.
+- **Status:** T1–T11 complete. `npm test`: **819/819 (57 files)** — unchanged, as promised (no code touched). `./check.sh`: exit 0. Branch `chore/vsix-asset-diet`.
+- **PENDING-HUMAN:** (a) repository **landing-page render** of the five raw-URL screenshots post-merge (GitHub half verified live this session — raw URL resolves 200 `image/png`, byte-match with tracked file); (b) **Marketplace listing render** post-publish (R3 Marketplace half — listing body must show the screenshots via the hosted URLs).
+- **Follow-ups:** P2 **payload-watch** backlog item (≥80% utilization since ADR-005 — next UI-dependency bump should trigger a webview code-splitting/bundle-diet feature, not a second amendment).
+
 ## [2026-09-09] FEAT-037: react-flow-12-migration (COMPLETED)
 
 - **Objective:** Migrate the whiteboard from `reactflow@11` + React 18 to `@xyflow/react@12.11.6` + React 19 with full behavior parity (rendering, FEAT-017 drag & persistence, FEAT-016 edge styling/z-index, context menus, suggestion flows). Shares release **0.8.1** with FEAT-036 — version NOT bumped.

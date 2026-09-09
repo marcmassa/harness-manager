@@ -43,6 +43,14 @@ jobs:
       - name: Package VSIX
         run: npx vsce package --out harness-dashboard.vsix
 
+      # FEAT-038 (vsix-asset-diet): gate at the point of no return.
+      # publish.yml calls vsce directly (not `npm run package`), so the
+      # gate gets its own explicit step here — belt-and-suspenders per
+      # design §6: size < 300,000 B, zero extension/media/screenshots/
+      # entries, required media + dist entries present.
+      - name: VSIX gate (size + listing)
+        run: bash scripts/vsix-gate.sh harness-dashboard.vsix
+
       # Publish to the VS Code Marketplace using the VSCE_PAT secret.
       # The PAT must have the `Marketplace` permission scope and be
       # stored in the GitHub repo or org secrets as `VSCE_PAT`.

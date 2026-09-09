@@ -126,6 +126,15 @@ jobs:
       - name: Test
         run: npm test
 
+      # FEAT-038 (vsix-asset-diet): CI now packages on every run. The
+      # DESIGN.md §2.4 <300 KB budget is only real if it runs on every
+      # PR — before this step CI never packaged, and the 1.9 MB artifact
+      # was discovered manually at FEAT-037 T12. `npm run package`
+      # carries scripts/vsix-gate.sh (size + exclusion + presence,
+      # design §5-6). vsce + gate ≈ 10-20 s, within the 10-min budget.
+      - name: Package VSIX + size gate
+        run: npm run package
+
       # P2 backlog: generate coverage report for Codecov.
       - name: Generate coverage
         run: npx vitest run --coverage --reporter=junit --outputFile=coverage/junit.xml 2>/dev/null || npx vitest run --coverage

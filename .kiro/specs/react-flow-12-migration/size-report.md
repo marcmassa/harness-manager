@@ -1,3 +1,5 @@
+> **HISTORICAL BASELINE — superseded by `.kiro/specs/vsix-asset-diet/size-report.md` (FEAT-038); numbers below are pre-diet and must not be edited.**
+
 # VSIX Size Report — React Flow 12 & React 19 Migration (FEAT-037)
 
 > Gate: DESIGN.md §2.4 — "keeps the VSIX under 300 KB".

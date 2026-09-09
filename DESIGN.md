@@ -66,8 +66,10 @@ extension. This is intentional "dogfooding".
 4. **Frugal AI, no surprises** — semantic matching uses TF-IDF
    + cosine similarity computed locally, not an embedding model.
    When an LLM enhancement is available, it uses VS Code's built-in
-   `vscode.lm` API (no API keys, no HTTP). This keeps the VSIX
-   under 300 KB and respects user privacy.
+    `vscode.lm` API (no API keys, no HTTP). This keeps the VSIX under
+    its 400 KB budget (ADR-005), **enforced** by `scripts/vsix-gate.sh`
+    at package time and in CI (FEAT-038); the gate also flags ≥80%
+    utilization for non-blocking review. Privacy respected throughout.
 
 5. **Single source of truth** — the runtime graph model is built
    from `agentic.json` (canonical) and the on-disk Markdown
@@ -206,10 +208,7 @@ models via `vscode.lm`.
 
 - **VS Code engine**: `^1.85.0` (declared in `package.json#engines`).
 
-- **Distribution**: VSIX via `@vscode/vsce`. CI is GitHub Actions; no
-  npm publish token yet (manual release). VSIX artifacts are excluded
-  from git by `*.vsix` in `.gitignore` (planned — currently three
-  binaries are committed; see backlog).
+- **Distribution**: VSIX via `@vscode/vsce`; the §2.4 400 KB budget (amended from 300 KB by ADR-005, evidence: FEAT-038 T9 measurement) is **enforced**, not aspirational — `scripts/vsix-gate.sh` (size + listing assertions + non-blocking ≥80% utilization review signal) runs at package time (`npm run package`), in CI, and before `vsce publish` (FEAT-038). CI is GitHub Actions; no npm publish token yet (manual release). VSIX artifacts are excluded from git by `*.vsix` in `.gitignore` (planned — currently three binaries are committed; see backlog).
 
 - **Persistence**: VS Code `workspaceState` (per-workspace, not
   `globalState`) for UI state; the filesystem for everything else.

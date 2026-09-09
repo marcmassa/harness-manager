@@ -458,6 +458,18 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "0.8.1"
+    },
+    {
+      "id": "FEAT-038",
+      "name": "vsix-asset-diet",
+      "title": "VSIX Asset Diet — make the <300 KB budget real again",
+      "description": "De-bundle the ~1.71 MB of README screenshot PNGs from the packaged VSIX (1,899,264 B today; code payload ~190 KB): absolute github.com/marcmassa/harness-manager/raw/main image URLs in README.md, a surgical .vscodeignore exclusion of media/screenshots/** only (manifest + activity-bar icons and dist bundles pinned as required presences), and a new scripts/vsix-gate.sh enforcing the <300,000 B budget plus the listing assertions at package time, in CI, and before vsce publish — ./check.sh stays free of packaging. Formally retires the FEAT-037 R12 human waiver once the gate passes on a measured artifact; the new living size baseline lives in .kiro/specs/vsix-asset-diet/size-report.md and DESIGN.md §2.4/§6 wording is aligned from aspirational to enforced. Zero src/ changes, zero runtime dependency changes.",
+      "type": "chore",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.8.1"
     }
   ]
 }

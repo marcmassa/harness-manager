@@ -14,7 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.8.1] — 2026-09-09
 
-> **Two features, one release.** **Supply-Chain Health** (FEAT-036): the advisory loop gains a deterministic view of your dependency graph — missing update-bot config, stale security `overrides`, and prod-vs-dev audit findings — with one-click remediation. **React Flow 12 & React 19 migration** (FEAT-037): the whiteboard's graph runtime moves from `reactflow@11` + React 18 to `@xyflow/react@12` + React 19 with full behavior parity — and the v12 drag threshold closes a latent click-jitter-as-drag corruption path. No user-visible regressions; **zero new runtime dependencies** (a swap, plus types-only devDependencies). All 813 unit tests pass.
+> **Three features, one release.** **Supply-Chain Health** (FEAT-036): the advisory loop gains a deterministic view of your dependency graph — missing update-bot config, stale security `overrides`, and prod-vs-dev audit findings — with one-click remediation. **React Flow 12 & React 19 migration** (FEAT-037): the whiteboard's graph runtime moves from `reactflow@11` + React 18 to `@xyflow/react@12` + React 19 with full behavior parity — and the v12 drag threshold closes a latent click-jitter-as-drag corruption path. **VSIX Asset Diet** (FEAT-038): README screenshots no longer ship inside the package (1,899,264 B → 361,604 B, −81%; they now render from GitHub raw URLs), and the size budget — amended to 400 KB by ADR-005 after the T9 measurement — is enforced by a packaging gate locally, in CI, and before publish, retiring the FEAT-037 size waiver. No user-visible regressions; **zero new runtime dependencies** (a swap, plus types-only devDependencies). All 819 unit tests pass.
 
 ### Added
 
@@ -44,6 +44,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - `ActionExecutor` `create-file` existing-file branch now opens the file in the editor before returning (ADR-004) — completes R5's second clause for every action caller; write/skip semantics otherwise unchanged.
+- **Packaging (internal tooling, FEAT-038 + ADR-005)**: `npm run package`, CI, and publish now enforce a size + listing gate (`scripts/vsix-gate.sh`) — VSIX < 400,000 B, zero README-screenshot entries, required icons/dist bundles present, plus a non-blocking ≥80% budget-utilization review signal; zero `src/` or runtime-dependency changes.
 
 ### Changed — React Flow 12 + React 19 (FEAT-037)
 
