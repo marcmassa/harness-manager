@@ -46,7 +46,7 @@ jobs:
       # FEAT-038 (vsix-asset-diet): gate at the point of no return.
       # publish.yml calls vsce directly (not `npm run package`), so the
       # gate gets its own explicit step here — belt-and-suspenders per
-      # design §6: size < 300,000 B, zero extension/media/screenshots/
+      # design §6: size < 400,000 B (ADR-005), zero extension/media/screenshots/
       # entries, required media + dist entries present.
       - name: VSIX gate (size + listing)
         run: bash scripts/vsix-gate.sh harness-dashboard.vsix
