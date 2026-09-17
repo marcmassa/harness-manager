@@ -333,23 +333,23 @@
     "@types/mocha": "^10.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.137.0",
     "@vitest/coverage-v8": "^5.0.0",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "^3.9.2",
     "canvas": "^3.2.3",
     "dagre": "^0.8.5",
     "esbuild": "^0.28.1",
-    "mocha": "^12.0.0",
+    "mocha": "^12.0.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   },
   "dependencies": {
     "@vscode/webview-ui-toolkit": "^1.2.2",
     "@xyflow/react": "^12.11.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "yaml": "^2.9.0"
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
