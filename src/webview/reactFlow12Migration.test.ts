@@ -93,13 +93,13 @@ describe('FEAT-037 R2 — zero legacy-package surface, everything on @xyflow/rea
         expect(wbSrc).toMatch(/import\s*\{[\s\S]*?\bReactFlow\b[\s\S]*?\}\s*from\s*'@xyflow\/react'/);
     });
 
-    it('package.json: @xyflow/react ^12.11.6 + React ^19, legacy pkg gone, types in devDeps, version 0.8.1', () => {
+    it('package.json: @xyflow/react ^12.12.0 + React ^19, legacy pkg gone, types in devDeps, version 0.8.1', () => {
         const pkg = JSON.parse(readFileSync(PKG_JSON, 'utf8'));
         expect(pkg.version).toBe('0.8.1');
         expect(pkg.dependencies[LEGACY_PKG]).toBeUndefined();
-        expect(pkg.dependencies['@xyflow/react']).toBe('^12.11.6');
-        expect(pkg.dependencies['react']).toBe('^19.0.0');
-        expect(pkg.dependencies['react-dom']).toBe('^19.0.0');
+        expect(pkg.dependencies['@xyflow/react']).toBe('^12.12.0');
+        expect(pkg.dependencies['react']).toBe('^19.3.0');
+        expect(pkg.dependencies['react-dom']).toBe('^19.3.0');
         expect(pkg.devDependencies['@types/react']).toBe('^19');
         expect(pkg.devDependencies['@types/react-dom']).toBe('^19');
         // R13 / DESIGN §2.4: the ONLY runtime deps are the swap + existing ones.
