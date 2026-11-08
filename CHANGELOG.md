@@ -12,6 +12,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.8.2] — 2026-11-08
+
+> Dependency and CI maintenance release incorporating every commit since `v0.8.1`. No new user-facing features, commands, settings, or intended whiteboard behavior changes. All 819 unit tests pass.
+
+### Changed
+
+- **Runtime dependencies** (#21, `d7c1c54`): `@xyflow/react` 12.11.6 → 12.12.0, `react` and `react-dom` 19.2.8 → 19.3.0, and `yaml` 2.9.0 → 2.9.1.
+- **Development tooling** (#21, `d7c1c54`): `vitest` and `@vitest/coverage-v8` 5.0.0 → 5.0.2, and `mocha` 12.0.0 → 12.0.2. React type packages move to 19.3.0 through the lockfile.
+- **GitHub Actions**: `actions/setup-node` 7.0.0 → 7.1.0 (#22, `c4bbe46`) and `codecov/codecov-action` 5.5.5 → 7.1.1 (#19, `2a3e550`). Both remain pinned to full commit SHAs in CI; the setup-node update also applies to the publish workflow.
+- **Release metadata**: package and lockfile version bumped to 0.8.2; the React Flow migration source-contract assertion now tracks the current release version.
+
+### Fixed
+
+- **VSIX packaging compatibility**: `@types/vscode` is pinned to **1.85.0**, matching `engines.vscode@^1.85.0`. The 1.138.0 declaration introduced by #21 caused `vsce package` to reject the extension before producing an artifact; packaging now retains the declared VS Code 1.85 compatibility floor.
+
+### Security snapshot
+
+- `npm audit --omit=dev --json`: **0 production vulnerabilities** on 2026-11-08.
+- `npm audit --json`: **18 development-tree findings** (7 high, 10 moderate, 1 low) on the same date. This release does not claim to remediate them; the affected packages and follow-up are recorded in [`docs/security/0.8.2.md`](docs/security/0.8.2.md) and the project backlog.
+- The README screenshots remain hosted assets and are excluded from the VSIX; the existing package gate still enforces the 400,000-byte budget and required runtime entries.
+
+---
+
 ## [0.8.1] — 2026-09-09
 
 > **Three features, one release.** **Supply-Chain Health** (FEAT-036): the advisory loop gains a deterministic view of your dependency graph — missing update-bot config, stale security `overrides`, and prod-vs-dev audit findings — with one-click remediation. **React Flow 12 & React 19 migration** (FEAT-037): the whiteboard's graph runtime moves from `reactflow@11` + React 18 to `@xyflow/react@12` + React 19 with full behavior parity — and the v12 drag threshold closes a latent click-jitter-as-drag corruption path. **VSIX Asset Diet** (FEAT-038): README screenshots no longer ship inside the package (1,899,264 B → 361,604 B, −81%; they now render from GitHub raw URLs), and the size budget — amended to 400 KB by ADR-005 after the T9 measurement — is enforced by a packaging gate locally, in CI, and before publish, retiring the FEAT-037 size waiver. No user-visible regressions; **zero new runtime dependencies** (a swap, plus types-only devDependencies). All 819 unit tests pass.

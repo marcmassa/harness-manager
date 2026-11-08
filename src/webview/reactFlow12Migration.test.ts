@@ -18,7 +18,7 @@
  * @requirement R9  acceptSuggestion / dismissSuggestion handler posts (source pin)
  * @requirement R10 React 19 runtime, no removed APIs
  * @requirement R11 no defaultProps / ReactDOM.render
- * @requirement R13 version stays 0.8.1
+ * @requirement R13 shared 0.8.1 release; later releases update the version pin
  */
 
 import { describe, it, expect } from 'vitest';
@@ -93,9 +93,9 @@ describe('FEAT-037 R2 — zero legacy-package surface, everything on @xyflow/rea
         expect(wbSrc).toMatch(/import\s*\{[\s\S]*?\bReactFlow\b[\s\S]*?\}\s*from\s*'@xyflow\/react'/);
     });
 
-    it('package.json: @xyflow/react ^12.12.0 + React ^19, legacy pkg gone, types in devDeps, version 0.8.1', () => {
+    it('package.json: @xyflow/react ^12.12.0 + React ^19, legacy pkg gone, types in devDeps, version 0.8.2', () => {
         const pkg = JSON.parse(readFileSync(PKG_JSON, 'utf8'));
-        expect(pkg.version).toBe('0.8.1');
+        expect(pkg.version).toBe('0.8.2');
         expect(pkg.dependencies[LEGACY_PKG]).toBeUndefined();
         expect(pkg.dependencies['@xyflow/react']).toBe('^12.12.0');
         expect(pkg.dependencies['react']).toBe('^19.3.0');
