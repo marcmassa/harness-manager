@@ -3,7 +3,7 @@
 **Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.8.1-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.8.2-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -66,34 +66,18 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 
 ---
 
-## What's new in 0.8.1
+## What's new in 0.8.2
 
-Two features share this release: **Supply-Chain Health** (FEAT-036) and the **React Flow 12 & React 19 migration** (FEAT-037). No breaking changes to settings, commands, or the whiteboard experience; **zero new runtime dependencies** (the migration is a swap plus types-only dev tooling).
+A **dependency and CI maintenance release** incorporating every commit since `v0.8.1`. No new commands, settings, or intended whiteboard behavior changes.
 
-**Supply-Chain Health** (FEAT-036): the advisory loop now sees your dependency graph, not just your agent graph.
+- **Runtime dependencies refreshed** — `@xyflow/react` 12.12.0, React and React DOM 19.3.0, and YAML 2.9.1 (#21).
+- **Development tooling refreshed** — Vitest/coverage 5.0.2 and Mocha 12.0.2 (#21).
+- **VS Code compatibility preserved** — `@types/vscode` is pinned to 1.85.0, matching `engines.vscode`; the 1.138.0 update proposed in #21 made `vsce package` reject the extension.
+- **CI actions updated and still SHA-pinned** — `actions/setup-node` 7.1.0 (#22) and `codecov/codecov-action` 7.1.1 (#19).
+- **Security evidence captured** — `npm audit --omit=dev` reports **0 production vulnerabilities**. The full audit separately records 18 development-tree findings at the release date; they are explicitly tracked rather than presented as fixed. See the [0.8.2 security snapshot](docs/security/0.8.2.md).
+- **Verified before packaging** — all 819 unit tests and the repository checks pass; the VSIX size and content gate remains mandatory.
 
-### Why
-
-The tool had become the guard of your agent architecture while its own supply chain was ungoverned: this repository was carrying **17 open Dependabot alerts** (all dev-transitive, via `@vscode/vsce` and `vitest → vite`) with **no `dependabot.yml` anywhere**, and a security `overrides` pin (`undici: 7.28.0`) that had itself silently gone stale against the patched `7.29.0`. A pin you forgot you had is worse than no pin at all.
-
-### What it does
-
-- **Deterministic workspace scan** — parses `package.json` (deps / devDeps / `overrides`), `package-lock.json` (resolved versions), and the presence of a Dependabot or Renovate config into a `SupplyChainReport`. No `package.json`? The layer stays silent. No LLM, no heuristics, byte-identical results across runs.
-- **SC rule family in the advisory engine** — `sc-add-update-bot` fires exactly once when neither Dependabot nor Renovate is configured; `sc-stale-override:<pkg>` names the package, your pin and the patched version; `sc-audit-findings` summarizes the rest, split **production vs development**.
-- **One-click remediation, reusing the FEAT-032 action vocabulary** — the missing-bot suggestion carries a `create-file` action that scaffolds a vetted weekly `.github/dependabot.yml` (npm + github-actions, grouped minor/patch, non-destructive); audit findings carry `run-command` actions for `npm audit fix` / `npm outdated`.
-- **`npm audit` on your terms** — the audit JSON is consumed only after an explicit *Run npm audit* (palette or panel button): one bounded local `execFile`, 15 s timeout, session cache. Never during scans, activation or file-watcher events. Zero HTTP from extension code, by test.
-
-### Dogfooded on itself
-
-This release ships the fix it prescribes: `.github/dependabot.yml` added to this repo and the stale `undici` override bumped — `npm audit` dev findings went from **12 to 0**.
-
-### Whiteboard on React Flow 12 + React 19 (FEAT-037)
-
-- **Graph runtime modernized, rendering unchanged** — the whiteboard moved from `reactflow@11` + React 18 to `@xyflow/react@12.11` + React 19: same nodes, same automatic layout, same per-type edge styling and layering (verified by parity tests + the FEAT-021 e2e in a real VS Code).
-- **Clicks stop nudging nodes** — React Flow 12's `nodeDragThreshold={1}` is set explicitly: a press–release with sub-pixel pointer jitter is now a pure click and no longer persists a bogus manual position (closing a latent FEAT-017 corruption path). Intentional drags and pill-linking behave as before.
-- **Cleaner under the hood** — generic node/edge typings (`src/webview/nodeTypes.ts`) replace v11's `data: any`, and repo-wide `tsc` error lines dropped from 2 364 to 233 as real React 19 types landed; z-index hover/select no longer remounts edges.
-
-For full details see the [CHANGELOG](./CHANGELOG.md).
+For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet features introduced in 0.8.1, plus full release details, see the [CHANGELOG](./CHANGELOG.md).
 
 ---
 

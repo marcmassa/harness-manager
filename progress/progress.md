@@ -1,5 +1,16 @@
 # Progress Log
 
+## [2026-11-08] Release maintenance 0.8.2 (COMPLETED)
+
+- **Objective:** Document every commit since `v0.8.1`, capture the release security state, bump the extension to 0.8.2, and generate a verified VSIX without opening a new SDD feature.
+- **Included commits:** `d7c1c54` (#21 npm minor/patch group), `c4bbe46` (#22 `actions/setup-node` 7.1.0), and `2a3e550` (#19 `codecov/codecov-action` 7.1.1).
+- **Documentation:** README badge/release section, CHANGELOG 0.8.2, a real SECURITY policy, and `docs/security/0.8.2.md`. Development audit remediation is explicitly tracked in `progress/backlog.md`.
+- **Security capture:** `npm audit --omit=dev --json` = 0 production vulnerabilities; full `npm audit --json` = 18 development-tree findings (7 high, 10 moderate, 1 low). No remediation claim was made.
+- **Packaging fix:** the first `vsce package` rejected `@types/vscode@^1.138.0` against `engines.vscode@^1.85.0`. Pinned `@types/vscode` to 1.85.0 in package/lockfile and updated the release notes; the version-pinning migration test now expects 0.8.2.
+- **Verification:** `./check.sh` exit 0; build clean; 819/819 tests across 57 files. `npm run package` and `scripts/vsix-gate.sh` passed.
+- **Artifact:** `harness-dashboard-vscode-0.8.2.vsix`, 370,699 B (92% of 400,000 B), 11 files, zero packaged README screenshots, all icons/runtime bundles present. SHA-256 `82ab42b5ef2e4bf34c9d030e7cc17b711975aeb1a899c115ffcbba9b9162a2e4`.
+- **State:** Marketplace publication performed by the user; local release commit and annotated `v0.8.2` tag created. No push performed. No `feature_list.json` status changed.
+
 ## [2026-09-09] FEAT-038: vsix-asset-diet (COMPLETED)
 
 - **Objective:** Make the DESIGN.md §2.4 VSIX size budget real again — de-bundle the ~1.71 MB of README screenshot PNGs from the package (served instead from GitHub raw URLs), and enforce the budget + listing invariants with a packaging gate at `npm run package`, in CI, and before `vsce publish`. Zero `src/` changes, zero dependency changes; `./check.sh` stays free of packaging.
