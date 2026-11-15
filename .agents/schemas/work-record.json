@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "description": "Structural contract for progress/work/<feature-name>.json, enforced by .agents/lib/workflow.py.",
+  "required": {
+    "feature_id": "string",
+    "status": "string",
+    "owner": "string",
+    "revision": "string",
+    "risk": "string",
+    "dependencies": "array",
+    "evidence": "array"
+  },
+  "present_nullable": ["branch", "worktree", "spec_dir", "approval", "handoff"]
+}

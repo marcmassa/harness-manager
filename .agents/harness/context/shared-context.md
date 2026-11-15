@@ -13,7 +13,7 @@ Contexto compartido entre ejecuciones de agentes. Se actualiza automáticamente 
 
 ## Convenciones
 
-- **Naming:** snake_case para Terraform, camelCase para TypeScript, PascalCase para clases Python
+- **Naming:** *[completar según el stack — e.g., snake_case para Python/Go, camelCase para TypeScript/Java]*
 - **Commits:** Conventional Commits (feat:, fix:, chore:, test:, docs:)
 - **PRs:** mínimo 1 reviewer, check.sh debe pasar
 

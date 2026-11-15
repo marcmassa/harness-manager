@@ -11,6 +11,10 @@ SDD framework natively.
 `.agents/agentic.json`, applies `project_detect` rules, and produces
 `./opencode.json` deterministically. No LLM is involved.
 
+opencode is the **default** CLI: `./.agents/bootstrap.sh --all` always
+renders it. Other CLI adapters (gemini-cli, claude-code) are prompted
+interactively — pass `--yes` to skip prompts.
+
 ## Output path
 
 `./opencode.json` at the repository root.

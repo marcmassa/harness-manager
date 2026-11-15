@@ -4,7 +4,7 @@
 # Runs builds, lints, tests, and SDD integrity validations. Acts as the gateway
 # for declaring a task as done — if it fails, the task is not finished.
 #
-# Usage: ./check.sh [--verbose] [--py-only] [--ts-only] [--go-only] [--spec-only] [--no-color]
+# Usage: ./check.sh [--quiet] [--verbose] [--py-only] [--ts-only] [--go-only] [--spec-only] [--no-color]
 #
 # Flags:
 #   --verbose    Show full command output instead of tail-only
@@ -32,6 +32,7 @@ TS_ONLY=false
 GO_ONLY=false
 SPEC_ONLY=false
 USE_COLOR=true
+QUIET=false
 EXIT_CODE=0
 
 for arg in "$@"; do
@@ -42,8 +43,26 @@ for arg in "$@"; do
 		--go-only)   GO_ONLY=true ;;
 		--spec-only) SPEC_ONLY=true ;;
 		--no-color)  USE_COLOR=false ;;
+		--quiet)     QUIET=true ;;
 	esac
 done
+
+if $QUIET; then
+	# Same checks, same exit code; only the passing detail is withheld.
+	passthrough=()
+	for arg in "$@"; do
+		[ "$arg" = "--quiet" ] || passthrough+=("$arg")
+	done
+	output=$("$0" --no-color ${passthrough[@]+"${passthrough[@]}"} 2>&1)
+	code=$?
+	if [ "$code" -eq 0 ]; then
+		printf '%s\n' "$output" | grep -E '⚠️|❌|\[(WARN|FAIL|ERROR)\]' || true
+		echo "check.sh: PASS ($(printf '%s\n' "$output" | grep -c '✅') checks passed)"
+	else
+		printf '%s\n' "$output"
+	fi
+	exit "$code"
+fi
 
 if ! $USE_COLOR || [ ! -t 1 ]; then
 	C_RESET=""; C_BOLD=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_BLUE=""

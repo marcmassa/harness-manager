@@ -1,0 +1,13 @@
+{
+  "framework_version": "0.9.0",
+  "formats": {
+    "manifest": {"current": 1, "supported": [1]},
+    "work_record": {"current": 1, "supported": [1]},
+    "inventory": {"current": 1, "supported": [1]}
+  },
+  "update_from": {
+    "minimum": "0.9.0",
+    "legacy_adoption": true,
+    "note": "Installs older than the minimum, or exported before inventories existed, are adopted with inventory-adopt; files that cannot be matched become conflicts."
+  }
+}

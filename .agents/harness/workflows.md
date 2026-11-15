@@ -1,6 +1,6 @@
 # Harness SDD — Workflows
 
-Predefined workflows for the most common tasks in a Cloud/DevOps project with SDD.
+Predefined workflows for the most common tasks in a project using Harness Engineering + SDD.
 
 ---
 
@@ -24,10 +24,10 @@ Predefined workflows for the most common tasks in a Cloud/DevOps project with SD
 3. Update `feature_list.json`: `status: "in_progress"`.
 
 ### Phase 2: Implementation (implementer)
-1. **Important:** Load and apply any project-relevant skills from `.agents/skills/` (e.g., `terraform-structure` for Terraform projects, `python-style` for Python projects, etc.).
+1. Load any project-relevant skills from `.agents/skills/` (stack-specific skills declared in `agentic.json#project_detect[]`).
 2. Execute `tasks.md` sequentially, marking `[x]` on each `T<n>`.
-3. Follow the design defined in `design.md` and integrate any architecture metadata files into the project's `terraform.tfvars` (or equivalent).
-4. Commits after each completed task (optional but recommended).
+3. Follow the design defined in `design.md`.
+4. Commit after each completed task (optional but recommended).
 
 ### Phase 3: Tests (tester-agent)
 1. Implement tests per `tasks.md`.
@@ -42,23 +42,22 @@ Predefined workflows for the most common tasks in a Cloud/DevOps project with SD
 
 ---
 
-## 1. New Terraform Module
+## 1. New Module / Component
 
-**Trigger:** "Create Terraform module for [AWS/GCP/Azure resource]"
+**Trigger:** "Create [module/service/component] for [description]"
 
 1. **Spec phase:**
    - If `sdd: true`: `spec-author` creates `requirements/design/tasks`.
    - If `sdd: false`: go directly to implementation.
 2. **Implementation:**
-   - Create `modules/<name>/main.tf`, `variables.tf`, `outputs.tf`.
-   - Follow the project's naming conventions.
-   - Add `README.md` in the module with inputs, outputs, and example.
+   - Create the component following the project's structure conventions.
+   - Add a README or docstring with inputs, outputs, and usage example.
 3. **Validation:**
-   - `terraform fmt -check`
-   - `terraform validate`
-   - `terraform-docs` to generate documentation.
+   - Run the project's linter and formatter (as configured in `check.sh`).
+   - Run the project's type checker if applicable.
 4. **Tests:**
-   - Terratest or Kitchen-Terraform for the module.
+   - Unit tests for the component's core logic.
+   - Integration tests if the component has external dependencies.
 5. **Close:**
    - `check.sh` green.
    - Update `feature_list.json`.
@@ -93,9 +92,7 @@ Predefined workflows for the most common tasks in a Cloud/DevOps project with SD
    - Write a test that reproduces the bug.
    - Confirm that the test fails.
 2. **Fix (corresponding agent):**
-   - Infra bug → `platform-engineer` (illustrative).
-   - IaC bug → `cloud-architect` (illustrative).
-   - Test bug → `tester-agent` (illustrative).
+   - Identify and fix the root cause.
 3. **Verify (tester-agent):**
    - Confirm that the test passes.
    - Add related edge case tests.
@@ -110,18 +107,16 @@ Predefined workflows for the most common tasks in a Cloud/DevOps project with SD
 **Trigger:** "Audit [component] for [standard]"
 
 1. **Analysis (security-reviewer):**
-   - Scan with tools (checkov, tfsec, trivy, sonarqube).
-   - Identify critical findings.
-   - Classify by severity.
-2. **Mitigation (platform-engineer):**
-   - Fix findings in IaC code.
-   - Add security policies.
+   - Scan with appropriate tools (e.g., bandit, semgrep, trivy, sonarqube — depending on stack).
+   - Identify critical findings and classify by severity.
+2. **Mitigation (implementer):**
+   - Fix findings in the codebase.
+   - Add security policies or guardrails.
    - Verify fixes do not break functionality.
 3. **Validation (security-reviewer):**
    - Re-scan.
    - Confirm all critical findings are mitigated.
-4. **Documentation (escriba):**
-   - Update runbooks.
+4. **Documentation:**
    - Record decisions in `progress/decisions.md`.
 
 ---
@@ -134,13 +129,6 @@ Before any commit:
 # SDD + builds + tests + validations (via check.sh)
 ./check.sh
 
-# No secrets
-git diff --cached | grep -i "password\|secret\|token\|api_key\|aws_access_key"
-
-# Terraform syntax (if applicable)
-terraform fmt -check -recursive
-terraform validate
-
-# No hardcoded credentials
-grep -r "access_key" modules/ --include="*.tf" | grep -v "variable" || true
+# No secrets accidentally staged
+git diff --cached | grep -iE "password|secret|token|api_key|private_key"
 ```
