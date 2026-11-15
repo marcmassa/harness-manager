@@ -67,3 +67,7 @@ charts/**/charts/*.tgz
 
 # --- Local progress ---
 progress/archive/*.bak
+
+# Harness SDD: local update backups and the per-working-tree workflow lock
+.harness/backups/
+progress/work/.workflow.lock

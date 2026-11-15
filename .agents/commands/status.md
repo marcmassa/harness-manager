@@ -4,17 +4,12 @@ Show the current state of the Harness SDD project.
 
 ## Steps
 
-1. Read `feature_list.json` and count features by status.
-2. If there is a feature in `in_progress`, show its ID, name, and title.
-3. List features in `spec_ready` (waiting for human approval).
-4. List features in `pending` (next up).
-5. Show the latest 5 entries of `progress/progress.md`.
-6. If a CLI adapter is missing (no `opencode.json` / `GEMINI.md` / `CLAUDE.md` in the repo root), warn the user to run `./.agents/bootstrap.sh <cli>`.
+1. Run `./.agents/bootstrap.sh brief` and present its output: feature counts, the active feature and its next task, features awaiting approval, next pending, session state, and any context-budget warning.
+2. Run `./.agents/bootstrap.sh workflow-check` and report its result. A failure means stale approval, a pending failed hook, an interrupted mutation, or missing work records. `[SKIP]` means the project has not opted in to `team_policy`.
+3. If recent history is asked for, show the last five entries of `progress/progress.md` by reading only its newest part.
 
-## Output format
-
-Use a clean table or list. Highlight the active feature (if any) and any blockers.
+Do not read `feature_list.json` or the progress logs in full.
 
 ## Related
 
-- See `AGENTS.md §1` for the mandatory pre-task checklist.
+- See `AGENTS.md §1` for the session-start checklist.
