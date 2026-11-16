@@ -15,6 +15,11 @@ out/**
 .kiro/
 .github/
 
+# Harness framework state, local backups and development hooks
+.harness/
+.githooks/
+hooks/
+
 # ===== AGENT & FRAMEWORK FILES =====
 AGENTS.md
 CLAUDE.md
