@@ -19,9 +19,7 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
-- [ ] **Remediate the 2026-11-08 development-tree npm audit findings** — the 0.8.2 security snapshot records 18 findings (7 high, 10 moderate, 1 low) across development tooling and transitive packages, while `npm audit --omit=dev` reports zero production findings. Review compatible updates for `@vscode/vsce`, Vitest, Mocha, and stale security overrides; rerun both audit commands, unit tests, and the VSIX gate. Evidence: `docs/security/0.8.2.md`. Deliberately not hidden by the maintenance-only 0.8.2 release.
 
-- [ ] **Fix the e2e harness against current VS Code stable** — `@vscode/test-electron@2.5.2` spawns `Contents/MacOS/Electron` but darwin zips from 1.136.x ship the binary as `Code` (ENOENT before extension load; `npm run test:integration` fails identically on `main` and on the migration branch). The React Flow 12 migration's e2e pass (2026-09-09) was obtained via `VSCODE_TEST_PATH` against cached 1.124.2. Fix = upgrade test-electron (or pin/patch the binary-name resolution) so the integration gate runs against stable again. Surfaced during the 0.8.1 migration work, deliberately kept out of that feature (one feature at a time).
 
 - [ ] **Validate each of the 7 advertised adapters against a real-world repo of its framework**. Today the 7 advertised adapters (Harness SDD, Claude Code, Cursor, GitHub Copilot, OpenCode, Kiro, Gemini CLI) exist and have unit tests, but the README's "universal support" claim is only honest after each adapter has been smoke-tested with a representative workspace. Suggested smoke fixture per adapter: a 5-line `CLAUDE.md` for `ClaudeCodeAdapter`, etc. The 8th adapter (`WindsurfAdapter`) is retained for legacy workspaces but is not advertised; per ADR-003 it is not part of the "7" we are validating. (Updated for the configurable-paths release: Kiro was added as the 7th advertised adapter. The canonical `harness-sdd` and `opencode` adapters are first-class; the 5 universal adapters shipped earlier are now 6 with Kiro; `windsurf` is the deprecation-still-supported 8th.) *(Blocked: requires access to repos using each framework.)*
 
@@ -50,3 +48,8 @@ _(cleared — see Completed sections below)_
 
 - ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T12 of the ci-github-actions spec).
 - ✅ **Dependabot security updates configured on `main`** — `.github/dependabot.yml` landed with the v0.8.1 supply-chain dogfood task (T1); the first `Dependabot Updates` runs (`npm_and_yarn`, `github_actions`) triggered automatically minutes after the merge.
+
+## Completed (verified 2026-11-16; maintenance branch)
+
+- ✅ **Development-tree npm audit remediation** — main at `5522ad3`: 9 findings (3 high, 5 moderate, 1 low), production 0. Compatible lockfile updates plus scoped Mocha/vsce overrides reduce both audits to 0. Evidence and override retirement criteria: `docs/security/2026-11-16-maintenance.md`.
+- ✅ **macOS e2e harness** — `@vscode/test-electron@3.1.0` runs current stable VS Code 1.146.0 on darwin-arm64 without `VSCODE_TEST_PATH`; integration test passes before and after the final dependency overrides. The previous Electron/Code ENOENT no longer reproduces.
