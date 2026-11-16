@@ -12,6 +12,18 @@ Run the sync script to download the latest versions of the standard skills:
 ./.agents/skills/sync-skills.sh
 ```
 
+Skills are instructions that agents follow, so pin the registry to a commit
+you have reviewed. In `.agents/agentic.json`:
+
+```json
+"skills": {"paths": [".agents/skills"], "registry": {"url": "<git url>", "ref": "<40-hex commit>"}}
+```
+
+`SKILLS_REGISTRY_URL` and `SKILLS_REGISTRY_REF` override it. With a `ref`, the
+sync installs exactly that commit or changes nothing. Without one it uses the
+default branch and prints the commit to pin. A download that fails, has no
+`skills/` directory, or contains symbolic links leaves the current skills untouched.
+
 ## Purpose
 
 Skills let agents extend their capabilities through:

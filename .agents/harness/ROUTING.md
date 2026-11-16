@@ -73,6 +73,8 @@ START: New Task Received
 
 > **Note:** The sub-agents listed in the decision tree (`cloud-architect`, `platform-engineer`, `tester-agent`, `security-reviewer`, `escriba`, `quality-agent`) are **illustrative**. The four canonical sub-agents that ship with this template live in `.agents/subagents/{harness,spec-author,implementer,reviewer}/`.
 >
+> The framework also supports **steering files** (`steering/`) to customize agent behavior per role and **lifecycle hooks** (`hooks/`) to inject automation at SDD transition points. Both are declared in `agentic.json` and managed via `bootstrap.sh`.
+>
 > To activate any illustrative agent, scaffold it first by copying `.agents/subagents/agent-template/` to `.agents/subagents/<name>/` and editing the `SUBAGENT.md`. Then add it to `.agents/agentic.json` and re-run `./.agents/bootstrap.sh <cli>`.
 
 Each canonical sub-agent uses a dual frontmatter (CLI-agnostic fields + opencode-compatible fields):
