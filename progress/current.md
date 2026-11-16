@@ -4,8 +4,7 @@
 _(none)_
 
 ## Status
-_(clean — release 0.8.2 summary recorded in progress/progress.md)_
+_(no active implementation; review results in progress/review-2026-11-16.md)_
 
 ## Notes
-- Local VSIX: `harness-dashboard-vscode-0.8.2.vsix`.
-- Marketplace publication performed by the user; local release commit and `v0.8.2` tag created. No push performed.
+_(none)_
