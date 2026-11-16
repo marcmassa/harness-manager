@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # Must equal the minimum VS Code in package.json `engines.vscode`; packaging fails
+      # when the type definitions are newer than the supported editor.
+      - dependency-name: "@types/vscode"
     groups:
       minor-patch:
         patterns: ["*"]
