@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Validate only staged authored files before commit."""
+import sys
+from token_limit import cli
+
+if __name__ == "__main__":
+    sys.exit(cli())

@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "review_mode": "local",
+  "default_risk": "full",
+  "independent_review": true,
+  "roles": {
+    "maintainer": {"kind": "human"},
+    "human-reviewer": {"kind": "human"},
+    "implementing-agent": {"kind": "agent"},
+    "reviewing-agent": {"kind": "agent"}
+  },
+  "authority": {
+    "scope": ["maintainer"],
+    "spec_approval": ["maintainer", "human-reviewer"],
+    "implementation": ["maintainer", "human-reviewer", "implementing-agent"],
+    "technical_review": ["human-reviewer", "reviewing-agent"],
+    "merge": ["maintainer"],
+    "publication": ["maintainer"]
+  },
+  "trust_order": ["project_policy", "approved_spec", "external_data", "unapproved_proposal"]
+}

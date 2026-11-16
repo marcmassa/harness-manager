@@ -1,0 +1,7 @@
+# Staged-file size limit (.githooks/pre-commit): paths outside the authored-text policy.
+# Vendored framework renderer; it is split upstream, not here.
+.agents/adapters/_common/render.py token-limit-ignore
+# Archived logs are historical records moved out of the session path.
+progress/archive/** token-limit-ignore
+# Feature registry: data read through `bootstrap.sh brief`, never loaded whole.
+feature_list.json token-limit-ignore

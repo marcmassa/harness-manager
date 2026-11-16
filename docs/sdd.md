@@ -149,3 +149,69 @@ The AI reviewer verifies traceability and task completeness. Final (human) appro
 
 ### When do I use sdd: false?
 For trivial tasks: typos, name changes, dependency updates, purely mechanical refactors. If in doubt, use `sdd: true`.
+
+## 7. Lifecycle Hooks
+
+The SDD workflow supports **lifecycle hooks** — shell scripts that execute
+automatically at specific transition points. Hooks are declared in
+`agentic.json#hooks[]` and live in the `hooks/` directory.
+
+### 7.1 Hook Events
+
+| Event | When it fires | Triggered by |
+|-------|--------------|-------------|
+| `on_spec_created` | After spec-author creates `specs/<feature>/` and sets `spec_ready` | `/spec` |
+| `on_spec_approved` | After human approves and sets `in_progress` | `/approve` |
+| `on_implementation_start` | Before implementer begins executing `tasks.md` | `/implement` |
+| `on_implementation_complete` | After all tasks are marked `[x]` | `/implement` |
+| `on_review_start` | Before reviewer verifies traceability | `/done` |
+| `on_review_complete` | After reviewer checks R↔test and runs `check.sh` | `/done` |
+| `on_feature_done` | After feature is marked `done` in `feature_list.json` | `/done` |
+| `on_check_pass` | After `check.sh` exits successfully | `/check` |
+
+### 7.2 Hook Scripts
+
+Each hook is a shell script in `hooks/`. They receive context via environment
+variables:
+
+- `HOOK_EVENT` — the lifecycle event name
+- `ROOT_DIR` — project root
+- `FEATURE_ID` — feature ID (e.g., `FEAT-003`)
+- `FEATURE_NAME` — feature name
+- `AGENT_NAME` — agent that triggered the hook
+
+### 7.3 Hook Runner
+
+Execute all hooks for an event with:
+
+```bash
+hooks/run-hooks.sh on_spec_created --feature-id "FEAT-003" --feature-name "steering"
+```
+
+The runner executes hooks in declaration order. Each hook's `on_failure` policy
+controls the behavior on failure:
+
+| Policy | Behavior |
+|--------|----------|
+| `warn` | Show warning, continue execution (default) |
+| `error` | Stop immediately, abort the workflow |
+| `ignore` | Continue silently regardless of failure |
+
+The runner fails closed. An unreadable manifest stops with an error. A script
+that is missing, not executable, or outside the repository (absolute path,
+`..`, or a symlink leading out) counts as a failed hook and follows the same
+policy; an unknown policy is treated as `error`. Each hook has a time limit:
+its optional `timeout_seconds`, else `$HOOK_TIMEOUT_SECONDS`, else 300 seconds.
+
+`hooks/run-hooks.sh` is a copy of `.agents/lib/hook-runner.sh`; change the
+canonical file and copy it, never the installed one.
+
+### 7.4 Managing Hooks
+
+```bash
+./.agents/bootstrap.sh add-hook --event on_spec_created --script hooks/my-hook.sh --on-failure warn
+./.agents/bootstrap.sh remove-hook --event on_spec_created --script hooks/my-hook.sh
+./.agents/bootstrap.sh --list-hooks
+```
+
+See `specs/hooks/` for the full feature spec and implementation details.
