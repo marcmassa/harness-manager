@@ -19,6 +19,10 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
+- [ ] **Complete the deferred Runs history UI and verify its storage lifecycle** — the toolbar/history drawer/task-prefill path is absent; existing history tests duplicate helper logic instead of exercising the coordinator's persistence and duration updates. Decide implementation versus an explicitly approved scope amendment. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
+
+- [ ] **Align the interactive Claude command preview with execution** — the Run panel shows `--message` while the adapter omits it; the preview therefore does not represent the command that runs. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
+
 
 
 - [ ] **Validate each of the 7 advertised adapters against a real-world repo of its framework**. Today the 7 advertised adapters (Harness SDD, Claude Code, Cursor, GitHub Copilot, OpenCode, Kiro, Gemini CLI) exist and have unit tests, but the README's "universal support" claim is only honest after each adapter has been smoke-tested with a representative workspace. Suggested smoke fixture per adapter: a 5-line `CLAUDE.md` for `ClaudeCodeAdapter`, etc. The 8th adapter (`WindsurfAdapter`) is retained for legacy workspaces but is not advertised; per ADR-003 it is not part of the "7" we are validating. (Updated for the configurable-paths release: Kiro was added as the 7th advertised adapter. The canonical `harness-sdd` and `opencode` adapters are first-class; the 5 universal adapters shipped earlier are now 6 with Kiro; `windsurf` is the deprecation-still-supported 8th.) *(Blocked: requires access to repos using each framework.)*
