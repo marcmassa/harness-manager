@@ -4,7 +4,7 @@
 _(none)_
 
 ## Status
-_(no active implementation; latest review: progress/reconcile-agent-run-studio.md)_
+_(repository review complete; evidence and pending work: progress/spec-review/README.md)_
 
 ## Notes
 _(none)_

@@ -20,3 +20,10 @@
 - Recorded history-test coverage and interactive command-preview discrepancies in progress/reconcile-agent-run-studio.md and backlog.
 - Build, 819 tests, package and check.sh pass; no production code or approved requirement/design changed.
 - 358 unchecked markers remain across 20 specs; other specs and real-repository adapter checks remain pending.
+
+## 2026-11-17 — Complete repository checklist audit
+- All 358 remaining tasks across 20 specs classified in progress/spec-review/README.md; 37 directly verified operational/status markers checked, 321 retained with explicit dispositions.
+- Concrete writer-test, save-blocking, e2e-coverage, overlap and traceability gaps recorded; no production code or feature status changes.
+- Original framework/audit/macOS/packaging work merged (#27–#29); study #26 merged without implementation.
+- Build, 819 tests, package (373,009 B) and 36 checks pass; inherited adapter-test warnings remain.
+- PR #30 expanded to the complete review; maintainer merge and feature follow-up decisions remain separate.

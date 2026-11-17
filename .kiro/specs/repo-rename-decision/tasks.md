@@ -90,7 +90,7 @@
       "rename" branch, the section is the 5-step checklist
       from design.md. _(R12 conditional, or R15 conditional
       for the accept branch)_
-- [ ] **T9** — Run `./check.sh` one final time and confirm
+- [x] **T9** — Run `./check.sh` one final time and confirm
   exit 0. _(R7)_
 - [ ] **T10** — Verify no production source code was
   modified: `git diff --name-only HEAD~1 -- src/`
@@ -102,7 +102,7 @@
   section. The note is 1-3 sentences explaining that the
   repo is intentionally named `harness-manager` and the
   mismatch is documented in ADR-002. _(R15)_
-- [ ] **T12** — Update `feature_list.json`: set FEAT-022
+- [x] **T12** — Update `feature_list.json`: set FEAT-022
   `status` to `"done"`.
 - [ ] **T13** — Append a summary to `progress/progress.md`
   following the format of prior entries (FEAT-001 through

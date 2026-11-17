@@ -33,8 +33,8 @@
 ## Closure
 
 - [ ] **T17** — Document traceability `R<n> ↔ test` in `progress/impl_feat-009.md`
-- [ ] **T18** — Run `npm run build` and `./check.sh` — verify all tests pass
-- [ ] **T19** — Update `feature_list.json`: set `status` to `"done"` for FEAT-009
+- [x] **T18** — Run `npm run build` and `./check.sh` — verify all tests pass
+- [x] **T19** — Update `feature_list.json`: set `status` to `"done"` for FEAT-009
 - [ ] **T20** — Log summary in `progress/progress.md`
 
 ## Skill Assignment

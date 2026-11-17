@@ -19,6 +19,10 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
+- [ ] **Correct and verify save blocking** — the code-quality save listener calls `waitUntil` after awaiting hook execution and supplies an empty edit list; the claimed cancellation is not established. See [spec audit findings](spec-review/README.md#findings-that-need-action).
+
+- [ ] **Close acceptance-evidence gaps** — writer persistence and webview click flows need tests that exercise the actual paths; canvas overlap prevention needs verification after layout. Restore missing skill-toggle traceability and collect the outstanding manual, CI cancellation and detector benchmark evidence. [Full task-by-task inventory](spec-review/README.md).
+
 - [ ] **Complete the deferred Runs history UI and verify its storage lifecycle** — the toolbar/history drawer/task-prefill path is absent; existing history tests duplicate helper logic instead of exercising the coordinator's persistence and duration updates. Decide implementation versus an explicitly approved scope amendment. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
 
 - [ ] **Align the interactive Claude command preview with execution** — the Run panel shows `--message` while the adapter omits it; the preview therefore does not represent the command that runs. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
@@ -50,7 +54,7 @@ _(cleared — see Completed sections below)_
 
 ## Completed (cleared in 2026-09-09 session)
 
-- ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T12 of the ci-github-actions spec).
+- ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T11 of the ci-github-actions spec).
 - ✅ **Dependabot security updates configured on `main`** — `.github/dependabot.yml` landed with the v0.8.1 supply-chain dogfood task (T1); the first `Dependabot Updates` runs (`npm_and_yarn`, `github_actions`) triggered automatically minutes after the merge.
 
 ## Completed (verified 2026-11-16; maintenance branch)

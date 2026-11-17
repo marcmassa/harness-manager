@@ -36,7 +36,7 @@
 
 ## Verification
 
-- [ ] **T15** — `npm test`, `npm run build`, `./check.sh` all green. _(all)_
+- [x] **T15** — `npm test`, `npm run build`, `./check.sh` all green. _(all)_
 - [ ] **T16** — Manual: save a valid TS file, no diagnostics appear. _(R1, R12)_
 - [ ] **T17** — Manual: save a TS file with a function > 80 lines, warning appears in Problems panel under the KISS source. _(R4, R12)_
 - [ ] **T18** — Manual: save a TS file with two near-identical functions, warning appears under DRY source. _(R10, R12)_

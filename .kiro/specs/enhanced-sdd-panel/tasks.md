@@ -28,8 +28,8 @@
 
 ## Verification
 
-- [ ] **T13** — `npm run build` and `npm test` are green. _(all)_
-- [ ] **T14** — `./check.sh` is green (feature_list, spec files, adapter consistency). _(all)_
+- [x] **T13** — `npm run build` and `npm test` are green. _(all)_
+- [x] **T14** — `./check.sh` is green (feature_list, spec files, adapter consistency). _(all)_
 - [ ] **T15** — Manual: open the SDD Manager view, browse the sidebar, click a `done` feature, see the three spec tabs render via `MDViewer`. _(R1, R2, R3, R4)_
 - [ ] **T16** — Manual: click "Open in editor" on the Requirements tab, edit and save in VS Code's text editor, click the same tab in the SDD Manager — content reflects the saved file (next click re-fetches). _(R4, R5)_
 - [ ] **T17** — Manual: enter edit mode on a spec tab, change the content, click Save — the file is updated on disk and the tab re-renders in view mode. Click Cancel — the file is untouched. Mark a spec file read-only with `chmod -w`, click Save — error message appears, edit mode stays open. _(R6, R7, R8, R9)_
