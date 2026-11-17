@@ -183,5 +183,5 @@
   - `RunAdapterRegistry.detect()` with mocked `isAvailable()` responses
   - `RunCoordinator` history management (append, duration update, FIFO limit)
 
-- [ ] **T40** — `npm test` all pass; `npm run build` zero errors; `./check.sh` green;
+- [x] **T40** — `npm test` all pass; `npm run build` zero errors; `./check.sh` green;
   update `feature_list.json` FEAT-033 to `"done"`; log summary in `progress/progress.md`

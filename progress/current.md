@@ -4,7 +4,7 @@
 _(none)_
 
 ## Status
-_(no active implementation; review results in progress/review-2026-11-16.md)_
+_(no active implementation; latest review: progress/reconcile-agent-run-studio.md)_
 
 ## Notes
 _(none)_

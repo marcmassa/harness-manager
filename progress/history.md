@@ -13,3 +13,10 @@
 - Exclude .harness/, .githooks/ and hooks/ via .vscodeignore; package now 373,009 B (93%), with 33 backup files retained on disk.
 - Build, 819 tests, package, ZIP runtime-asset checks and check.sh (36 checks) pass; pre-existing missing adapter-test warnings remain.
 - Regenerated local Claude/Gemini adapters; moved obsolete Codex fallback to /private/tmp/harness-codex-fallback-20261116.toml. No spec, release or framework update.
+
+## 2026-11-17 — Agent Run closure reconciliation
+- Reviewed T22/T40 against main 990470d; checked T40 using historical closure and current green verification.
+- T22/R16 remains unimplemented; documented missing Runs UI and task prefill without changing feature status.
+- Recorded history-test coverage and interactive command-preview discrepancies in progress/reconcile-agent-run-studio.md and backlog.
+- Build, 819 tests, package and check.sh pass; no production code or approved requirement/design changed.
+- 358 unchecked markers remain across 20 specs; other specs and real-repository adapter checks remain pending.
