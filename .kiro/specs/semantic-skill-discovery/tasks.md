@@ -25,6 +25,6 @@
 ## Closure
 
 - [ ] **T14** — Document traceability `R<n> ↔ test` map in `progress/impl_semantic-skill-discovery.md`
-- [ ] **T15** — Run `./check.sh` and verify all tests pass
-- [ ] **T16** — Update `feature_list.json`: set `status` to `"done"`
+- [x] **T15** — Run `./check.sh` and verify all tests pass
+- [x] **T16** — Update `feature_list.json`: set `status` to `"done"`
 - [ ] **T17** — Log summary in `progress/progress.md`

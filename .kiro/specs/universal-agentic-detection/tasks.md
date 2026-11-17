@@ -106,7 +106,7 @@
 
 - [ ] **T41**: Update CHANGELOG.md with FEAT-029 entry. [docs]
 
-- [ ] **T42**: Final `./check.sh` — ensure all checks pass. [governance]
+- [x] **T42**: Final `./check.sh` — ensure all checks pass. [governance]
 
 ---
 

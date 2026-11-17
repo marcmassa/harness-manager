@@ -56,8 +56,8 @@
 ## Closure
 
 - [ ] **T29** — Document traceability `R<n> ↔ test` in `progress/impl_feat-012.md`
-- [ ] **T30** — Run `npm run build` and `./check.sh` — verify all tests pass
-- [ ] **T31** — Update `feature_list.json`: set `status` to `"done"` for FEAT-012
+- [x] **T30** — Run `npm run build` and `./check.sh` — verify all tests pass
+- [x] **T31** — Update `feature_list.json`: set `status` to `"done"` for FEAT-012
 - [ ] **T32** — Log summary in `progress/progress.md`
 
 ## Skill Assignment

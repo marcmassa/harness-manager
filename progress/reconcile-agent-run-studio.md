@@ -70,5 +70,7 @@ These are recorded as descriptive maintenance items in progress/backlog.md.
 This review changes no production source, approved requirement/design, or
 feature status, and does not authorize implementation of the discovered gaps.
 
-Unchecked-task inventory decreases from 359 to 358 across the same 20 specs;
-only T40 was reconciled. The 2026-11-16 inventory remains a dated snapshot.
+This first pass decreased the unchecked-task inventory from 359 to 358.
+The subsequent [complete inventory](spec-review/README.md) classifies every
+remaining task and records the updated counts. The 2026-11-16 inventory remains
+a dated snapshot.

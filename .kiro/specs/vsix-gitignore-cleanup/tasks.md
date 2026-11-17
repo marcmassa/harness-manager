@@ -66,8 +66,8 @@
 
 ## Closure
 
-- [ ] **T14** — Run `./check.sh` one final time.
-- [ ] **T15** — Update `feature_list.json`: set FEAT-020 `status`
+- [x] **T14** — Run `./check.sh` one final time.
+- [x] **T15** — Update `feature_list.json`: set FEAT-020 `status`
   to `"done"`.
 - [ ] **T16** — Log a summary in `progress/progress.md` following
   the format of prior entries (FEAT-001 through FEAT-019).
