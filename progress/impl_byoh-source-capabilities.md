@@ -48,6 +48,38 @@ The repository's staged-file limit (20,000 bytes, `.githooks/token_limit.py`) bl
 
 Hook order is unchanged. `tsc` reports no error in any of the new webview modules; there were none in `index.tsx` before. `NodeDetailPanel.test.ts` renders the panel through `react-dom/server` (no new dependency) and checks the R3 section together with the disabled Delete and read-only description. Verified again: 853 unit tests, five Extension Host runs, package gate 380,518 bytes, 35 project checks.
 
-T4 (workspace matrix in the Extension Host and the seven-adapter field results) remains pending. Advisory rule applicability and Optimizer scoring changes belong to the approved successor features.
+## T4 — Workspace matrix and real-workspace results
+
+`src/test/integration/workspaceMatrix.ts` builds five roots in one Extension Host — SDD-only, Claude-only, custom profile, mixed, and unrecognized. Each SDD and Claude root carries an executable hook script that would create a sentinel file if it ran. For each root the suite:
+- parses twice and checks that every ID, owner and source URI is the same on the second scan;
+- checks that every attributed source appears in the Advisory profile and that every Optimizer component carries its node's source;
+- reads the host decision for each node;
+- compares the root's file contents before and after.
+
+Result on VS Code 1.147.0:
+
+| Root | Owners | Nodes | Writable nodes |
+|---|---|---|---|
+| SDD-only | `harness-sdd` | 4 | 4 |
+| Claude-only | `claude-code` | 3 | 0 |
+| Custom profile | `team-guides` | 3 | 0 |
+| Mixed | `claude-code`, `harness-sdd` | 7 | only the 4 SDD nodes; the two `reviewer` agents stay distinct |
+| Unrecognized | none | 0 | 0, no errors |
+
+No file changed, and the hook sentinel was never created.
+
+The seven advertised adapters' results are recorded separately in `docs/byoh/field-results-2026-11-19.md`. The opt-in suite `fieldValidation.ts` runs when `HARNESS_FIELD_ROOT` is set and opens each source as its own workspace. All seven pass: entity found, source opens, stable on rescan, present in Advisory, files unchanged. These were scripted runs, not webview click-throughs. The run also exposed a path-resolution limit for roots nested inside a workspace folder; it is recorded in the backlog for multi-root support.
+
+| Requirement | T4 evidence |
+|---|---|
+| R1 | Matrix: graph, Advisory and Optimizer share the same identity in all five roots. Field: the source URI opens for all seven adapters. |
+| R2 | Matrix: the mixed root keeps two `reviewer` agents with distinct owners across a rescan. |
+| R3, R4 | Matrix: host decisions per root — SDD writable, Claude and profile read-only, mixed writable only for SDD. The dispatch path is covered by the T3 suite. |
+| R5 | Matrix: the custom-profile root is discovered with no diagnostics. |
+| R6 | Covered by the T2 Extension Host suite (registration before and after the Dashboard opens, disposal). |
+| R7 | Matrix: hook scripts never run, and an unrecognized root yields an empty graph with no errors. |
+| R8 | Field: built-in discovery of the seven adapters on real sources, stable on rescan. |
+
+Verified: 853 unit tests; six Extension Host runs (`critical path`, `save isolation`, `source ownership`, `providers`, `operation gate`, `workspace matrix`); seven field runs; package gate; 35 project checks. Advisory rule applicability and Optimizer scoring changes belong to the approved successor features.
 
 Verified locally with 821 unit tests, three Extension Host runs on macOS, the build, the package gate (372,121 of 400,000 bytes), and 35 project checks. The Extension Host ownership case exercises the data paths used by the panels. UI capability reporting is tracked in T3.

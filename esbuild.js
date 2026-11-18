@@ -93,6 +93,16 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/fieldValidation.ts",
+      out: "fieldValidation.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/workspaceMatrix.ts",
+      out: "workspaceMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/operationGate.ts",
       out: "operationGate.cjs",
       external: ["vscode"],
