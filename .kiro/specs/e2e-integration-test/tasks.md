@@ -64,7 +64,7 @@
   seconds (R13). If the local environment cannot run VS Code
   (e.g., headless Linux without Xvfb), the implementer SHALL
   install Xvfb or document the limitation. _(R13)_
-- [ ] **T10** — Run the unit test suite: `npm test`. Confirm
+- [x] **T10** — Run the unit test suite: `npm test`. Confirm
   126/126 tests still pass, and the runtime is within 1 second
   of the pre-feature baseline (~0.5 s). _(R14)_
 - [ ] **T11** — Run the full local chain:
@@ -98,9 +98,9 @@
 
 ## Closure
 
-- [ ] **T16** — Run `./check.sh` one final time and confirm zero
+- [x] **T16** — Run `./check.sh` one final time and confirm zero
   failures.
-- [ ] **T17** — Update `feature_list.json`: set FEAT-021
+- [x] **T17** — Update `feature_list.json`: set FEAT-021
   `status` to `"done"`.
 - [ ] **T18** — Log a summary in `progress/progress.md`
   following the format of prior entries (FEAT-001 through

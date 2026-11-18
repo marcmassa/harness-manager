@@ -19,6 +19,14 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
+- [ ] **Verify retirement of the legacy save verifier under FEAT-040** — the historical review found that the legacy verifier did not establish save cancellation. FEAT-040 covers isolation on save, including workspaces with legacy settings. Track its independent review before closing this item. [Historical evidence](spec-review/code-quality-on-save-hooks.md).
+
+- [ ] **Close acceptance-evidence gaps** — writer persistence and webview click flows need tests that exercise the actual paths; canvas overlap prevention needs verification after layout. Restore missing skill-toggle traceability and collect the outstanding manual, CI cancellation and detector benchmark evidence. [Full task-by-task inventory](spec-review/README.md).
+
+- [ ] **Complete the deferred Runs history UI and verify its storage lifecycle** — the toolbar/history drawer/task-prefill path is absent; existing history tests duplicate helper logic instead of exercising the coordinator's persistence and duration updates. Decide implementation versus an explicitly approved scope amendment. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
+
+- [ ] **Align the interactive Claude command preview with execution** — the Run panel shows `--message` while the adapter omits it; the preview therefore does not represent the command that runs. Evidence: [Agent Run closure review](reconcile-agent-run-studio.md).
+
 
 
 - [ ] **Validate each of the 7 advertised adapters against a real-world repo of its framework**. Today the 7 advertised adapters (Harness SDD, Claude Code, Cursor, GitHub Copilot, OpenCode, Kiro, Gemini CLI) exist and have unit tests, but the README's "universal support" claim is only honest after each adapter has been smoke-tested with a representative workspace. Suggested smoke fixture per adapter: a 5-line `CLAUDE.md` for `ClaudeCodeAdapter`, etc. The 8th adapter (`WindsurfAdapter`) is retained for legacy workspaces but is not advertised; per ADR-003 it is not part of the "7" we are validating. (Updated for the configurable-paths release: Kiro was added as the 7th advertised adapter. The canonical `harness-sdd` and `opencode` adapters are first-class; the 5 universal adapters shipped earlier are now 6 with Kiro; `windsurf` is the deprecation-still-supported 8th.) *(Blocked: requires access to repos using each framework.)*
@@ -46,7 +54,7 @@ _(cleared — see Completed sections below)_
 
 ## Completed (cleared in 2026-09-09 session)
 
-- ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T12 of the ci-github-actions spec).
+- ✅ **CI workflow operationally verified on a real PR** (was the only P0): PR #3 (`v0.8.1 — Supply-Chain Health`) exercised the full gate — workflow appeared in PR Checks, `ci` job **pass in 1m 10s** (< 10 min budget ✅), CodeQL Analyze jobs pass, and the post-merge push run on `main` passed in 1m 14s. One deferred sub-criterion remains **unproven but non-blocking**: concurrency cancellation of obsolete runs needs two pushes within the job duration (~1 min) and has not fired on any PR yet — re-check opportunistically on the next rapid-push PR (T11 of the ci-github-actions spec).
 - ✅ **Dependabot security updates configured on `main`** — `.github/dependabot.yml` landed with the v0.8.1 supply-chain dogfood task (T1); the first `Dependabot Updates` runs (`npm_and_yarn`, `github_actions`) triggered automatically minutes after the merge.
 
 ## Completed (verified 2026-11-16; maintenance branch)

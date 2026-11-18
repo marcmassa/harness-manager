@@ -16,11 +16,11 @@
 - [ ] **T7** — Unit test: when vscodeLmProvider returns ok:false and apiKey is empty, generateText returns diagnostic error. _(R4)_
 - [ ] **T8** — Unit test: when apiKey is set and vscodeLmProvider returns ok:false, the openAiCompatibleProvider is called. Mock the `https.request` call to return a valid response. _(R3)_
 - [ ] **T9** — Unit test: when the API call returns HTTP 401, generateText returns `ok: false` with the status code in the error message. _(R5)_
-- [ ] **T10** — Existing tests in `src/lmUtils.test.ts` still pass (they mock `generateText` at module level — verify no regression). _(R1)_
+- [x] **T10** — Existing tests in `src/lmUtils.test.ts` still pass (they mock `generateText` at module level — verify no regression). _(R1)_
 
 ## Closure
 
 - [ ] **T11** — Document traceability `R<n> ↔ test` in `progress/impl_universal-ai-provider.md`
-- [ ] **T12** — Run `./check.sh` and verify all tests pass
-- [ ] **T13** — Update `feature_list.json`: set `status` to `"done"`
+- [x] **T12** — Run `./check.sh` and verify all tests pass
+- [x] **T13** — Update `feature_list.json`: set `status` to `"done"`
 - [ ] **T14** — Log summary in `progress/progress.md`

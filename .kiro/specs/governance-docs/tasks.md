@@ -65,9 +65,9 @@
 
 ## Closure
 
-- [ ] **T11** — Run `./check.sh` one final time and confirm zero
+- [x] **T11** — Run `./check.sh` one final time and confirm zero
   failures.
-- [ ] **T12** — Update `feature_list.json`: set FEAT-019 `status` to
+- [x] **T12** — Update `feature_list.json`: set FEAT-019 `status` to
   `"done"`.
 - [ ] **T13** — Log a summary in `progress/progress.md` following the
   format of prior entries (FEAT-001 through FEAT-018).
