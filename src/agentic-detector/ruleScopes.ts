@@ -5,11 +5,20 @@
 // `evidence` names the inputs a rule needs, so a missing input reads as
 // "unavailable" rather than as a defect of the workspace (R4).
 
+import type { AgenticProfile } from './types.js';
+import { evidenceOwners } from './evidence.js';
+
 export type RuleScope = { kind: 'shared' } | { kind: 'optional' } | { kind: 'provider'; providerId: string };
 
 export interface RuleClassification {
     scope: RuleScope;
     evidence: string;
+    /**
+     * Instantiate once per owning provider: each owner's finding is then
+     * dismissed and acted on independently (R7). `workspace` adds a
+     * workspace-wide instance for unclaimed files.
+     */
+    perOwner?: (profile: AgenticProfile) => { owners: string[]; workspace: boolean };
 }
 
 const shared = (evidence: string): RuleClassification => ({ scope: { kind: 'shared' }, evidence });
@@ -21,7 +30,13 @@ export const RULE_CLASSIFICATION: Readonly<Record<string, RuleClassification>> =
     'cli-without-impl': shared('agent CLI configuration; no instructions or rules'),
     'impl-without-cli': shared('structured resources; no agent CLI configuration'),
     'add-mcp': shared('agent CLI, tool definitions, no MCP configuration'),
-    'migrate-to-steering': shared('rules in a single-tool format'),
+    'migrate-to-steering': {
+        ...shared('rules in a single-tool format'),
+        perOwner: p => ({
+            owners: evidenceOwners(p, 'rules').filter(id => id === 'cursor' || id === 'windsurf'),
+            workspace: p.layers['2'].categories.some(c => c.matches.some(m => m.matchedPattern === 'dot-rules-files')),
+        }),
+    },
     'mcp-without-agents': shared('MCP configuration, no agent scripts'),
     'tools-without-skills': shared('tool definitions, no skills'),
     'split-into-subagents': shared('tool definitions and agent scripts'),
