@@ -26,7 +26,16 @@ export const defaultRealPath: RealPathResolver = async uri => {
     }
 };
 
-const stem = (path: string) => (path.split('/').pop() ?? path).replace(/\.[^.]+$/, '');
+/**
+ * Default native ID: the file name without extension, or the parent folder
+ * for conventional fixed names (`skills/lint/SKILL.md` → `lint`).
+ */
+const FIXED_NAMES = /^(?:skill|subagent|agent|agents)$/i;
+const stem = (path: string) => {
+    const parts = path.split('/');
+    const base = (parts.pop() ?? path).replace(/\.[^.]+$/, '');
+    return FIXED_NAMES.test(base) && parts.length > 0 ? parts[parts.length - 1] : base;
+};
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 const within = (base: string, path: string) => path === base || path.startsWith(base.replace(/\/+$/, '') + '/');
 

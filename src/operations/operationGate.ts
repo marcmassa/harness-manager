@@ -45,9 +45,12 @@ export class OperationGate {
     }
 
     private context(): GateContext {
-        const nodes = this.getData()?.graph.nodes ?? [];
+        const data = this.getData();
+        const nodes = data?.graph.nodes ?? [];
         const owners = new Map(nodes.map(node => [node.id, node.source?.providerId ?? (node.metadata._framework as string | undefined)]));
-        const detected = [...new Set([...owners.values()].filter((id): id is string => !!id))];
+        // A provider can be detected and own no node yet (an empty manifest).
+        const detected = data?.detectedProviders
+            ?? [...new Set([...owners.values()].filter((id): id is string => !!id))];
         return {
             owners,
             detected,
@@ -61,7 +64,7 @@ export class OperationGate {
         const runnerAvailable = request.op === 'agentRuns.delegate'
             ? this.runnerIds.size > 0 && [...this.runnerIds].some(id => id !== 'generic')
             : request.runnerId ? this.runnerIds.has(request.runnerId) : undefined;
-        return decide(request.op, request.targets, this.context(), { runnerId: request.runnerId, runnerAvailable });
+        return decide(request.op, request.targets, this.context(), { runnerId: request.runnerId, runnerAvailable, format: request.format });
     }
 
     public async authorize(request: OperationRequest): Promise<Decision> {

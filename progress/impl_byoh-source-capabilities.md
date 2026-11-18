@@ -83,3 +83,18 @@ The seven advertised adapters' results are recorded separately in `docs/byoh/fie
 Verified: 853 unit tests; six Extension Host runs (`critical path`, `save isolation`, `source ownership`, `providers`, `operation gate`, `workspace matrix`); seven field runs; package gate; 35 project checks. Advisory rule applicability and Optimizer scoring changes belong to the approved successor features.
 
 Verified locally with 821 unit tests, three Extension Host runs on macOS, the build, the package gate (372,121 of 400,000 bytes), and 35 project checks. The Extension Host ownership case exercises the data paths used by the panels. UI capability reporting is tracked in T3.
+
+## Agent pre-review and fixes
+
+An agent code review of 558b873..6c969c2 ran before the human closing review. It does not replace that review. It reported eight defects; all are fixed, each with a regression test:
+
+1. **High.** Companions could declare write operations, which then reached the Harness SDD writer. Version 1 companions are now read-only: any declared operation is rejected, as `docs/byoh/adapter-capabilities.md` requires.
+2. Workspace-level decisions took detected providers from graph nodes, so a provider detected with no nodes counted as absent. `ParserResult.detectedProviders` now carries detection results and the gate uses it. A workspace with only `feature_list.json` (no `.agents/agentic.json`) still has no lifecycle owner, so spec edits there are refused with a reason. This is intended: no provider owns that format.
+3. Rule-wide delegation now authorizes every component its scope resolves to, before and after the modal.
+4. Scaffolding Harness SDD is refused when Harness SDD is already detected, so an existing manifest is never overwritten (unit test and Extension Host). Advisory `run-command` actions stay under workspace trust; FEAT-042 T3 reclassifies Advisory actions.
+5. Runs are bound to the scanned node (`bindRunTarget`): the host sets file path, name and type, so client-sent paths are ignored.
+6. Wizard skill links go through the link decision, and foreign skills become view data.
+7. Profile entities named `SKILL.md`, `SUBAGENT.md`, `AGENT.md` or `AGENTS.md` default to their folder name.
+8. A scan superseded by a newer one no longer replaces the cached ownership (generation counter).
+
+Verified after the fixes: 859 unit tests, six Extension Host runs, package gate 380,802 bytes, 35 project checks.

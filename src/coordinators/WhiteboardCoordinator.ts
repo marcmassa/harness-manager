@@ -6,17 +6,15 @@ import { openFileInEditor } from '../fileUtils.js';
 import { generateText } from '../lmUtils.js';
 import { ARCHITECTURE_TEMPLATES } from '../whiteboard/architectureTemplates.js';
 import type { Decision } from '../operations/operations.js';
+import { removeEdge, removeUsesEdge, upsertEdge, upsertUsesEdge } from './viewRelations.js';
 
 /** FEAT-041 T3: re-run the host decision after a modal confirmation (R4). */
 export type AuthorizeFn = (msg: { type: string; [key: string]: unknown }) => Promise<Decision>;
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
-export type CustomUsesEdge = { source: string; target: string };
-export type CustomEdge = { source: string; target: string; label: string };
-
-export const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
-export const CUSTOM_EDGES_KEY = 'harness-dashboard.customEdges';
+export type { CustomUsesEdge, CustomEdge } from './viewRelations.js';
+export { CUSTOM_USES_EDGES_KEY, CUSTOM_EDGES_KEY } from './viewRelations.js';
 
 /**
  * Handles whiteboard/graph message types: node CRUD, edge CRUD, suggestion
@@ -276,6 +274,13 @@ export class WhiteboardCoordinator {
                 }
                 // Create edges for connected skills
                 for (const skillId of ((connectSkillIds as string[]) ?? [])) {
+                    // FEAT-041: the link is persisted only when the skill's owner can store it.
+                    const link = await this._authorize?.({ type: 'acceptSuggestion', subagentId: skillId, skillId });
+                    if (link && !link.ok) continue;
+                    if (link?.mode === 'view-local') {
+                        await this._upsertCustomUsesEdge(name as string, skillId);
+                        continue;
+                    }
                     try {
                         await this._writer.createEdge(name as string, skillId);
                     } catch {
@@ -349,41 +354,11 @@ export class WhiteboardCoordinator {
         );
     }
 
-    private async _upsertCustomUsesEdge(source: string, target: string): Promise<void> {
-        if (!source || !target || source === target) return;
-        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
-        if (current.some((edge) => edge.source === source && edge.target === target)) return;
-        await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, [...current, { source, target }]);
-    }
-
-    private async _upsertCustomEdge(source: string, target: string, label: string): Promise<void> {
-        if (!source || !target || source === target) return;
-        const current = this._context.workspaceState.get<CustomEdge[]>(CUSTOM_EDGES_KEY, []);
-        if (current.some(e => e.source === source && e.target === target && e.label === label)) return;
-        await this._context.workspaceState.update(CUSTOM_EDGES_KEY, [...current, { source, target, label }]);
-    }
-
-    private async _removeCustomUsesEdge(source: string, target: string): Promise<void> {
-        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
-        const updated = current.filter(
-            (edge) => !((edge.source === source && edge.target === target) ||
-                        (edge.source === target && edge.target === source))
-        );
-        if (updated.length !== current.length) {
-            await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, updated);
-        }
-    }
-
-    private async _removeCustomEdge(source: string, target: string, label: string): Promise<void> {
-        const current = this._context.workspaceState.get<CustomEdge[]>(CUSTOM_EDGES_KEY, []);
-        const updated = current.filter(
-            e => !((e.source === source && e.target === target && e.label === label) ||
-                   (e.source === target && e.target === source && e.label === label))
-        );
-        if (updated.length !== current.length) {
-            await this._context.workspaceState.update(CUSTOM_EDGES_KEY, updated);
-        }
-    }
+    // View-only relationships live in workspace state (viewRelations.ts).
+    private _upsertCustomUsesEdge(source: string, target: string) { return upsertUsesEdge(this._context.workspaceState, source, target); }
+    private _upsertCustomEdge(source: string, target: string, label: string) { return upsertEdge(this._context.workspaceState, source, target, label); }
+    private _removeCustomUsesEdge(source: string, target: string) { return removeUsesEdge(this._context.workspaceState, source, target); }
+    private _removeCustomEdge(source: string, target: string, label: string) { return removeEdge(this._context.workspaceState, source, target, label); }
 
     private async _deleteEdgeWithFallback(source: string, target: string, label: string, viewLocal = false): Promise<void> {
         // Non-uses edges are only in workspaceState

@@ -109,6 +109,12 @@ export async function run(): Promise<void> {
         await internal._sendDataTo(post);
         assert.equal((await dispatch({ type: 'createNode', nodeType: 'subagent', name: 'tester', description: 'Tests.' })).length, 0);
         await nodeFs.access(path.join(root.fsPath, '.agents/subagents/tester/SUBAGENT.md'));
+        // Scaffolding Harness SDD again would overwrite the manifest it now owns.
+        const manifest = await nodeFs.readFile(path.join(root.fsPath, '.agents/agentic.json'), 'utf8');
+        await internal._sendDataTo(post);
+        const again = await dispatch({ type: 'applyHarnessSDD' });
+        assert.match(String(again[0]?.reason), /already set up/);
+        assert.equal(await nodeFs.readFile(path.join(root.fsPath, '.agents/agentic.json'), 'utf8'), manifest);
         console.log('FEAT-041 operation gate passed');
     } finally {
         config.dispose();

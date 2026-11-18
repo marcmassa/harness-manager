@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_CAPABILITIES, CAPABILITY_KEYS } from '../adapters/capabilities.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import {
-    BUILTIN_OPERATIONS, decide, OPERATIONS, operationForMessage,
+    BUILTIN_OPERATIONS, bindRunTarget, decide, OPERATIONS, operationForMessage,
     type GateContext, type OperationId,
 } from './operations.js';
 
@@ -78,6 +78,30 @@ describe('decide (R4)', () => {
     });
 });
 
+describe('review fixes (R4)', () => {
+    it('uses detected providers for workspace operations, even with no nodes', () => {
+        const empty = ctx({}, { detected: ['harness-sdd'] });
+        expect(decide('editing.createEntity', 'workspace', empty)).toMatchObject({ ok: true, owners: ['harness-sdd'] });
+    });
+
+    it('refuses to scaffold a format that is already set up', () => {
+        expect(decide('adoption.scaffold', 'workspace', MIXED, { format: 'harness-sdd' }))
+            .toMatchObject({ ok: false, reason: expect.stringContaining('already set up') });
+        expect(decide('adoption.scaffold', 'workspace', ctx({ 'claude-code::root': 'claude-code' }), { format: 'harness-sdd' })).toMatchObject({ ok: true });
+    });
+
+    it('denies a rule-wide delegation when any resolved component is stale', () => {
+        expect(decide('agentRuns.delegate', ['cursor::rule', 'gone'], MIXED, { runnerAvailable: true })).toMatchObject({ ok: false });
+    });
+
+    it('binds a run to the scanned node instead of client-sent fields', () => {
+        const msg: Record<string, unknown> = { type: 'runAgent', nodeId: 'n', nodeFilePath: '../../etc/passwd', nodeName: 'x', nodeType: 'skill' };
+        expect(bindRunTarget(msg, { label: 'reviewer', type: 'subagent', metadata: { _filePath: '.claude/agents/reviewer.md' } })).toBe(true);
+        expect(msg).toMatchObject({ nodeFilePath: '.claude/agents/reviewer.md', nodeName: 'reviewer', nodeType: 'subagent' });
+        expect(bindRunTarget({}, undefined)).toBe(false);
+    });
+});
+
 describe('operationForMessage (R4)', () => {
     it('maps every mutating message and leaves reads and proposals undecided', () => {
         const cases: Array<[Record<string, unknown>, unknown]> = [
@@ -91,7 +115,8 @@ describe('operationForMessage (R4)', () => {
             [{ type: 'applyQuickFix', nodeId: 'n' }, { op: 'editing.reviewedTextEdit', targets: ['n'] }],
             [{ type: 'delegateFinding', ruleId: 'OPT-S04' }, { op: 'agentRuns.delegate', targets: 'workspace' }],
             [{ type: 'runAgent', nodeId: 'n', adapterId: 'claude-code' }, { op: 'agentRuns.launch', targets: ['n'], runnerId: 'claude-code' }],
-            [{ type: 'applyHarnessSDD' }, { op: 'adoption.scaffold', targets: 'workspace' }],
+            [{ type: 'applyHarnessSDD' }, { op: 'adoption.scaffold', targets: 'workspace', format: 'harness-sdd' }],
+            [{ type: 'delegateFinding', nodeIds: ['a', 'b'] }, { op: 'agentRuns.delegate', targets: ['a', 'b'] }],
             [{ type: 'runSupplyChainAudit' }, { op: 'workspace.audit', targets: 'workspace' }],
         ];
         for (const [msg, expected] of cases) expect(operationForMessage(msg as never)).toEqual(expected);
