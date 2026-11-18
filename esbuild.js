@@ -98,6 +98,11 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/advisoryMatrix.ts",
+      out: "advisoryMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/workspaceMatrix.ts",
       out: "workspaceMatrix.cjs",
       external: ["vscode"],
