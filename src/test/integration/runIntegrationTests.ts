@@ -29,6 +29,34 @@
 
 import { downloadAndUnzipVSCode, runTests } from '@vscode/test-electron';
 import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+
+async function checkSaveIsolation(vscodeExecutablePath: string, extensionDevelopmentPath: string) {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'dashboard-save-'));
+    try {
+        for (const dir of ['src', '.vscode', '.kiro/hooks']) {
+            await fs.mkdir(path.join(root, dir), { recursive: true });
+        }
+        await fs.writeFile(path.join(root, 'src/sample.ts'), 'export const value = 1;\n');
+        await fs.writeFile(path.join(root, '.vscode/settings.json'), JSON.stringify({
+            'harness-dashboard.codeQuality.verifyOnSave': true,
+            'harness-dashboard.codeQuality.blockOnSave': true,
+            'harness-dashboard.codeQuality.warnBeforeSaveOnError': true,
+            'harness-dashboard.codeQuality.severity': 'error',
+        }));
+        for (const kind of ['kiss', 'dry']) {
+            const script = path.join(root, '.kiro/hooks', 'on-file-saved-' + kind + '-check.sh');
+            await fs.writeFile(script, '#!/bin/sh\ntouch "$ROOT_DIR/hook-ran"\n', { mode: 0o755 });
+        }
+        await runTests({
+            vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
+            extensionTestsPath: path.join(__dirname, 'saveIsolation.cjs'),
+        });
+    } finally {
+        await fs.rm(root, { recursive: true, force: true });
+    }
+}
 
 async function main(): Promise<void> {
     // The extension root is the parent of `out/test/integration/`. The
@@ -85,6 +113,7 @@ async function main(): Promise<void> {
                 HARNESS_DASHBOARD_FIXTURE: fixtureWorkspace,
             },
         });
+        await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
     } catch (err) {
         // `runTests` throws on any test failure. We log and re-throw
         // with a non-zero exit code so `npm run test:integration`

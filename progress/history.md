@@ -18,3 +18,8 @@
 - Classified the 38 baseline features and documented eight built-in adapters, including legacy Windsurf.
 - Added inventory checks to the normal test suite and prepared FEAT-040 for human review.
 - Build, 821 tests, package (373,009 B), and check.sh (35 checks) pass.
+
+## 2026-11-18 — Contributor quality checks (FEAT-040)
+- Removed the installed extension's verifier, command and settings. Kept both contributor hooks and read-only graph discovery.
+- Verified all nine rules and clean controls, native hook attribution, and a real macOS save with both legacy options enabled.
+- Build, 817 unit tests, both host runs, VSIX (371,609 bytes), and 35 project checks passed. Handoff for independent review.

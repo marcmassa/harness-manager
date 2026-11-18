@@ -73,10 +73,6 @@
         "category": "Harness Dashboard"
       },
       {
-        "command": "harness-dashboard.verifyCodeQuality",
-        "title": "Harness: Verify Code Quality"
-      },
-      {
         "command": "harness-dashboard.checkLM",
         "title": "Harness Dashboard: Check AI Provider Status",
         "category": "Harness Dashboard"
@@ -187,39 +183,6 @@
           "scope": "resource",
           "default": true,
           "description": "Scan <workspace-root>/hooks/ and <workspace-root>/steering/ for hook/steering files regardless of which adapters are detected (R8, R10). Disable if you keep your hooks/steering only under framework-specific roots."
-        },
-        "harness-dashboard.codeQuality.verifyOnSave": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Run the KISS and DRY hooks on every save of a TS/TSX file under src/."
-        },
-        "harness-dashboard.codeQuality.blockOnSave": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": false,
-          "description": "Cancel the save if the verifier reports any error-severity issue."
-        },
-        "harness-dashboard.codeQuality.kissEnabled": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Enable the KISS (anti-overengineering) hook."
-        },
-        "harness-dashboard.codeQuality.dryEnabled": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Enable the DRY (anti-duplication) hook."
-        },
-        "harness-dashboard.codeQuality.severity": {
-          "type": "string",
-          "enum": [
-            "warning",
-            "error"
-          ],
-          "default": "warning",
-          "description": "Severity for all reported issues. 'error' promotes all warnings to errors."
         },
         "harness-dashboard.ai.apiKey": {
           "type": "string",
