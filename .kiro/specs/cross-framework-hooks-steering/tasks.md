@@ -29,7 +29,7 @@
 
 ## 5. Verification
 
-- [ ] **T13** — `npm test`, `npm run build`, `./check.sh` all green. _(all)_
+- [x] **T13** — `npm test`, `npm run build`, `./check.sh` all green. _(all)_
 - [ ] **T14** — Manual: open a Kiro-only project, see `.kiro/hooks/` and `.kiro/steering/` on the whiteboard. _(R5)_
 - [ ] **T15** — Manual: invoke `Harness Dashboard: Open Local Configuration`, edit the JSON to add an `adapters.kiro.hooksPath` override, save, refresh — the override is picked up. _(R3, R6)_
 - [ ] **T16** — Manual: edit a discovered hook file — the whiteboard re-parses. _(R17)_

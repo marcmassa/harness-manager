@@ -15,7 +15,7 @@
 
 - [x] **T5** — Local dry-run: `npm ci && npm run build && npm test && ./check.sh` on a clean checkout, exit 0. _(R5, R6, R7, R8)_
 - [x] **T6** — Local syntax validation: `actionlint` (if available) or `python3 -c "import yaml; ..."` to confirm the workflow parses. _(R1)_
-- [ ] **T7** — Push to a feature branch and open a PR: confirm the workflow appears in the PR's Checks section, completes, and reports green. _(R2, R3, R4, R5, R6, R7, R8, R9, R11)_ — **deferred to first real PR**; structural checks in T6 give high confidence.
+- [x] **T7** — Push to a feature branch and open a PR: confirm the workflow appears in the PR's Checks section, completes, and reports green. _(R2, R3, R4, R5, R6, R7, R8, R9, R11)_ — **deferred to first real PR**; structural checks in T6 give high confidence.
 - [x] **T8** — Failure case (T8a): introduce a failing test (e.g., `expect(1).toBe(2)`) in a throwaway branch, push, confirm the workflow reports red with the failing test name in the log. _(R7, R14)_ — verified locally: vitest exit 1, test name in log.
 - [x] **T9** — Failure case (T8b): introduce a malformed `feature_list.json` (e.g., invalid status) in a throwaway branch, push, confirm `./check.sh` reports the error in the "Feature List Validation" section. _(R8, R14)_ — verified locally: check.sh exit 2, `[ERROR]` printed. **Required a one-line fix to `check.sh`** (heredoc exit-code propagation); see `progress/impl_ci-github-actions.md`.
 - [x] **T10** — Restore the files modified in T8a/T8b, push again, confirm green. (Tear-down.) _(R6, R7, R8)_
@@ -29,6 +29,6 @@
 ## Closure
 
 - [x] **T14** — Document the `R<n> ↔ test` traceability map in `progress/impl_ci-github-actions.md`.
-- [ ] **T15** — Run `./check.sh` and verify it passes (it will, since T1 only added a new file outside the scope of `check.sh`).
-- [ ] **T16** — Update `feature_list.json`: set `status` to `"done"`.
+- [x] **T15** — Run `./check.sh` and verify it passes (it will, since T1 only added a new file outside the scope of `check.sh`).
+- [x] **T16** — Update `feature_list.json`: set `status` to `"done"`.
 - [ ] **T17** — Log summary in `progress/progress.md` following the format of prior entries (FEAT-001 through FEAT-017).

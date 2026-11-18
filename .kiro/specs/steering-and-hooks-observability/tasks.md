@@ -42,7 +42,7 @@
 
 ## Verification
 
-- [ ] **T24** — `npm test`: all unit tests pass. _(all)_
-- [ ] **T25** — `npm run build`: esbuild clean. _(all)_
-- [ ] **T26** — `./check.sh`: all checks pass. _(all)_
+- [x] **T24** — `npm test`: all unit tests pass. _(all)_
+- [x] **T25** — `npm run build`: esbuild clean. _(all)_
+- [x] **T26** — `./check.sh`: all checks pass. _(all)_
 - [ ] **T27** — Manual: open a workspace with steering/hooks, confirm nodes appear on whiteboard with correct visual style. _(R8, R9)_
