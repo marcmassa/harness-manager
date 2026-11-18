@@ -65,12 +65,7 @@ export interface DashboardData {
     detectedFrameworks?: string[];
 }
 
-export interface ParserResult {
-    graph: HarnessGraph;
-    milestones: Milestone[];
-    errors: ParserError[];
-    detectedFrameworks?: string[];
-}
+export type ParserResult = DashboardData;
 
 // ── Webview message discriminator (FEAT-030 R5, R6) ──────────────────────────
 
@@ -154,6 +149,11 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     // FEAT-036: supply-chain health
     'runSupplyChainAudit', 'supplyChainAuditResult',
 ]);
+
+// FEAT-033 R27–R29 limit the gear menu to these two host actions.
+export function isWhiteboardToolbarCommand(command: unknown): command is string {
+    return command === 'harness-dashboard.scaffoldMissing' || command === 'harness-dashboard.syncFromFilesystem';
+}
 
 export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {
     return (

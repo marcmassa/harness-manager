@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 import { HarnessParser } from './harnessParser.js';
 import { HarnessWriter } from './harnessWriter.js';
-import { HarnessConfig } from './config/harnessConfig.js';
-import { isKnownWebviewMessage } from './types.js';
+import { isKnownWebviewMessage, isWhiteboardToolbarCommand, type DashboardData } from './types.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
-import type { AgenticProfile, GraphContext } from './agentic-detector/types.js';
+import type { AgenticProfile } from './agentic-detector/types.js';
 import { WhiteboardCoordinator, CustomUsesEdge, CustomEdge, CUSTOM_USES_EDGES_KEY, CUSTOM_EDGES_KEY } from './coordinators/WhiteboardCoordinator.js';
 import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
@@ -15,10 +14,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
     private _view?: vscode.WebviewView;
     private _panel?: vscode.WebviewPanel;
-    private _parser: HarnessParser;
-    private _writer: HarnessWriter;
-    private readonly _log: vscode.LogOutputChannel;
-    private readonly _harnessConfig: HarnessConfig;
+    private readonly _parser: HarnessParser;
     private _agenticDetector?: AgenticDetector;
     private readonly _whiteboardCoordinator: WhiteboardCoordinator;
     private readonly _sddCoordinator: SddCoordinator;
@@ -27,27 +23,24 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private readonly _optimizerCoordinator: OptimizerCoordinator;
     // FEAT-033
     private _runCoordinator?: RunCoordinator;
-    private _cachedData: import('./types.js').DashboardData | null = null;
+    private _cachedData: DashboardData | null = null;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
         private readonly _workspaceRoot: vscode.Uri,
         private readonly _context: vscode.ExtensionContext,
-        log: vscode.LogOutputChannel,
-        harnessConfig: HarnessConfig,
+        private readonly _log: vscode.LogOutputChannel,
     ) {
-        this._log = log;
-        this._harnessConfig = harnessConfig;
         this._parser = new HarnessParser(this._workspaceRoot, this._log);
-        this._writer = new HarnessWriter(this._workspaceRoot);
+        const writer = new HarnessWriter(this._workspaceRoot);
         // scheduleScan is set after the provider is constructed (via setAgenticDetector)
-        this._whiteboardCoordinator = new WhiteboardCoordinator(this._writer, this._parser, this._context, this._workspaceRoot, this._log);
+        this._whiteboardCoordinator = new WhiteboardCoordinator(writer, this._parser, this._context, this._workspaceRoot, this._log);
         this._sddCoordinator = new SddCoordinator(this._workspaceRoot, this._log);
         this._advisoryCoordinator = new AdvisoryCoordinator(this._context, this._workspaceRoot, this._log);
         // FEAT-034: reads the graph through getCachedData() so it always scores
         // the same model the whiteboard is showing.
         this._optimizerCoordinator = new OptimizerCoordinator(
-            this._writer, this._context, this._workspaceRoot, this._log,
+            writer, this._context, this._workspaceRoot, this._log,
             () => this._cachedData,
         );
     }
@@ -58,7 +51,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     }
 
     /** Return the last parsed DashboardData for GraphContext building (FEAT-031). */
-    public getCachedData(): import('./types.js').DashboardData | null {
+    public getCachedData(): DashboardData | null {
         return this._cachedData;
     }
 
@@ -68,11 +61,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._panel?.webview.postMessage(msg);
     }
 
-    public resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ) {
+    public resolveWebviewView(webviewView: vscode.WebviewView): void {
         this._view = webviewView;
 
         webviewView.webview.options = {
@@ -80,13 +69,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             localResourceRoots: [this._extensionUri],
         };
 
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-        // Attach the shared message handler, routing responses to the sidebar webview
-        const sendToSidebar = (msg: unknown) => this._view?.webview.postMessage(msg);
-        webviewView.webview.onDidReceiveMessage(async data => {
-            await this._handleWebviewMessage(data, sendToSidebar);
-        });
+        this._attachWebview(webviewView.webview, false);
 
         const watchGlobs = this._parser.getWatchGlobs();
         const watcherPatterns = Array.from(new Set(watchGlobs));
@@ -103,6 +86,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         }
 
         webviewView.onDidDispose(() => {
+            if (this._view === webviewView) this._view = undefined;
             for (const watcher of watchers) {
                 watcher.dispose();
             }
@@ -245,7 +229,11 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                     break;
                 // FEAT-033 Phase 2: Toolbar ⚙ menu — execute a VS Code command from the webview
                 case 'executeVSCodeCommand':
-                    await vscode.commands.executeCommand((data as any).command as string);
+                    if (isWhiteboardToolbarCommand(data.command)) {
+                        await vscode.commands.executeCommand(data.command);
+                    } else {
+                        this._log.warn('[Webview] Rejected unknown toolbar command');
+                    }
                     break;
                 default: {
                     const handled =
@@ -295,8 +283,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             </html>`;
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview): string {
-        return HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, false);
+    private _attachWebview(webview: vscode.Webview, isFullWindow: boolean): void {
+        const reply = (message: unknown) => webview.postMessage(message);
+        webview.onDidReceiveMessage(data => this._handleWebviewMessage(data, reply));
+        webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, isFullWindow);
     }
 
     /**
@@ -316,13 +306,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         );
 
         this._panel = panel;
-        panel.webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, panel.webview, true);
-
-        // Route responses to the new panel (shared message handler already handles ready/getData)
-        const sendToPanel = (msg: unknown) => panel.webview.postMessage(msg);
-        panel.webview.onDidReceiveMessage(async data => {
-            await this._handleWebviewMessage(data, sendToPanel);
-        });
+        this._attachWebview(panel.webview, true);
 
         panel.onDidDispose(() => {
             if (this._panel === panel) this._panel = undefined;

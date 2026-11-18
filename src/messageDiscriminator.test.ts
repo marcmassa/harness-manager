@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isKnownWebviewMessage, type WebviewMessageType } from './types.js';
+import { isKnownWebviewMessage, isWhiteboardToolbarCommand, type WebviewMessageType } from './types.js';
 
 const KNOWN: WebviewMessageType[] = [
     'ready', 'getData',
@@ -56,5 +56,19 @@ describe('isKnownWebviewMessage — FEAT-030 R5, R6', () => {
 
     it('accepts a message with extra payload fields', () => {
         expect(isKnownWebviewMessage({ type: 'createNode', name: 'foo', nodeType: 'skill' })).toBe(true);
+    });
+});
+
+describe('whiteboard toolbar command boundary', () => {
+    it.each(['harness-dashboard.scaffoldMissing', 'harness-dashboard.syncFromFilesystem'])(
+        'accepts the documented action %s', command => {
+            expect(isWhiteboardToolbarCommand(command)).toBe(true);
+        },
+    );
+
+    it('rejects malformed payloads and commands outside the menu', () => {
+        for (const command of [undefined, null, 42, {}, ['harness-dashboard.scaffoldMissing'], 'harness-dashboard.openDashboard', 'workbench.action.closeWindow']) {
+            expect(isWhiteboardToolbarCommand(command)).toBe(false);
+        }
     });
 });
