@@ -23,6 +23,31 @@ Activation constructs one configured adapter registry for the active workspace f
 
 Verified locally: 838 unit tests, four Extension Host runs on macOS (VS Code 1.147.0), build, package gate 375,174 of 400,000 bytes (93%), 35 project checks.
 
-T3–T4, visible capability controls and the seven-adapter field validation remain pending. Built-in adapters do not yet declare `capabilities()`; T3 publishes their table. Advisory rule applicability and Optimizer scoring changes belong to the approved successor features.
+## T3 — Visible operations and the host decision
+
+`src/operations/operations.ts` holds the operation catalog, the built-in operation table, the mapping from every mutating webview message to an operation and its targets, and `decide()` (pure). `OperationGate` applies it in the host against the latest scan, workspace trust and installed runners. `HarnessDashboardProvider` asks before dispatching any coordinator message, discards a client-supplied `operationMode`, and answers a denial with `operationDenied` and a warning. The Whiteboard and Optimizer coordinators ask again after each modal confirmation (relationship delete, reviewed fix, delegation). The scaffold, filesystem-sync and npm-audit commands ask too, and scaffolding lists only resources whose owner writes that format. Every `init` message carries the provider, native path, capability levels and operation availability (with the reason when unavailable) per resource; the whiteboard detail panel renders them, and disables Delete and description editing when the host would refuse.
+
+Behaviour changes, all following the approved design:
+- Structural writes (create, delete, metadata, link, relabel, lifecycle) need a provider that implements them. Today only Harness SDD does, so editing a Claude, Cursor or profile resource can no longer create or change an SDD manifest.
+- A skill link across owners that cannot persist it is stored as view data (`customUsesEdges`), never sent to the writer. Non-`uses` relationships stay view data, and deleting them no longer touches the writer.
+- An agent CLI launches only on resources its own provider owns (Claude Code, Gemini CLI), and only with the CLI installed. The generic "open in editor" runner is not an agent run and needs no decision.
+- Delegation needs an installed agent CLI and current targets. Every mutation and launch needs a trusted workspace.
+- `docs/byoh/adapter-capabilities.md`: editing for Claude Code, Gemini CLI, Cursor, Copilot, Kiro and Windsurf is now `partial`, because the Optimizer's reviewed text edits write back to those files. A unit test keeps the page equal to `BUILTIN_CAPABILITIES`.
+
+| Requirement | Verification |
+|---|---|
+| R3 | Extension Host suite operationGate.ts: the `init` ownership for a Claude subagent names Claude Code, its native path, Delete unavailable as read-only, reviewed fixes available and launch unavailable because the CLI is missing. operations.test.ts: the capability table equals the documentation, and no operation is declared under an unsupported capability. |
+| R4 | Unit: supported positive control; read-only, stale, unknown-owner, mixed-owner and untrusted denials; single-owner rule for creation; runner-to-owner match and installed CLI; delegation prerequisites; message mapping, with reads and proposals undecided. byohProviders.test.ts: companion operations are validated against their capabilities, and profiles declare none. Extension Host: seven denied dispatches (read-only delete and metadata, stale target, creation without an owner, relabel without a writer, launch without the CLI, a forged mode), then view-local link creation and deletion, leave workspace files byte-identical and open no terminal. The positive control (after adding a Harness SDD manifest) writes `.agents/subagents/tester/SUBAGENT.md`. |
+
+Verified locally: 850 unit tests, five Extension Host runs on macOS (VS Code 1.147.0), build, package gate 378,553 of 400,000 bytes (94%), 35 project checks.
+
+The repository's staged-file limit (20,000 bytes, `.githooks/token_limit.py`) blocked this commit because T3 touched three oversized files. They were split by responsibility, moving code verbatim:
+- `src/extension.ts` → the scaffold and sync commands moved to `src/commands/scaffoldCommands.ts`.
+- `src/coordinators/OptimizerCoordinator.ts` → delegation moved to `optimizerDelegation.ts`; the AI Refine provider call and the chat handoff moved to `optimizerRefine.ts`.
+- `src/webview/index.tsx` (89 KB) → an entry file plus `App.tsx`, `useDashboardState.ts` (state and host listener), `useDashboardActions.ts` (effects and handlers), `NodeDetailPanel.tsx`, `NodeDescriptionTab.tsx`, `panelChrome.tsx`, `dashboardChrome.tsx`, `vscodeApi.ts` and `dashboardStyles.ts`.
+
+Hook order is unchanged. `tsc` reports no error in any of the new webview modules; there were none in `index.tsx` before. `NodeDetailPanel.test.ts` renders the panel through `react-dom/server` (no new dependency) and checks the R3 section together with the disabled Delete and read-only description. Verified again: 853 unit tests, five Extension Host runs, package gate 380,518 bytes, 35 project checks.
+
+T4 (workspace matrix in the Extension Host and the seven-adapter field results) remains pending. Advisory rule applicability and Optimizer scoring changes belong to the approved successor features.
 
 Verified locally with 821 unit tests, three Extension Host runs on macOS, the build, the package gate (372,121 of 400,000 bytes), and 35 project checks. The Extension Host ownership case exercises the data paths used by the panels. UI capability reporting is tracked in T3.

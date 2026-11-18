@@ -10,6 +10,7 @@ import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
 import { OptimizerCoordinator } from './coordinators/OptimizerCoordinator.js';
+import type { OperationGate } from './operations/operationGate.js';
 
 export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
@@ -26,6 +27,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     // FEAT-033
     private _runCoordinator?: RunCoordinator;
     private _cachedData: DashboardData | null = null;
+    private _gate?: OperationGate;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -170,7 +172,12 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._log.info(`Sending data to Webview — nodes: ${JSON.stringify(nodeTypeCounts)}, milestones: ${result.milestones.length}`);
 
         this._cachedData = result;
-        send({ type: 'init', data: result });
+        // FEAT-041 T3 (R3): owner, native path and operation availability per resource,
+        // computed by the same decision the host applies at dispatch.
+        await this._gate?.refreshRunners();
+        const gate = this._gate;
+        const ownership = gate ? Object.fromEntries(result.graph.nodes.map(node => [node.id, gate.describe(node)])) : {};
+        send({ type: 'init', data: result, ownership });
     }
 
     /** Refresh the active dashboard surfaces and their shared graph. */
@@ -194,6 +201,19 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._whiteboardCoordinator.setScheduleScan(scheduleScan);
         this._sddCoordinator.setScheduleScan(scheduleScan);
         this._optimizerCoordinator.setScheduleScan(scheduleScan);
+    }
+
+    /** FEAT-041 T3 (R4): the host decision for every mutating message and command. */
+    public setOperationGate(gate: OperationGate): void {
+        this._gate = gate;
+        const recheck = (msg: { type: string; [key: string]: unknown }) => gate.authorizeMessage(msg)
+            .then(result => result?.decision ?? { ok: true as const, mode: 'persist' as const, owners: [] });
+        this._whiteboardCoordinator.setAuthorize(recheck);
+        this._optimizerCoordinator.setAuthorize(recheck);
+    }
+
+    public get operationGate(): OperationGate | undefined {
+        return this._gate;
     }
 
     // FEAT-033: inject RunCoordinator (setter pattern matching other coordinators)
@@ -249,6 +269,19 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                     }
                     break;
                 default: {
+                    // FEAT-041 T3 (R4): decide before any effect. The mode is host-owned:
+                    // a client-supplied value is discarded, never trusted.
+                    delete (data as Record<string, unknown>).operationMode;
+                    const gated = await this._gate?.authorizeMessage(data);
+                    if (gated && !gated.decision.ok) {
+                        this._log.warn(`[Operations] Denied ${gated.request.op} for ${data.type}: ${gated.decision.reason}`);
+                        postMessage({ type: 'operationDenied', requestType: data.type, operation: gated.request.op, reason: gated.decision.reason });
+                        void vscode.window.showWarningMessage(`Harness Dashboard: ${gated.decision.reason}`);
+                        break;
+                    }
+                    if (gated?.decision.ok && gated.decision.mode === 'view-local') {
+                        (data as Record<string, unknown>).operationMode = 'view-local';
+                    }
                     const handled =
                         await this._whiteboardCoordinator.handle(data, postMessage, sendData) ||
                         await this._sddCoordinator.handle(data, postMessage, sendData) ||

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { HarnessEdge, HarnessNode, Milestone, ParserError, ParserResult } from '../types.js';
 import type { HarnessConfig } from '../config/harnessConfig.js';
 import type { HarnessCapabilities } from './capabilities.js';
+import type { OperationId } from '../operations/operations.js';
 
 export interface IAgentAdapter {
     id(): string;
@@ -11,6 +12,9 @@ export interface IAgentAdapter {
 
     /** FEAT-041: declared operation coverage. Absent on built-ins until T3 publishes their table. */
     capabilities?(): HarnessCapabilities;
+
+    /** FEAT-041 T3: implemented operations; absent → BUILTIN_OPERATIONS for built-ins, none otherwise. */
+    operations?(): readonly OperationId[];
     watchGlobs(): string[];
 
     /**

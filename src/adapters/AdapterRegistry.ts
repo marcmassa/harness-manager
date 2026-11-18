@@ -4,6 +4,8 @@ import { attributeSources, type ProviderResult } from './sourceGraph.js';
 import { mergeResults, IAgentAdapter } from './IAgentAdapter.js';
 import { validateProfiles } from './profileV1.js';
 import { ProfileAdapter, type RealPathResolver } from './ProfileAdapter.js';
+import { BUILTIN_CAPABILITIES, DISCOVERY_ONLY, type HarnessCapabilities } from './capabilities.js';
+import { BUILTIN_OPERATIONS, type OperationId } from '../operations/operations.js';
 
 interface WarnLogger {
     warn(message: string): void;
@@ -32,6 +34,27 @@ export class AdapterRegistry {
 
     public getAdapters(): IAgentAdapter[] {
         return [...this.adapters, ...this.companions, ...this.profiles];
+    }
+
+    private find(providerId: string): IAgentAdapter | undefined {
+        return this.getAdapters().find(adapter => adapter.id() === providerId);
+    }
+
+    public providerLabel(providerId: string): string {
+        return this.find(providerId)?.label() ?? providerId;
+    }
+
+    /** Declared coverage; a provider that declares nothing is discovery-only. */
+    public providerCapabilities(providerId: string): HarnessCapabilities {
+        const adapter = this.find(providerId);
+        return adapter?.capabilities?.() ?? BUILTIN_CAPABILITIES[providerId] ?? { ...DISCOVERY_ONLY };
+    }
+
+    /** Implemented operations. A successful read never implies a write. */
+    public providerOperations(providerId: string): ReadonlySet<OperationId> {
+        const adapter = this.find(providerId);
+        if (!adapter) return new Set();
+        return new Set(adapter.operations?.() ?? BUILTIN_OPERATIONS[providerId] ?? []);
     }
 
     public onDidChange(listener: () => void): Disposable {

@@ -5,6 +5,10 @@ import type { MarkdownFileContent, WebviewMessage } from '../types.js';
 import { openFileInEditor } from '../fileUtils.js';
 import { generateText } from '../lmUtils.js';
 import { ARCHITECTURE_TEMPLATES } from '../whiteboard/architectureTemplates.js';
+import type { Decision } from '../operations/operations.js';
+
+/** FEAT-041 T3: re-run the host decision after a modal confirmation (R4). */
+export type AuthorizeFn = (msg: { type: string; [key: string]: unknown }) => Promise<Decision>;
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
@@ -31,6 +35,12 @@ export class WhiteboardCoordinator {
 
     setScheduleScan(fn: () => void): void {
         this._scheduleScan = fn;
+    }
+
+    private _authorize?: AuthorizeFn;
+
+    setAuthorize(fn: AuthorizeFn): void {
+        this._authorize = fn;
     }
 
     async handle(
@@ -95,6 +105,9 @@ export class WhiteboardCoordinator {
                 if (edgeLabel !== 'uses') {
                     // Non-uses edges (manages/governs/triggers) are stored in workspaceState
                     await this._upsertCustomEdge(msg.source as string, msg.target as string, edgeLabel);
+                } else if (msg.operationMode === 'view-local') {
+                    // FEAT-041: an owner that cannot persist the link keeps it as view data.
+                    await this._upsertCustomUsesEdge(msg.source as string, msg.target as string);
                 } else {
                     try {
                         await this._writer.createEdge(msg.source as string, msg.target as string);
@@ -112,7 +125,7 @@ export class WhiteboardCoordinator {
             }
 
             case 'deleteEdge':
-                await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
+                await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses', msg.operationMode === 'view-local');
                 await sendData(postMessage);
                 this._scheduleScan?.();
                 return true;
@@ -124,7 +137,15 @@ export class WhiteboardCoordinator {
                     'Yes, Delete'
                 );
                 if (result === 'Yes, Delete') {
-                    await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
+                    // Ownership may have changed while the modal was open.
+                    const again = await this._authorize?.(msg);
+                    if (again && !again.ok) {
+                        postMessage({ type: 'operationDenied', requestType: msg.type, reason: again.reason });
+                        void vscode.window.showWarningMessage(`Harness Dashboard: ${again.reason}`);
+                        return true;
+                    }
+                    const viewLocal = again ? again.mode === 'view-local' : msg.operationMode === 'view-local';
+                    await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses', viewLocal);
                     await sendData(postMessage);
                     this._scheduleScan?.();
                 }
@@ -151,7 +172,11 @@ export class WhiteboardCoordinator {
             }
 
             case 'acceptSuggestion':
-                await this._writer.acceptSuggestion(msg.subagentId as string, msg.skillId as string);
+                if (msg.operationMode === 'view-local') {
+                    await this._upsertCustomUsesEdge(msg.subagentId as string, msg.skillId as string);
+                } else {
+                    await this._writer.acceptSuggestion(msg.subagentId as string, msg.skillId as string);
+                }
                 await sendData(postMessage);
                 this._scheduleScan?.();
                 return true;
@@ -360,12 +385,16 @@ export class WhiteboardCoordinator {
         }
     }
 
-    private async _deleteEdgeWithFallback(source: string, target: string, label: string): Promise<void> {
+    private async _deleteEdgeWithFallback(source: string, target: string, label: string, viewLocal = false): Promise<void> {
         // Non-uses edges are only in workspaceState
         if (label !== 'uses') {
             await this._removeCustomEdge(source, target, label);
-            // Also attempt to delete from any writer storage (graceful fail)
-            try { await this._writer.deleteEdge(source, target, label); } catch { /* no-op */ }
+            return;
+        }
+        // FEAT-041: a view-local link never reaches the writer, so a foreign
+        // owner's delete cannot create or edit a Harness SDD manifest.
+        if (viewLocal) {
+            await this._removeCustomUsesEdge(source, target);
             return;
         }
         try {

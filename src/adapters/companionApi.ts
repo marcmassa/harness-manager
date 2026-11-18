@@ -12,6 +12,7 @@ import type { AdapterRegistry, Disposable } from './AdapterRegistry.js';
 import type { IAgentAdapter } from './IAgentAdapter.js';
 import { isHarnessCapabilities, type HarnessCapabilities } from './capabilities.js';
 import { createEmptyResult } from './adapterUtils.js';
+import { isOperationId, OPERATIONS, type OperationId } from '../operations/operations.js';
 
 export const COMPANION_API_VERSION = 1;
 
@@ -19,6 +20,8 @@ export interface CompanionAdapterV1 {
     id: string;
     label: string;
     capabilities: HarnessCapabilities;
+    /** Operations the provider implements; each must belong to a supported or partial capability. Default: none. */
+    operations?: OperationId[];
     detect(root: vscode.Uri): Promise<boolean> | boolean;
     parse(root: vscode.Uri, token?: vscode.CancellationToken): Promise<Partial<ParserResult>> | Partial<ParserResult>;
     watchGlobs(): string[];
@@ -57,10 +60,12 @@ function sanitize(providerId: string, raw: Partial<ParserResult> | undefined): P
 export function toAdapter(provider: CompanionAdapterV1): IAgentAdapter {
     const { id, label } = provider;
     const capabilities = { ...provider.capabilities };
+    const operations = [...(provider.operations ?? [])];
     return {
         id: () => id,
         label: () => label,
         capabilities: () => ({ ...capabilities }),
+        operations: () => [...operations],
         isPathConfigurable: () => false,
         setHarnessConfig: () => { /* companions read their own configuration */ },
         watchGlobs: () => {
@@ -83,6 +88,14 @@ export function validateCompanion(provider: unknown): asserts provider is Compan
     if (typeof p.id !== 'string' || !ID_RE.test(p.id)) throw new Error(`Harness Dashboard: provider id must match ${ID_RE.source}`);
     if (typeof p.label !== 'string' || !p.label.trim()) throw new Error(`Harness Dashboard: provider "${p.id}" needs a label`);
     if (!isHarnessCapabilities(p.capabilities)) throw new Error(`Harness Dashboard: provider "${p.id}" must declare all seven capability levels`);
+    if (p.operations !== undefined && !Array.isArray(p.operations)) throw new Error(`Harness Dashboard: provider "${p.id}" operations must be an array`);
+    for (const op of p.operations ?? []) {
+        if (!isOperationId(op)) throw new Error(`Harness Dashboard: provider "${p.id}" declares unknown operation ${JSON.stringify(op)}`);
+        const capability = OPERATIONS[op].capability;
+        if (!capability || p.capabilities[capability] === 'unsupported') {
+            throw new Error(`Harness Dashboard: provider "${p.id}" declares ${op} without that capability`);
+        }
+    }
     for (const fn of ['detect', 'parse', 'watchGlobs'] as const) {
         if (typeof p[fn] !== 'function') throw new Error(`Harness Dashboard: provider "${p.id}" must implement ${fn}()`);
     }
