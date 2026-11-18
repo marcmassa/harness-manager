@@ -520,7 +520,14 @@
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
-      "sprint": "0.9.0"
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "ca82b6a0fc5550bb0f0f7e537f57f335311f74d479e64c0e2fd6c959f8620c9d",
+        "task_digest": "d8ff2898954bc8a5ab9b59b3ec2135dedcadb9870e289e15ea9cb1dcf060bae2",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     },
     {
       "id": "FEAT-042",
@@ -532,7 +539,14 @@
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
-      "sprint": "0.9.0"
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "8bbfa92e1c262c9a61acdb7ae3d401af3d3c66bfeec437f134782025fd1d24b3",
+        "task_digest": "04af2b0f385dfe707fb39a58bb49ece0d4b533ad618f3257438eba079a3fe271",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     },
     {
       "id": "FEAT-043",
@@ -544,7 +558,14 @@
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
-      "sprint": "0.9.0"
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "438d1241d1ea0e2c2503de1c09ec7d361b28b379cb6865001460e6b63db23449",
+        "task_digest": "3c010c26239bd39f6af36a4ea9f4000b580d9f630164fbfa53f278a4807dd296",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     }
   ]
 }
