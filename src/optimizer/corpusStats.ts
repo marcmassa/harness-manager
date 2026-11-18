@@ -76,32 +76,38 @@ function majorityItems(groups: string[][]): string[] {
         .sort();
 }
 
+/** FEAT-043: compare like with like — the same owner's components of the same type. */
+export function cohortKey(source: Pick<ComponentSource, 'nodeType' | 'source'>): string {
+    const owner = source.source?.providerId;
+    return owner ? `${owner}::${source.nodeType}` : source.nodeType;
+}
+
 export function computeCorpusStats(sources: readonly ComponentSource[]): CorpusStats {
-    const tokensByType = new Map<OptimizableType, number[]>();
-    const fmKeysByType = new Map<OptimizableType, string[][]>();
-    const headingsByType = new Map<OptimizableType, string[][]>();
+    const tokensByType = new Map<string, number[]>();
+    const fmKeysByType = new Map<string, string[][]>();
+    const headingsByType = new Map<string, string[][]>();
 
     for (const s of sources) {
         if (!s.exists) continue;
-        const t = s.nodeType;
+        const t = cohortKey(s);
         (tokensByType.get(t) ?? tokensByType.set(t, []).get(t)!).push(s.tokenEstimate);
         (fmKeysByType.get(t) ?? fmKeysByType.set(t, []).get(t)!).push(Object.keys(s.frontmatter));
         (headingsByType.get(t) ?? headingsByType.set(t, []).get(t)!).push(headingsOf(s.body));
     }
 
-    const medianTokensByType = new Map<OptimizableType, number>();
-    const sampleSizeByType = new Map<OptimizableType, number>();
+    const medianTokensByType = new Map<string, number>();
+    const sampleSizeByType = new Map<string, number>();
     for (const [type, values] of tokensByType) {
         medianTokensByType.set(type, median(values));
         sampleSizeByType.set(type, values.length);
     }
 
-    const commonFrontmatterKeysByType = new Map<OptimizableType, string[]>();
+    const commonFrontmatterKeysByType = new Map<string, string[]>();
     for (const [type, groups] of fmKeysByType) {
         commonFrontmatterKeysByType.set(type, majorityItems(groups));
     }
 
-    const commonHeadingsByType = new Map<OptimizableType, string[]>();
+    const commonHeadingsByType = new Map<string, string[]>();
     for (const [type, groups] of headingsByType) {
         commonHeadingsByType.set(type, majorityItems(groups));
     }
@@ -132,7 +138,8 @@ export interface ResolvedBudget {
  * small workspaces still get a signal.
  */
 export function resolveBudget(
-    nodeType: OptimizableType,
+    /** A cohort key (`cohortKey`) or, for callers without an owner, a node type. */
+    nodeType: string,
     absoluteBudget: number,
     corpus: CorpusStats,
     multiple: number,

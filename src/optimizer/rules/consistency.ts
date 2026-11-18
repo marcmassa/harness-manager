@@ -17,7 +17,7 @@
 // majority to mean anything.
 
 import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { headingsOf } from '../corpusStats.js';
+import { headingsOf, cohortKey } from '../corpusStats.js';
 
 function finding(
     ruleId: string,
@@ -48,7 +48,7 @@ export const optC01: OptimizerRule = {
         const { source, corpus } = ctx;
         if (!source.exists) return [];
 
-        const common = corpus.commonFrontmatterKeysByType.get(source.nodeType) ?? [];
+        const common = corpus.commonFrontmatterKeysByType.get(cohortKey(source)) ?? [];
         if (common.length === 0) return [];
 
         const own = new Set(Object.keys(source.frontmatter));
@@ -86,7 +86,7 @@ export const optC02: OptimizerRule = {
         const { source, corpus } = ctx;
         if (!source.exists || !source.body) return [];
 
-        const common = corpus.commonHeadingsByType.get(source.nodeType) ?? [];
+        const common = corpus.commonHeadingsByType.get(cohortKey(source)) ?? [];
         if (common.length === 0) return [];
 
         const own = new Set(headingsOf(source.body));

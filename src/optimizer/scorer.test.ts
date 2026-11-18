@@ -109,8 +109,9 @@ describe('tierFor (R11) — all eight boundaries', () => {
 });
 
 describe('rollup (R12)', () => {
-    it('returns 0 for an empty component list', () => {
-        expect(rollup([])).toBe(0);
+    // FEAT-043 R3: nothing scored is "unscored", not a 0 that reads as a failing grade.
+    it('returns null for an empty component list', () => {
+        expect(rollup([])).toBeNull();
     });
 
     it('returns the rounded arithmetic mean of component scores', () => {

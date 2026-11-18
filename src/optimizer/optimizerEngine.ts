@@ -16,6 +16,7 @@ import { activeRules } from './rules/index.js';
 import { scoreComponent, rollup, applySeverityCeiling, DIMENSIONS as ALL_DIMENSIONS } from './scorer.js';
 import { computeCorpusStats } from './corpusStats.js';
 import type {
+    ComponentCoverage,
     ComponentSource,
     OptimizerConfig,
     OptimizerDimension,
@@ -93,11 +94,19 @@ export function scan(
         const corpus = computeCorpusStats(analyzedList);
 
         const rawFindings: OptimizerFinding[] = [];
+        const coverageByNode = new Map<string, ComponentCoverage>();
         for (const source of analyzedList) {
+            const coverage: ComponentCoverage = { evaluated: [], skipped: [] };
+            coverageByNode.set(source.nodeId, coverage);
             for (const rule of rules) {
                 if (!rule.appliesTo.includes(source.nodeType)) continue;
                 // FEAT-043 R1: convention rules run only where the owner's format documents them.
-                if (!applicability(rule.id, source).applies) continue;
+                const fit = applicability(rule.id, source);
+                if (!fit.applies) {
+                    coverage.skipped.push({ ruleId: rule.id, reason: fit.reason ?? 'not applicable' });
+                    continue;
+                }
+                if (!coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
 
                 const ctx: RuleContext = {
                     source,
@@ -151,9 +160,10 @@ export function scan(
         }
 
         const components = analyzedList.map(source =>
-            scoreComponent(source, findingsByNode.get(source.nodeId) ?? []),
+            scoreComponent(source, findingsByNode.get(source.nodeId) ?? [], coverageByNode.get(source.nodeId)),
         );
         const architectureScore = rollup(components);
+        const scoredComponents = components.filter(c => c.score !== null).length;
 
         const bySeverity: Record<OptimizerSeverity, number> = { error: 0, warning: 0, info: 0 };
         // Derived from ALL_DIMENSIONS, not written out: the hand-maintained
@@ -171,6 +181,7 @@ export function scan(
             ok: true,
             scanTimestamp,
             architectureScore,
+            scoredComponents,
             totalComponents,
             truncated,
             components,
