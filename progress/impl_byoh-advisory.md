@@ -91,3 +91,37 @@ The Advisory panel's adoption button reads "Adopt Harness SDD (optional)" and is
 | R6 | byohAdvisoryActions.test.ts: action mapping; native scaffold allowed, foreign refused; entry point re-creation refused; untrusted refused; the audit stays available in every harness. Stale actions keep failing with "Action not found" because the action is resolved from the current profile. The Extension Host check is T4. |
 
 Verified: 886 unit tests.
+
+## T4 — Extension Host
+
+`src/test/integration/advisoryMatrix.ts` builds four roots (Claude-only, custom profile, mixed Harness SDD + Claude, SDD-only). Each root runs through the production detector, the shared registry, the Dashboard provider's dispatch path and the operation gate.
+
+Observed on VS Code 1.147.0:
+
+| Root | Level | Evidence owners | Findings | Offered actions |
+|---|---|---|---|---|
+| Claude-only | L1 | `claude-code` | `adopt-sdd` (governed lifecycle, workspace-wide), `use-skill-files`, `structure-scattered-files` | none |
+| Custom profile | L1 | `team-guides` | `adopt-sdd`, `structure-scattered-files` | none |
+| Mixed | L1 | `claude-code`, `harness-sdd` | `adopt-sdd`, `use-skill-files`, `structure-scattered-files` | `scaffold-skill` |
+| SDD-only | L1 | `harness-sdd` | `adopt-sdd`, `use-skill-files`, `structure-scattered-files` | `scaffold-skill` |
+
+For comparison, the 0.8.2 baseline in `docs/byoh/v0.9.0.md` returned `cli-without-impl`, `adopt-sdd`, `add-claude-md` and `use-skill-files` for the same Claude fixture.
+
+The suite also asserts:
+- every finding carries a scope, and the native evidence comes from the expected owners;
+- no Harness SDD scaffold is offered in the Claude root, and a direct scaffold message there is refused;
+- `applyHarnessSDD` in the mixed root is refused because Harness SDD is already set up;
+- file contents are unchanged after scanning and after every denied action;
+- in the SDD-only root, the offered skill scaffold runs through the dispatch path and creates `.agents/skills/<name>/SKILL.md` (positive control).
+
+| Requirement | T4 evidence |
+|---|---|
+| R1 | Claude root: Claude Code evidence, no missing-instruction findings. |
+| R2 | Every finding has a scope. |
+| R3 | The same level is reached for equivalent Claude and Harness SDD roots (both L1 with instructions and roles only). |
+| R4 | Covered by unit and render tests; the profile carries `unavailableInputs`. |
+| R5 | Offered actions follow the present harness. |
+| R6 | Refused forged or foreign action, refused re-adoption, allowed native scaffold. |
+| R7 | Covered by the unit rescan test. |
+
+Verified: 886 unit tests; seven Extension Host runs; build; 35 project checks.
