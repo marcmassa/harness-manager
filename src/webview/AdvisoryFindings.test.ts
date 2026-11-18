@@ -48,3 +48,12 @@ describe('Maturity inputs (R4)', () => {
         expect(html).toContain('Skills: no file or provider evidence found');
     });
 });
+
+describe('Harness SDD adoption button (R5)', () => {
+    it('is offered as optional and hidden once Harness SDD is present', () => {
+        const profile = makeProfile();
+        expect(render(profile)).toContain('Adopt Harness SDD (optional)');
+        profile.sources = [{ workspaceUri: 'w', providerId: 'harness-sdd', nativeId: 'harness' }];
+        expect(render(profile)).not.toContain('Adopt Harness SDD');
+    });
+});

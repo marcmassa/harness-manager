@@ -65,3 +65,29 @@ The Advisory panel names the provider (or "Workspace-wide"), the supporting file
 | R7 | byohAdvisory.test.ts: a legacy dismissal applies only when unambiguous; dismissing one owner leaves the other actionable; a removed source drops its finding; an owner-qualified dismissal survives two rescans. |
 
 Verified: 878 unit tests, build.
+
+## T3 — Advisory actions and legacy scaffolds through the owner decision
+
+`requestForAction` (src/operations/operations.ts) maps each resolved Advisory action to the decision it needs:
+
+| Action | Decision |
+|---|---|
+| `open-file` | a read; no decision |
+| `create-file`, `create-directory` | adoption; refused when the file is the entry point of a provider that is already present (`CLAUDE.md`, `GEMINI.md`, `.agents/**`) |
+| `scaffold-agent`, `scaffold-skill` | they write `.agents/**`, so they need a provider that creates entities (Harness SDD); in a workspace with no harness they are an explicit adoption; inside another provider's harness they are refused |
+| `run-command` | the new `workspace.command` operation, which needs trust |
+
+The same adoption rule now covers architecture templates, which write through the Harness SDD writer.
+
+Two places apply these rules:
+- `AdvisoryCoordinator` resolves the action from the current host profile, as before, then asks the gate before executing.
+- `generate()` stops offering actions the present harness does not support (R5), so a Claude-only workspace no longer shows "Create my-first-skill" under `.agents/skills`.
+
+The Advisory panel's adoption button reads "Adopt Harness SDD (optional)" and is hidden once Harness SDD is present. The npm audit (`workspace.audit`) stays independent of harness ownership and needs only trust.
+
+| Requirement | Verification |
+|---|---|
+| R5 | byohAdvisoryActions.test.ts: no SDD scaffold offered in a Claude harness; offered in a Harness SDD harness and in an empty workspace; a provider entry point is offered only while that provider is absent. AdvisoryFindings.test.ts: the adoption button is optional and hidden once Harness SDD is present. |
+| R6 | byohAdvisoryActions.test.ts: action mapping; native scaffold allowed, foreign refused; entry point re-creation refused; untrusted refused; the audit stays available in every harness. Stale actions keep failing with "Action not found" because the action is resolved from the current profile. The Extension Host check is T4. |
+
+Verified: 886 unit tests.

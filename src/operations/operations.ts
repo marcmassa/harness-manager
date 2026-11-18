@@ -9,7 +9,7 @@ export type OperationId =
     | 'editing.linkSkill' | 'editing.unlinkSkill' | 'editing.relabelEdge'
     | 'editing.lifecycle' | 'editing.reviewedTextEdit'
     | 'agentRuns.launch' | 'agentRuns.delegate'
-    | 'adoption.scaffold' | 'workspace.audit' | 'view.localRelation';
+    | 'adoption.scaffold' | 'workspace.audit' | 'workspace.command' | 'view.localRelation';
 
 interface OperationInfo {
     label: string;
@@ -34,6 +34,7 @@ export const OPERATIONS: Readonly<Record<OperationId, OperationInfo>> = {
     'agentRuns.delegate': { label: 'Delegate to an agent CLI', needsTrust: true },
     'adoption.scaffold': { label: 'Scaffold a harness', needsTrust: true },
     'workspace.audit': { label: 'Run npm audit', needsTrust: true },
+    'workspace.command': { label: 'Run a command in a terminal', needsTrust: true },
     'view.localRelation': { label: 'Edit view-only relationships', needsTrust: false },
 };
 
@@ -83,6 +84,12 @@ export interface Prerequisites {
     runnerAvailable?: boolean;
     /** Adoption: the provider format this operation would create. */
     format?: string;
+    /**
+     * FEAT-042: with no owner of the operation, an explicit adoption of this
+     * format is allowed in a workspace that has no harness yet, never inside
+     * another provider's harness.
+     */
+    adoptFormat?: string;
 }
 
 export type Decision =
@@ -106,6 +113,10 @@ export function decide(op: OperationId, targets: readonly string[] | 'workspace'
         }
         if (!info.capability) return { ok: true, mode: 'persist', owners: [] };
         const able = ctx.detected.filter(id => ctx.providerOperations(id).has(op));
+        if (able.length === 0 && pre.adoptFormat) {
+            if (ctx.detected.length === 0) return { ok: true, mode: 'persist', owners: [] };
+            return deny(`This would add ${ctx.providerLabel(pre.adoptFormat)} files to a ${ctx.detected.map(ctx.providerLabel).join(', ')} harness. Adopt ${ctx.providerLabel(pre.adoptFormat)} explicitly first.`);
+        }
         if (able.length === 0) return deny(`No detected provider supports "${info.label}".`);
         if (able.length > 1) return deny(`More than one provider could own "${info.label}" (${able.map(ctx.providerLabel).join(', ')}).`);
         return { ok: true, mode: 'persist', owners: able };
@@ -154,6 +165,7 @@ export interface OperationRequest {
     targets: string[] | 'workspace';
     runnerId?: string;
     format?: string;
+    adoptFormat?: string;
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '');
@@ -202,11 +214,44 @@ export function operationForMessage(msg: { type: string; [key: string]: unknown 
         }
         case 'applyHarnessSDD':
             return { op: 'adoption.scaffold', targets: 'workspace', format: 'harness-sdd' };
-        case 'applyArchitectureTemplate': case 'executeAdvisoryAction':
+        case 'applyArchitectureTemplate':
+            // Templates write Harness SDD entities through the SDD writer.
+            return { op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' };
+        case 'executeAdvisoryAction':
+            // First line only: the coordinator decides the resolved action (requestForAction).
             return { op: 'adoption.scaffold', targets: 'workspace' };
         case 'runSupplyChainAudit':
             return { op: 'workspace.audit', targets: 'workspace' };
         default:
             return null;
+    }
+}
+
+/** Provider format a scaffolded file belongs to, when it is one provider's entry point. */
+export function formatOfPath(relPath: string): string | undefined {
+    const path = relPath.replace(/\\/g, '/');
+    if (path === 'CLAUDE.md' || path.startsWith('.claude/')) return 'claude-code';
+    if (path === 'GEMINI.md' || path.startsWith('.gemini/')) return 'gemini-cli';
+    if (path.startsWith('.agents/')) return 'harness-sdd';
+    return undefined;
+}
+
+/**
+ * FEAT-042 R6: the decision an Advisory action needs, resolved from the
+ * action itself (never from the message). `null`: a read (open a file).
+ */
+export function requestForAction(action: { type: string; payload: Record<string, string> }): OperationRequest | null {
+    switch (action.type) {
+        case 'open-file':
+            return null;
+        case 'create-directory': case 'create-file':
+            return { op: 'adoption.scaffold', targets: 'workspace', format: formatOfPath(action.payload.relPath ?? '') };
+        case 'scaffold-agent': case 'scaffold-skill':
+            // Writes `.agents/**`: a Harness SDD entity, or an explicit adoption in an empty workspace.
+            return { op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' };
+        case 'run-command':
+            return { op: 'workspace.command', targets: 'workspace' };
+        default:
+            return { op: 'adoption.scaffold', targets: 'workspace' };
     }
 }
