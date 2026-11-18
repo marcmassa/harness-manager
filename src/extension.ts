@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
     ]);
 
     // T1 (R1, R4): pass context so provider can access workspaceState
-    const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log, harnessConfig);
+    const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log);
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(

@@ -23,3 +23,8 @@
 - Removed the installed extension's verifier, command and settings. Kept both contributor hooks and read-only graph discovery.
 - Verified all nine rules and clean controls, native hook attribution, and a real macOS save with both legacy options enabled.
 - Build, 817 unit tests, both host runs, VSIX (371,609 bytes), and 35 project checks passed. Handoff for independent review.
+
+## 2026-11-18 — BYOH code and security review
+- Restricted host dispatch to the two documented toolbar actions, shared webview setup, and removed unused provider state and duplicate types.
+- Confirmed the contributor hooks remain isolated on save. Both macOS Extension Host suites, 820 unit tests, build and VSIX gates passed (371,622 bytes). Full and production npm audits returned zero findings.
+- The standalone TypeScript check reports the same 218 diagnostics before and after these changes. Independent feature closure review remains pending.
