@@ -470,6 +470,37 @@
       "priority": "P1",
       "agent": "typescript-implementer",
       "sprint": "0.8.1"
+    },
+    {
+      "id": "FEAT-039",
+      "name": "byoh-product-architecture",
+      "title": "Bring Your Own Harness — product architecture migration",
+      "description": "Reorient Harness Dashboard around the harness each user already has. Define shared-core versus adapter-specific capabilities, audit all current features against BYOH, update DESIGN.md and classify each feature as shared, adapter-specific, optional integration, or repository development tooling. Keep KISS/DRY hooks for this repository's development only. Produce approved follow-up specs before changing affected runtime features; then build the capability model, custom adapter path, and support reporting in staged work.",
+      "type": "feat",
+      "status": "in_progress",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "spec-author-vscode",
+      "sprint": "Next",
+      "spec_approval": {
+        "spec_digest": "5f60b254209a9f88f946b596cad11a72d7616c8be31b289cc0f000bade53dd38",
+        "task_digest": "90010a2635a65a11c82149ba03ab548d7aeff3a07d6d7f49cec529b04cfe4170",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18, reply to FEAT-039 spec_ready: continúa las tareas para orientar harness-manager a una estrategia de Bring Your Own Harness",
+        "assurance": "declared-unmanaged-no-roles"
+      }
+    },
+    {
+      "id": "FEAT-040",
+      "name": "repository-quality-hooks",
+      "title": "Repository development hooks — BYOH revision of FEAT-027",
+      "description": "Keep KISS and DRY as contributor checks and retire their activation in the shipped extension.",
+      "type": "chore",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "Next"
     }
   ]
 }

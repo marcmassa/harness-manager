@@ -36,12 +36,12 @@ extension. This is intentional "dogfooding".
 
 ## 2. Architectural Principles
 
-1. **CLI-agnostic by construction** — every project capability
-   (subagents, skills, commands) is declared once in
-   `.agents/agentic.json` and rendered to each supported CLI's native
-   format (`opencode.json`, `CLAUDE.md`, `GEMINI.md`, `.claude/`,
-   `.gemini/`) by a deterministic Python renderer. Adding a new CLI
-   means adding a new adapter template, not editing the source of truth.
+1. **Bring Your Own Harness (BYOH)** — users keep their native harness files.
+   Shared views consume the normalized graph. Each adapter owns discovery and
+   declares which actions it can perform on its sources. Scans are read-only.
+   Scope actions to the selected resource and provider, including in mixed
+   workspaces. See the [capability contract](docs/byoh/adapter-capabilities.md)
+   and [feature migration inventory](docs/byoh/feature-compatibility-matrix.md).
 
 2. **SDD-first, no code without a spec** — every non-trivial change
    is shaped into a `specs/<feature>/{requirements,design,tasks}.md`
@@ -71,10 +71,9 @@ extension. This is intentional "dogfooding".
     at package time and in CI (FEAT-038); the gate also flags ≥80%
     utilization for non-blocking review. Privacy respected throughout.
 
-5. **Single source of truth** — the runtime graph model is built
-   from `agentic.json` (canonical) and the on-disk Markdown
-   (`SUBAGENT.md`, `SKILL.md`). The graph is **derived state**; it is
-   never the source of truth.
+5. **Source ownership** — each harness owns its native representation. The
+   graph is derived state. Harness SDD uses its manifest and Markdown files.
+   A Dashboard profile describes how to read a workspace's existing layout.
 
 6. **Testable, by construction** — every requirement R<n> maps to at
    least one test; every task T<n> references the R<n> it covers.
@@ -105,7 +104,7 @@ extension. This is intentional "dogfooding".
               │ FileSystemWatcher              │ postMessage
               ▼                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     Workspace Filesystem                            │
+│                     Example workspace running Harness SDD           │
 │                                                                     │
 │  .agents/                                                          │
 │    agentic.json       ← canonical manifest (single source of truth)│
@@ -159,13 +158,14 @@ A typical session:
 
 2. Webview sends 'ready' / 'getData' message
    └─▶ Extension Host invokes HarnessParser on workspace root
-       └─▶ AdapterRegistry.runAll() iterates all 7 adapters
+       └─▶ AdapterRegistry.runAll() iterates registered adapters
            ├─▶ HarnessSddAdapter.parse()        → ParserResult
            ├─▶ ClaudeCodeAdapter.parse()        → ParserResult (if CLAUDE.md)
            ├─▶ GeminiCliAdapter.parse()         → ParserResult (if GEMINI.md)
            ├─▶ CursorAdapter.parse()            → ParserResult (if .cursor/)
            ├─▶ CopilotAdapter.parse()           → ParserResult (if .github/copilot-instructions.md)
            ├─▶ OpenCodeAdapter.parse()          → ParserResult (if opencode.json)
+           ├─▶ KiroAdapter.parse()              → ParserResult (if .kiro/)
            └─▶ WindsurfAdapter.parse()          → ParserResult (if .windsurf/) [DEPRECATED, see ADR-003]
        └─▶ mergeResults() deduplicates nodes/edges/milestones
        └─▶ enrichWithIdoneity() computes semantic ownership

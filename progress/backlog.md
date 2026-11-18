@@ -19,7 +19,7 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
-- [ ] **Correct and verify save blocking** — the code-quality save listener calls `waitUntil` after awaiting hook execution and supplies an empty edit list; the claimed cancellation is not established. See [spec audit findings](spec-review/README.md#findings-that-need-action).
+- [ ] **Verify retirement of the legacy save verifier under FEAT-040** — the historical review found that FEAT-027 did not establish save cancellation. FEAT-040 covers isolation on save, including workspaces with legacy settings. Track its independent review before closing this item. [Historical evidence](spec-review/code-quality-on-save-hooks.md).
 
 - [ ] **Close acceptance-evidence gaps** — writer persistence and webview click flows need tests that exercise the actual paths; canvas overlap prevention needs verification after layout. Restore missing skill-toggle traceability and collect the outstanding manual, CI cancellation and detector benchmark evidence. [Full task-by-task inventory](spec-review/README.md).
 
