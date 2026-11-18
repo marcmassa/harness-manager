@@ -1,3 +1,4 @@
+import { evidenceFromGraph } from './evidence.js';
 import * as vscode from 'vscode';
 
 import { EventEmitter } from './detectorEvents.js';
@@ -138,6 +139,7 @@ export class AgenticDetector extends EventEmitter {
       // discovered nodes stay in Layer 2.
       const native = await this._registry.parse(this._workspaceRoot);
       const sources = native.graph.nodes.flatMap(node => node.source ? [node.source] : []);
+      const evidence = evidenceFromGraph(native.graph.nodes);
       const claimedFiles = new Set(native.graph.nodes.flatMap(node => {
         const uri = resolveSourceUri(this._workspaceRoot, node.metadata._filePath);
         return uri ? [uri.fsPath.replace(/\\/g, '/')] : [];
@@ -218,6 +220,7 @@ export class AgenticDetector extends EventEmitter {
         acknowledgedNodeIds: [],
         graphContext,
         sources,
+        evidence,
         supplyChain,
       };
 
