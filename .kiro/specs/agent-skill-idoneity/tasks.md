@@ -27,6 +27,6 @@
 ## Closure
 
 - [ ] **T17** — Document traceability `R<n> ↔ test` in `progress/impl_agent-skill-idoneity.md`
-- [ ] **T18** — Run `./check.sh` and verify all tests pass
-- [ ] **T19** — Update `feature_list.json`: set `status` to `"done"`
+- [x] **T18** — Run `./check.sh` and verify all tests pass
+- [x] **T19** — Update `feature_list.json`: set `status` to `"done"`
 - [ ] **T20** — Log summary in `progress/progress.md`

@@ -12,10 +12,10 @@
 
 ## Tests
 
-- [ ] **T4** — Build and verify: `npm run build` must complete without errors. _(R1–R5)_
+- [x] **T4** — Build and verify: `npm run build` must complete without errors. _(R1–R5)_
 
 ## Closure
 
 - [ ] **T5** — Run `./check.sh` — all 96 tests green.
-- [ ] **T6** — Update `feature_list.json`: set `status` to `"done"` for FEAT-014.
+- [x] **T6** — Update `feature_list.json`: set `status` to `"done"` for FEAT-014.
 - [ ] **T7** — Log summary in `progress/current.md`.

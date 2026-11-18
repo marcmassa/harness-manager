@@ -195,9 +195,9 @@
 
 ## Closure
 
-- [ ] **T26** — Run `./check.sh` one final time and confirm
+- [x] **T26** — Run `./check.sh` one final time and confirm
   zero failures.
-- [ ] **T27** — Update `feature_list.json`: set FEAT-023
+- [x] **T27** — Update `feature_list.json`: set FEAT-023
   `status` to `"done"`.
 - [ ] **T28** — Append a summary in `progress/progress.md`
   following the format of prior entries (FEAT-001
