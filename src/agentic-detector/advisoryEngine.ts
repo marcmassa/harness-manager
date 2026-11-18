@@ -4,6 +4,7 @@ import { SC_RULES, expandStaleOverrideRules } from './supplyChainRules.js';
 import type { SuggestionRule } from './ruleHelpers.js';
 import { CORE_RULES } from './advisoryRules.js';
 import { METHODOLOGY_RULES } from './methodologyRules.js';
+import { classifyRule } from './ruleScopes.js';
 
 export type { SuggestionRule } from './ruleHelpers.js';
 
@@ -34,8 +35,37 @@ function byPriority(a: Suggestion, b: Suggestion): number {
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
+type Instance = { id: string; scope: NonNullable<Suggestion['scope']> };
+
+/** The owner-qualified instances of one rule (R2, R7). */
+function instancesOf(ruleId: string, profile: AgenticProfile): Instance[] {
+  const c = classifyRule(ruleId);
+  const provider = (providerId: string): Instance => ({ id: `${ruleId}@${providerId}`, scope: { kind: 'provider', providerId } });
+  if (c.scope.kind === 'provider') return [provider(c.scope.providerId)];
+  if (c.perOwner) {
+    const { owners, workspace } = c.perOwner(profile);
+    const all = owners.map(provider);
+    if (workspace || all.length === 0) all.unshift({ id: ruleId, scope: { kind: 'workspace' } });
+    return all;
+  }
+  return [{ id: ruleId, scope: { kind: 'workspace' } }];
+}
+
+/** Provider resources behind a finding: its owner's, or every provider's in its category. */
+function evidenceFor(profile: AgenticProfile, base: Omit<Suggestion, 'id'>, scope: Instance['scope']) {
+  return (profile.evidence ?? [])
+    .filter(e => (scope.kind === 'provider' ? e.providerId === scope.providerId : true) && e.category === base.category)
+    .slice(0, 5)
+    .map(({ providerId, nodeId, sourceUri }) => ({ providerId, nodeId, sourceUri }));
+}
+
 /**
- * Generate improvement suggestions for an AgenticProfile.
+ * Generate maturity-gated, owner-qualified suggestions.
+ *
+ * A workspace-wide finding keeps its rule ID; a provider's finding is
+ * `<ruleId>@<providerId>`. A dismissal stored under a bare rule ID (before
+ * FEAT-042) still hides the finding when exactly one instance exists, and
+ * never when two owners have the same rule.
  *
  * @param profile       The scanned agentic profile
  * @param dismissedIds  Set of suggestion IDs that the user has dismissed (optional)
@@ -55,12 +85,18 @@ export function generate(
   const allRules: SuggestionRule[] = [...RULES, ...SC_RULES, ...expandStaleOverrideRules(profile)];
 
   for (const rule of allRules) {
-    if (dismissed.has(rule.id)) continue;
-
     try {
-      if (rule.condition(profile)) {
+      if (!rule.condition(profile)) continue;
+      const instances = instancesOf(rule.id, profile);
+      const legacyDismissed = dismissed.has(rule.id) && instances.length === 1;
+      for (const { id, scope } of instances) {
+        if (dismissed.has(id) || legacyDismissed) continue;
         const base = rule.build(profile);
-        suggestions.push({ id: rule.id, ...base });
+        suggestions.push({
+          id, ...base, ruleId: rule.id, scope,
+          evidence: evidenceFor(profile, base, scope),
+          reason: classifyRule(rule.id).evidence,
+        });
       }
     } catch {
       // If a rule errors, skip it gracefully

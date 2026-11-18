@@ -42,3 +42,26 @@ To stay under the 20,000-byte staged-file limit:
 - `advisoryEngine.test.ts` is split into level and behaviour suites.
 
 Verified: 870 unit tests.
+
+## T2 — Source-scoped findings
+
+`generate()` turns each matching rule into owner-qualified instances (`advisoryEngine.ts`):
+- A workspace-wide finding keeps the rule ID.
+- A provider's finding is `<ruleId>@<providerId>`.
+- A rule classified `perOwner` (today `migrate-to-steering`) yields one finding per owning provider, plus a workspace one for unclaimed files.
+
+Every suggestion carries `ruleId`, `scope`, `evidence` (up to five attributed sources in its category) and `reason` (the inputs the rule evaluated).
+
+A dismissal stored under a bare rule ID before FEAT-042 still hides a finding with a single instance. It never hides one owner's finding when two owners share the rule. Dismissals keep living in the workspace state, so they are per workspace.
+
+The Advisory panel names the provider (or "Workspace-wide"), the supporting files and "Based on: …" under each suggestion title, and lists the maturity inputs that were not assessed.
+
+`AdvisoryPanel.tsx` (40 KB) was split verbatim to stay under the staged-file limit: `advisoryParts.tsx`, `SuggestionCard.tsx`, `SupplyChainSection.tsx`, `AdvisorySections.tsx`. Its pre-existing type diagnostics are unchanged.
+
+| Requirement | Verification |
+|---|---|
+| R2 | byohAdvisory.test.ts: two providers with the same rule get their own ID, scope, evidence and reason; a finding without evidence is workspace-wide. AdvisoryFindings.test.ts renders both cases. |
+| R4 | AdvisoryFindings.test.ts: the "Not assessed" list renders the unavailable inputs. |
+| R7 | byohAdvisory.test.ts: a legacy dismissal applies only when unambiguous; dismissing one owner leaves the other actionable; a removed source drops its finding; an owner-qualified dismissal survives two rescans. |
+
+Verified: 878 unit tests, build.

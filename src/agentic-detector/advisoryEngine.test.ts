@@ -10,7 +10,7 @@ function ids(suggestions: ReturnType<typeof generate>): string[] {
 }
 
 function findById(suggestions: ReturnType<typeof generate>, id: string) {
-  return suggestions.find(s => s.id === id);
+  return suggestions.find(s => s.id === id || s.ruleId === id); // FEAT-042: ids are owner-qualified
 }
 
 // ─── L0: No signals ─────────────────────────────────────────────────────────

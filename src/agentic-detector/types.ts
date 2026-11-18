@@ -157,6 +157,14 @@ export interface Suggestion {
   actionType?: 'scaffold' | 'navigate' | 'link';
   actionPayload?: string;
   actions?: SuggestionAction[];   // FEAT-032: executable action buttons
+  /** FEAT-042: the rule that produced this finding; `id` is owner-qualified. */
+  ruleId?: string;
+  /** FEAT-042 R2: whose finding this is. */
+  scope?: { kind: 'workspace' } | { kind: 'provider'; providerId: string };
+  /** FEAT-042 R2: provider resources that support the finding. */
+  evidence?: Array<{ providerId: string; nodeId: string; sourceUri?: string }>;
+  /** FEAT-042 R2: the inputs the rule evaluated. */
+  reason?: string;
 }
 
 // === GraphContext (in-memory whiteboard/SDD state passed to scan) ===
