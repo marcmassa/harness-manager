@@ -42,3 +42,7 @@
 - Restricted host dispatch to the two documented toolbar actions, shared webview setup, and removed unused provider state and duplicate types.
 - Confirmed the contributor hooks remain isolated on save. Both macOS Extension Host suites, 820 unit tests, build and VSIX gates passed (371,622 bytes). Full and production npm audits returned zero findings.
 - The standalone TypeScript check reports the same 218 diagnostics before and after these changes. Independent feature closure review remains pending.
+
+## 2026-11-18 — BYOH 0.9.0 analysis panels
+- Probed a Claude-only fixture in the macOS Extension Host. Discovery identified both native files, Advisory proposed the existing CLAUDE.md and Optimizer proposed the parent directory as the agent name.
+- Prepared FEAT-041 through FEAT-043 for human review. The debug fixture, current engine output and release acceptance are in docs/byoh/v0.9.0.md.
