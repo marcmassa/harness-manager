@@ -67,6 +67,8 @@ export interface QuickFix {
 }
 
 export interface OptimizerFinding {
+    /** FEAT-043 R4: native source and owner of the component. */
+    source?: import('../types.js').SourceIdentity;
     ruleId: string;            // OPT-<F><NN>
     nodeId: string;
     nodeType: OptimizableType;
