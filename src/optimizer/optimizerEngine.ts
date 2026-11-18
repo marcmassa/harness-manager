@@ -11,6 +11,7 @@
 // below is this task's synthesis of that description plus RuleContext's
 // shape from design.md §A.
 
+import { applicability } from './applicability.js';
 import { activeRules } from './rules/index.js';
 import { scoreComponent, rollup, applySeverityCeiling, DIMENSIONS as ALL_DIMENSIONS } from './scorer.js';
 import { computeCorpusStats } from './corpusStats.js';
@@ -95,6 +96,8 @@ export function scan(
         for (const source of analyzedList) {
             for (const rule of rules) {
                 if (!rule.appliesTo.includes(source.nodeType)) continue;
+                // FEAT-043 R1: convention rules run only where the owner's format documents them.
+                if (!applicability(rule.id, source).applies) continue;
 
                 const ctx: RuleContext = {
                     source,
@@ -117,6 +120,8 @@ export function scan(
                                 ...f,
                                 severity: applySeverityCeiling(f.severity, rule.confidence),
                                 confidence: rule.confidence,
+                                // FEAT-043 R4: the finding names its native source and owner.
+                                ...(source.source ? { source: source.source } : {}),
                             });
                         }
                     }
