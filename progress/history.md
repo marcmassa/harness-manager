@@ -46,3 +46,7 @@
 ## 2026-11-18 — BYOH 0.9.0 analysis panels
 - Probed a Claude-only fixture in the macOS Extension Host. Discovery identified both native files, Advisory proposed the existing CLAUDE.md and Optimizer proposed the parent directory as the agent name.
 - Prepared FEAT-041 through FEAT-043 for human review. The debug fixture, current engine output and release acceptance are in docs/byoh/v0.9.0.md.
+
+## 2026-11-18 — BYOH 0.9.0 spec approvals
+- Recorded the maintainer’s approval for FEAT-041, FEAT-042 and FEAT-043 against the specs at d7b4c7e.
+- FEAT-041 remains queued behind FEAT-040. The start transition enforced the single-feature concurrency limit.
