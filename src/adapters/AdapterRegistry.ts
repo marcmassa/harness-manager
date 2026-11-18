@@ -125,6 +125,7 @@ export class AdapterRegistry {
     public async parse(root: vscode.Uri, token?: vscode.CancellationToken): Promise<ParserResult> {
         const partials: ProviderResult[] = [];
         const detectedFrameworks: string[] = [];
+        const detectedProviders: string[] = [];
         const errors: ParserError[] = [...this.profileDiagnostics];
 
         for (const adapter of this.getAdapters()) {
@@ -146,6 +147,7 @@ export class AdapterRegistry {
                 if (!this.isRegistered(adapter)) continue;
                 partials.push({ providerId: adapter.id(), result: parsed });
                 detectedFrameworks.push(adapter.label());
+                detectedProviders.push(adapter.id());
             } catch (error: any) {
                 const message = error?.message ?? String(error);
                 this.logger?.warn(`[${adapter.id()}] parse failed: ${message}`);
@@ -156,6 +158,7 @@ export class AdapterRegistry {
         const merged = mergeResults(attributeSources(root, partials));
         merged.errors.push(...errors);
         merged.detectedFrameworks = Array.from(new Set(detectedFrameworks));
+        merged.detectedProviders = detectedProviders;
         return merged;
     }
 

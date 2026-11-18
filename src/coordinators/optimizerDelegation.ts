@@ -82,6 +82,12 @@ export async function delegateFindings(msg: WebviewMessage, postMessage: PostMes
     const scope = buildScope(msg, deps.findings);
     if (!scope) return fail('findings not found — re-scan and try again');
 
+    // R4: authorize every component the scope resolved to, not just the message.
+    const scopeNodes = [...new Set((scope.kind === 'finding' ? [scope.finding] : scope.findings).map(f => f.nodeId))];
+    const authorizeScope = () => deps.authorize?.({ type: 'delegateFinding', nodeIds: scopeNodes });
+    const first = await authorizeScope();
+    if (first && !first.ok) return fail(first.reason);
+
     const task = buildDelegateTask(scope);
     if (task.filePaths.length === 0) return fail('no resolvable file paths in this scope');
 
@@ -113,7 +119,7 @@ export async function delegateFindings(msg: WebviewMessage, postMessage: PostMes
         'Delegate',
     );
     if (go !== 'Delegate') return fail('cancelled');
-    const again = await deps.authorize?.(msg);
+    const again = await authorizeScope();
     if (again && !again.ok) return fail(again.reason);
 
     try {

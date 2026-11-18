@@ -71,6 +71,8 @@ export interface DashboardData {
     milestones: Milestone[];
     errors: ParserError[];
     detectedFrameworks?: string[];
+    /** FEAT-041: IDs of providers whose detect() succeeded in this scan, with or without nodes. */
+    detectedProviders?: string[];
 }
 
 export type ParserResult = DashboardData;

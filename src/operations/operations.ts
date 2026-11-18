@@ -81,6 +81,8 @@ export interface GateContext {
 export interface Prerequisites {
     runnerId?: string;
     runnerAvailable?: boolean;
+    /** Adoption: the provider format this operation would create. */
+    format?: string;
 }
 
 export type Decision =
@@ -99,6 +101,9 @@ export function decide(op: OperationId, targets: readonly string[] | 'workspace'
 
     if (targets === 'workspace') {
         if (op === 'agentRuns.delegate' && !pre.runnerAvailable) return deny('No agent CLI is installed for delegation.');
+        if (op === 'adoption.scaffold' && pre.format && ctx.detected.includes(pre.format)) {
+            return deny(`${ctx.providerLabel(pre.format)} is already set up in this workspace; scaffolding it again would overwrite it.`);
+        }
         if (!info.capability) return { ok: true, mode: 'persist', owners: [] };
         const able = ctx.detected.filter(id => ctx.providerOperations(id).has(op));
         if (able.length === 0) return deny(`No detected provider supports "${info.label}".`);
@@ -132,10 +137,23 @@ export function decide(op: OperationId, targets: readonly string[] | 'workspace'
     return { ok: true, mode: 'persist', owners };
 }
 
+/**
+ * Bind a run request to the scanned node: the command is built from the
+ * host's own record of the resource, never from client-sent path or name.
+ */
+export function bindRunTarget(msg: Record<string, unknown>, node: { label: string; type: string; metadata: Record<string, unknown> } | undefined): boolean {
+    if (!node) return false;
+    msg.nodeFilePath = String(node.metadata._filePath ?? '');
+    msg.nodeName = node.label;
+    msg.nodeType = node.type;
+    return true;
+}
+
 export interface OperationRequest {
     op: OperationId;
     targets: string[] | 'workspace';
     runnerId?: string;
+    format?: string;
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value : '');
@@ -172,7 +190,9 @@ export function operationForMessage(msg: { type: string; [key: string]: unknown 
         case 'applyQuickFix': case 'aiRefineFinding':
             return { op: 'editing.reviewedTextEdit', targets: ids(msg.nodeId) };
         case 'delegateFinding':
-            // A rule-wide delegation names no node; the coordinator resolves its components.
+            // A rule-wide delegation names no node: the coordinator decides again
+            // with `nodeIds`, the components its scope resolved to.
+            if (Array.isArray(msg.nodeIds)) return { op: 'agentRuns.delegate', targets: msg.nodeIds.map(str) };
             return { op: 'agentRuns.delegate', targets: str(msg.nodeId) ? ids(msg.nodeId) : 'workspace' };
         case 'runAgent': {
             const runnerId = str(msg.adapterId);
@@ -180,7 +200,9 @@ export function operationForMessage(msg: { type: string; [key: string]: unknown 
             if (runnerId === 'generic') return null;
             return { op: 'agentRuns.launch', targets: ids(msg.nodeId), runnerId };
         }
-        case 'applyHarnessSDD': case 'applyArchitectureTemplate': case 'executeAdvisoryAction':
+        case 'applyHarnessSDD':
+            return { op: 'adoption.scaffold', targets: 'workspace', format: 'harness-sdd' };
+        case 'applyArchitectureTemplate': case 'executeAdvisoryAction':
             return { op: 'adoption.scaffold', targets: 'workspace' };
         case 'runSupplyChainAudit':
             return { op: 'workspace.audit', targets: 'workspace' };

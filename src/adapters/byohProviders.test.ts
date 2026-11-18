@@ -207,6 +207,23 @@ describe('profile discovery (R1, R5)', () => {
         expect(result.graph.nodes).toEqual([]);
     });
 
+    it('names SKILL.md-style entities after their folder unless an idField says otherwise', async () => {
+        seed({ 'kit/marker.md': '#', 'kit/skills/lint/SKILL.md': '---\ntitle: Lint\n---\n', 'kit/skills/format/SKILL.md': '---\ntitle: Format\n---\n' });
+        const registry = new AdapterRegistry([], undefined, realPath);
+        registry.setProfiles([{ version: 1, id: 'kit', markers: ['kit/marker.md'], entities: [{ glob: 'kit/skills/*/SKILL.md', type: 'skill' }] }]);
+        const result = await registry.parse(root);
+        expect(result.graph.nodes.map(n => n.id).sort()).toEqual(['kit::format', 'kit::lint']);
+        expect(result.errors).toEqual([]);
+    });
+
+    it('reports detected providers even when they own no node', async () => {
+        const registry = new AdapterRegistry([], undefined, realPath);
+        registry.setProfiles([{ ...teamProfile(), entities: [{ glob: 'nothing/*.md', type: 'agent' }] }]);
+        const result = await registry.parse(root);
+        expect(result.graph.nodes).toEqual([]);
+        expect(result.detectedProviders).toEqual(['team-guides']);
+    });
+
     it('exposes profile watch globs and discovery-only capabilities', () => {
         const registry = new AdapterRegistry([], undefined, realPath);
         registry.setProfiles([teamProfile()]);
@@ -280,15 +297,16 @@ describe('companion registration (R6, R7)', () => {
         expect(api.apiVersion).toBe(1);
     });
 
-    it('validates declared operations and reports them through the registry (T3)', () => {
+    it('keeps version 1 companions read-only and reports operations through the registry (T3)', () => {
         const registry = new AdapterRegistry([new ClaudeCodeAdapter()], undefined, realPath);
         registry.setProfiles([teamProfile()]);
         const api = createCompanionApi(registry);
-        expect(() => api.registerAdapter(companion({ operations: ['editing.teleport' as never] }))).toThrow(/unknown operation/);
-        expect(() => api.registerAdapter(companion({ operations: ['editing.deleteEntity'] }))).toThrow(/without that capability/);
-        api.registerAdapter(companion({ capabilities: { ...DISCOVERY_ONLY, editing: 'partial' }, operations: ['editing.reviewedTextEdit'] }));
-        expect([...registry.providerOperations('acme')]).toEqual(['editing.reviewedTextEdit']);
-        expect(registry.providerCapabilities('acme').editing).toBe('partial');
+        // A companion may not gain a write or run operation through the v1 contract.
+        expect(() => api.registerAdapter(companion({ operations: ['editing.deleteEntity'] as never }))).toThrow(/read-only/);
+        expect(() => api.registerAdapter(companion({ operations: 'all' as never }))).toThrow(/read-only/);
+        api.registerAdapter(companion({ capabilities: { ...DISCOVERY_ONLY, editing: 'supported' }, operations: [] }));
+        expect([...registry.providerOperations('acme')]).toEqual([]);
+        expect(registry.providerCapabilities('acme').editing).toBe('supported');
         expect([...registry.providerOperations('claude-code')]).toEqual(['editing.reviewedTextEdit', 'agentRuns.launch']);
         expect([...registry.providerOperations('team-guides')]).toEqual([]);
         expect(registry.providerCapabilities('team-guides')).toEqual(DISCOVERY_ONLY);

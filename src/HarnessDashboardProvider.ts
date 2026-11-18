@@ -11,6 +11,7 @@ import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
 import { OptimizerCoordinator } from './coordinators/OptimizerCoordinator.js';
 import type { OperationGate } from './operations/operationGate.js';
+import { bindRunTarget } from './operations/operations.js';
 
 export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
@@ -28,6 +29,8 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private _runCoordinator?: RunCoordinator;
     private _cachedData: DashboardData | null = null;
     private _gate?: OperationGate;
+    /** FEAT-041: only the newest scan may replace the cached ownership. */
+    private _scanGeneration = 0;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -120,6 +123,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         // T2 (R2): Read persisted state and pass to parser
         const dismissedRaw = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
         const disabledRaw = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
+        const generation = ++this._scanGeneration;
         const result = await this._parser.parse({
             dismissedSuggestions: new Set(dismissedRaw),
             disabledConnections: new Set(disabledRaw),
@@ -171,6 +175,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         this._log.info(`Sending data to Webview — nodes: ${JSON.stringify(nodeTypeCounts)}, milestones: ${result.milestones.length}`);
 
+        if (generation !== this._scanGeneration) {
+            this._log.info('[Dashboard] Dropped a scan superseded by a newer one');
+            return;
+        }
         this._cachedData = result;
         // FEAT-041 T3 (R3): owner, native path and operation availability per resource,
         // computed by the same decision the host applies at dispatch.
@@ -278,6 +286,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         postMessage({ type: 'operationDenied', requestType: data.type, operation: gated.request.op, reason: gated.decision.reason });
                         void vscode.window.showWarningMessage(`Harness Dashboard: ${gated.decision.reason}`);
                         break;
+                    }
+                    if (data.type === 'runAgent') {
+                        const node = this._cachedData?.graph.nodes.find(n => n.id === data.nodeId);
+                        bindRunTarget(data as Record<string, unknown>, node as never);
                     }
                     if (gated?.decision.ok && gated.decision.mode === 'view-local') {
                         (data as Record<string, unknown>).operationMode = 'view-local';
