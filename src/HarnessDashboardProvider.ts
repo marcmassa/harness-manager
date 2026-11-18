@@ -14,6 +14,7 @@ import { OptimizerCoordinator } from './coordinators/OptimizerCoordinator.js';
 export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
     private _view?: vscode.WebviewView;
+    private _watchers: vscode.FileSystemWatcher[] = [];
     private _panel?: vscode.WebviewPanel;
     private readonly _parser: HarnessParser;
     private _agenticDetector?: AgenticDetector;
@@ -73,26 +74,36 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         this._attachWebview(webviewView.webview, false);
 
-        const watchGlobs = this._parser.getWatchGlobs();
-        const watcherPatterns = Array.from(new Set(watchGlobs));
-        const watchers = watcherPatterns.map((glob) =>
-            vscode.workspace.createFileSystemWatcher(
-                new vscode.RelativePattern(this._workspaceRoot, glob)
-            )
-        );
-
-        for (const watcher of watchers) {
-            watcher.onDidChange(() => this._sendData());
-            watcher.onDidCreate(() => this._sendData());
-            watcher.onDidDelete(() => this._sendData());
-        }
+        this.refreshWatchers();
 
         webviewView.onDidDispose(() => {
             if (this._view === webviewView) this._view = undefined;
-            for (const watcher of watchers) {
-                watcher.dispose();
-            }
+            this._disposeWatchers();
         });
+    }
+
+    /**
+     * (Re)create file watchers from the registry's current watch globs.
+     * Called when the sidebar view resolves and whenever providers register,
+     * dispose or profiles change (FEAT-041 R6). No-op without a visible view.
+     */
+    public refreshWatchers(): void {
+        this._disposeWatchers();
+        if (!this._view) return;
+        for (const glob of new Set(this._parser.getWatchGlobs())) {
+            const watcher = vscode.workspace.createFileSystemWatcher(
+                new vscode.RelativePattern(this._workspaceRoot, glob)
+            );
+            watcher.onDidChange(() => this._sendData());
+            watcher.onDidCreate(() => this._sendData());
+            watcher.onDidDelete(() => this._sendData());
+            this._watchers.push(watcher);
+        }
+    }
+
+    private _disposeWatchers(): void {
+        for (const watcher of this._watchers) watcher.dispose();
+        this._watchers = [];
     }
 
     /**

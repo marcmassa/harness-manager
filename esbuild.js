@@ -93,6 +93,11 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/byohProviders.ts",
+      out: "byohProviders.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/saveIsolation.ts",
       out: "saveIsolation.cjs",
       external: ["vscode"],

@@ -350,6 +350,13 @@ export class AgenticDetector extends EventEmitter {
    *
    * Safe to call when no watchers are active.
    */
+  /** Rebuild active watchers after the provider set changed (FEAT-041 R6). */
+  refreshWatching(): void {
+    if (this._watchers.length === 0) return;
+    this.stopWatching();
+    this.startWatching();
+  }
+
   stopWatching(): void {
     for (const watcher of this._watchers) {
       watcher.dispose();

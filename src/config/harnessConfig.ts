@@ -35,6 +35,8 @@ export interface HarnessDashboardConfig {
         hooks?: string[];
         steering?: string[];
     }>;
+    /** FEAT-041: workspace Markdown profiles v1, validated by `validateProfiles`. */
+    profiles?: unknown[];
 }
 
 export const EMPTY_HARNESS_CONFIG: HarnessDashboardConfig = Object.freeze({});

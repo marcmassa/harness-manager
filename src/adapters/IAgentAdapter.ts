@@ -1,12 +1,16 @@
 import * as vscode from 'vscode';
 import { HarnessEdge, HarnessNode, Milestone, ParserError, ParserResult } from '../types.js';
 import type { HarnessConfig } from '../config/harnessConfig.js';
+import type { HarnessCapabilities } from './capabilities.js';
 
 export interface IAgentAdapter {
     id(): string;
     label(): string;
     detect(root: vscode.Uri): Promise<boolean>;
-    parse(root: vscode.Uri): Promise<Partial<ParserResult>>;
+    parse(root: vscode.Uri, token?: vscode.CancellationToken): Promise<Partial<ParserResult>>;
+
+    /** FEAT-041: declared operation coverage. Absent on built-ins until T3 publishes their table. */
+    capabilities?(): HarnessCapabilities;
     watchGlobs(): string[];
 
     /**

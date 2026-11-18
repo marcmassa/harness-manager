@@ -86,14 +86,16 @@ async function main(): Promise<void> {
             },
         });
         await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
-        const root = await fs.mkdtemp(path.join(tmpdir(), 'dashboard-ownership-'));
-        try {
-            await runTests({
-                vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
-                extensionTestsPath: path.join(__dirname, 'sourceOwnership.cjs'),
-            });
-        } finally {
-            await fs.rm(root, { recursive: true, force: true });
+        for (const suite of ['sourceOwnership', 'byohProviders']) {
+            const root = await fs.mkdtemp(path.join(tmpdir(), `dashboard-${suite}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
+                    extensionTestsPath: path.join(__dirname, `${suite}.cjs`),
+                });
+            } finally {
+                await fs.rm(root, { recursive: true, force: true });
+            }
         }
     } catch (err) {
         // `runTests` throws on any test failure. We log and re-throw
