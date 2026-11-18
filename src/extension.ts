@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AdapterRegistry } from './adapters/AdapterRegistry.js';
+import { createCompanionApi, type HarnessDashboardApiV1 } from './adapters/companionApi.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
 import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from './config/harnessConfig.js';
@@ -14,9 +15,9 @@ import { GeminiCliAdapter } from './run/adapters/geminiCliAdapter.js';
 import { GenericAdapter } from './run/adapters/genericAdapter.js';
 import { HarnessDashboardProvider } from './HarnessDashboardProvider.js';
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV1 {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
-    if (!root) return;
+    if (!root) return createCompanionApi(undefined);
 
     // OutputChannel with log:true — visible in Output > Harness Dashboard, supports severity filtering
     const log = vscode.window.createOutputChannel('Harness Dashboard', { log: true });
@@ -96,9 +97,18 @@ export function activate(context: vscode.ExtensionContext) {
         return data ? buildGraphContext() : undefined;
     });
     provider.setAgenticDetector(agenticDetector, scheduleScan);
-    context.subscriptions.push(harnessConfig.onDidChange(() => {
-        void provider._sendData().then(scheduleScan, error => log.error(`[Dashboard] Config refresh failed: ${error}`));
+    // FEAT-041 T2: one refresh path for config edits, profile changes and
+    // companion registration/disposal — both panels rescan the same registry.
+    context.subscriptions.push(registry.onDidChange(() => {
+        provider.refreshWatchers();
+        agenticDetector.refreshWatching();
+        void provider._sendData().then(scheduleScan, error => log.error(`[Dashboard] Provider refresh failed: ${error}`));
     }));
+    const syncProfiles = () => harnessConfig.read(root)
+        .then(config => registry.setProfiles(config.profiles))
+        .catch((error: unknown) => log.error(`[Dashboard] Profile load failed: ${String(error)}`));
+    void syncProfiles();
+    context.subscriptions.push(harnessConfig.onDidChange(() => { void syncProfiles(); }));
 
     // FEAT-033: Wire RunCoordinator into the provider
     const runCoordinator = new RunCoordinator(runRegistry, root, context.workspaceState, log);
@@ -328,6 +338,8 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // FEAT-041 T2: versioned API for companion extensions (registerAdapter → Disposable).
+    return createCompanionApi(registry);
 }
 
 // ============================================================================
