@@ -10,7 +10,7 @@ export type { ActionButtonState } from './advisoryParts.js';
 interface AdvisoryPanelProps {
     profile: AgenticProfile | null;
     onDismissSuggestion: (suggestionId: string) => void;
-    /** Called when the user clicks "Apply Harness+SDD" (T34). */
+    /** Called when the user clicks "Adopt Harness SDD (optional)" (T34, FEAT-042). */
     onApplyHarnessSDD?: () => void;
     /** Trigger an on-demand architecture re-scan (FEAT-031). */
     onRescan?: () => void;
@@ -313,11 +313,12 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     </details>
                 )}
 
-                {/* T34: "Apply Harness+SDD" scaffold action — shown when SDD is not yet active */}
-                {onApplyHarnessSDD && profile.maturity.level !== 'L5' && (
+                {/* FEAT-042 R5: an explicit, optional adoption — never shown once Harness SDD is present */}
+                {onApplyHarnessSDD && profile.maturity.level !== 'L5'
+                    && !(profile.sources ?? []).some(s => s.providerId === 'harness-sdd') && (
                     <div style={{ marginTop: SPACE.xs }}>
-                        <vscode-button onClick={onApplyHarnessSDD}>
-                            Apply Harness+SDD
+                        <vscode-button appearance="secondary" onClick={onApplyHarnessSDD}>
+                            Adopt Harness SDD (optional)
                         </vscode-button>
                     </div>
                 )}

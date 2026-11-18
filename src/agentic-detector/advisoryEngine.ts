@@ -1,4 +1,5 @@
-import type { AgenticProfile, Suggestion, MaturityLevel } from './types.js';
+import type { AgenticProfile, Suggestion, SuggestionAction, MaturityLevel } from './types.js';
+import { requestForAction } from '../operations/operations.js';
 // FEAT-036: supply-chain rule family (same table shape, merged below).
 import { SC_RULES, expandStaleOverrideRules } from './supplyChainRules.js';
 import type { SuggestionRule } from './ruleHelpers.js';
@@ -59,6 +60,24 @@ function evidenceFor(profile: AgenticProfile, base: Omit<Suggestion, 'id'>, scop
     .map(({ providerId, nodeId, sourceUri }) => ({ providerId, nodeId, sourceUri }));
 }
 
+/** Providers present in the workspace, from attributed sources and evidence. */
+function presentProviders(profile: AgenticProfile): Set<string> {
+  return new Set([...(profile.sources ?? []), ...(profile.evidence ?? [])].map(s => s.providerId));
+}
+
+/**
+ * R5: offer only actions the present harness supports. Harness SDD scaffolds
+ * are offered inside a Harness SDD harness or in a workspace with no harness
+ * (an explicit adoption), never inside another provider's harness. A file
+ * that is one provider's entry point is not offered once that provider exists.
+ */
+function offered(action: SuggestionAction, present: Set<string>): boolean {
+  const request = requestForAction(action);
+  if (request?.adoptFormat) return present.size === 0 || present.has(request.adoptFormat);
+  if (request?.format) return !present.has(request.format);
+  return true;
+}
+
 /**
  * Generate maturity-gated, owner-qualified suggestions.
  *
@@ -83,6 +102,7 @@ export function generate(
   // profile because their ids are stable per package (dismissal support);
   // the rest of the table is static like RULES.
   const allRules: SuggestionRule[] = [...RULES, ...SC_RULES, ...expandStaleOverrideRules(profile)];
+  const present = presentProviders(profile);
 
   for (const rule of allRules) {
     try {
@@ -91,7 +111,9 @@ export function generate(
       const legacyDismissed = dismissed.has(rule.id) && instances.length === 1;
       for (const { id, scope } of instances) {
         if (dismissed.has(id) || legacyDismissed) continue;
-        const base = rule.build(profile);
+        const built = rule.build(profile);
+        const actions = built.actions?.filter(a => offered(a, present));
+        const base = { ...built, ...(built.actions ? { actions } : {}) };
         suggestions.push({
           id, ...base, ruleId: rule.id, scope,
           evidence: evidenceFor(profile, base, scope),

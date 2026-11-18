@@ -218,6 +218,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             .then(result => result?.decision ?? { ok: true as const, mode: 'persist' as const, owners: [] });
         this._whiteboardCoordinator.setAuthorize(recheck);
         this._optimizerCoordinator.setAuthorize(recheck);
+        this._advisoryCoordinator.setAuthorizeRequest(request => gate.authorize(request));
     }
 
     public get operationGate(): OperationGate | undefined {

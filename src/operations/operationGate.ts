@@ -64,7 +64,9 @@ export class OperationGate {
         const runnerAvailable = request.op === 'agentRuns.delegate'
             ? this.runnerIds.size > 0 && [...this.runnerIds].some(id => id !== 'generic')
             : request.runnerId ? this.runnerIds.has(request.runnerId) : undefined;
-        return decide(request.op, request.targets, this.context(), { runnerId: request.runnerId, runnerAvailable, format: request.format });
+        return decide(request.op, request.targets, this.context(), {
+            runnerId: request.runnerId, runnerAvailable, format: request.format, adoptFormat: request.adoptFormat,
+        });
     }
 
     public async authorize(request: OperationRequest): Promise<Decision> {
