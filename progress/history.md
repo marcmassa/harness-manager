@@ -14,6 +14,20 @@
 - Build, 819 tests, package, ZIP runtime-asset checks and check.sh (36 checks) pass; pre-existing missing adapter-test warnings remain.
 - Regenerated local Claude/Gemini adapters; moved obsolete Codex fallback to /private/tmp/harness-codex-fallback-20261116.toml. No spec, release or framework update.
 
+## 2026-11-17 — Agent Run closure reconciliation
+- Reviewed T22/T40 against main 990470d; checked T40 using historical closure and current green verification.
+- T22/R16 remains unimplemented; documented missing Runs UI and task prefill without changing feature status.
+- Recorded history-test coverage and interactive command-preview discrepancies in progress/reconcile-agent-run-studio.md and backlog.
+- Build, 819 tests, package and check.sh pass; no production code or approved requirement/design changed.
+- 358 unchecked markers remain across 20 specs; other specs and real-repository adapter checks remain pending.
+
+## 2026-11-17 — Complete repository checklist audit
+- All 358 remaining tasks across 20 specs classified in progress/spec-review/README.md; 37 directly verified operational/status markers checked, 321 retained with explicit dispositions.
+- Concrete writer-test, save-blocking, e2e-coverage, overlap and traceability gaps recorded; no production code or feature status changes.
+- Original framework/audit/macOS/packaging work merged (#27–#29); study #26 merged without implementation.
+- Build, 819 tests, package (373,009 B) and 36 checks pass; inherited adapter-test warnings remain.
+- PR #30 expanded to the complete review; maintainer merge and feature follow-up decisions remain separate.
+
 ## 2026-11-18 — BYOH architecture review candidate
 - Classified the 38 baseline features and documented eight built-in adapters, including legacy Windsurf.
 - Added inventory checks to the normal test suite and prepared FEAT-040 for human review.

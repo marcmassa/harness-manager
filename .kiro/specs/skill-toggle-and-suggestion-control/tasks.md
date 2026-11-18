@@ -65,6 +65,6 @@
 ## Closure
 
 - [ ] **T21** — Document traceability `R<n> ↔ test` in `progress/impl_feat-013.md`
-- [ ] **T22** — Run `./check.sh` and verify all tests pass (≥ 88 tests green)
-- [ ] **T23** — Update `feature_list.json`: set `status` to `"done"` for FEAT-013
+- [x] **T22** — Run `./check.sh` and verify all tests pass (≥ 88 tests green)
+- [x] **T23** — Update `feature_list.json`: set `status` to `"done"` for FEAT-013
 - [ ] **T24** — Log summary in `progress/progress.md`
