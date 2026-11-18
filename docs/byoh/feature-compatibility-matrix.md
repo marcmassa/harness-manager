@@ -52,6 +52,8 @@ Baseline is extension 0.8.2 at 990470d. Each row classifies the primary responsi
 | FEAT-041 | BYOH source ownership and operation capabilities | shared-core | Give built-in and user-defined sources stable ownership, read-only discovery and a common decision for visible and executable actions. |
 | FEAT-042 | BYOH Advisory findings, maturity and actions | adapter-specific | Derive Advisory findings and maturity from attributed evidence and scope each available action to its actual provider. |
 | FEAT-043 | BYOH Optimizer applicability, scores and assisted fixes | optional-integration | Evaluate native components only against applicable rules and route fixes and delegation by owner and operation. |
+| FEAT-044 | BYOH context cost, optimization and inference usage | shared-core | Price every provider's resources from owner-declared load modes; unknown modes stay unpriced, and findings and actions follow FEAT-041 ownership. |
+| FEAT-045 | Activity Bar redesign and lazy startup | shared-core | Native Sources and Findings views over the shared scan, one restorable editor panel, provider-neutral welcome and walkthrough, no work before the user opens a view. |
 
 The [v0.9.0 debugging and acceptance guide](v0.9.0.md) records observed behavior and the proposed release checks.
 

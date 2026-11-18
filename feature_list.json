@@ -567,6 +567,44 @@
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
       }
+    },
+    {
+      "id": "FEAT-044",
+      "name": "byoh-context-cost",
+      "title": "BYOH context cost, optimization and inference usage",
+      "description": "Price any harness on one scale from owner-declared load modes: per-session baseline, skill catalog and on-demand bodies per provider; unknown load modes listed as unpriced; optional calibration and user price table without network; deterministic cross-owner cost findings; a local inference ledger for the Dashboard own AI actions; cost diff against git HEAD.",
+      "type": "feat",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "59f5fd645d96e7fe5d290261e037652afc706df967fc3bd0b1632ff97998c6a5",
+        "task_digest": "228277c2b3da3bb21d1dcae83b9157048c041e06be83dfaf62b41378c33ab134",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18, maintainer reply “aprobada” to FEAT-044 byoh-context-cost presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      }
+    },
+    {
+      "id": "FEAT-045",
+      "name": "activity-bar-startup",
+      "title": "Activity Bar redesign and lazy startup",
+      "description": "Replace the sidebar webview with native Sources and Findings tree views over the shared scan, move the Dashboard to one restorable editor panel, add provider-neutral welcome views and one walkthrough, register commands with category and palette conditions even without a folder, defer every scan until a view or the panel is visible, code-split webview tabs, and measure activation in the Extension Host.",
+      "type": "feat",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "cbeca2af49acd5b437effb5eb9cdd0230b855fa075b29fe57887a26763fedebe",
+        "task_digest": "f1422f6a20dea803c88b34b39deafa8b13d96938eb8f3e05ffcd746f1ab6d593",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18, maintainer reply “aprobada, haz commit y sigue con T3” to FEAT-045 activity-bar-startup presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     }
   ]
 }
