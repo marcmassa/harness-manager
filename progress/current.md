@@ -1,10 +1,7 @@
-# Current Session State
+# Current session state
 
-## Active Feature
-_(none)_
+FEAT-039 is in progress on main and awaits independent review of the BYOH architecture. Evidence is in progress/impl_byoh-product-architecture.md. The approved FEAT-040 implementation and its verification are on spec/byoh-harness-platform, pending independent review.
 
-## Status
-_(repository review complete; evidence and pending work: progress/spec-review/README.md)_
+The current release still registers its save verifier. The product capability API and declarative profiles have design contracts. Real-workspace adapter results remain in the P1 backlog.
 
-## Notes
-_(none)_
+The historical spec inventory and its outstanding acceptance checks are in progress/spec-review/README.md.

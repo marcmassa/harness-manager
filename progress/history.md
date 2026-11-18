@@ -27,3 +27,8 @@
 - Original framework/audit/macOS/packaging work merged (#27–#29); study #26 merged without implementation.
 - Build, 819 tests, package (373,009 B) and 36 checks pass; inherited adapter-test warnings remain.
 - PR #30 expanded to the complete review; maintainer merge and feature follow-up decisions remain separate.
+
+## 2026-11-18 — BYOH architecture review candidate
+- Classified the 38 baseline features and documented eight built-in adapters, including legacy Windsurf.
+- Added inventory checks to the normal test suite and prepared FEAT-040 for human review.
+- Build, 821 tests, package (373,009 B), and check.sh (35 checks) pass.
