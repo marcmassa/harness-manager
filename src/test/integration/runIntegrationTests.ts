@@ -86,7 +86,7 @@ async function main(): Promise<void> {
             },
         });
         await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
-        for (const suite of ['sourceOwnership', 'byohProviders', 'operationGate']) {
+        for (const suite of ['sourceOwnership', 'byohProviders', 'operationGate', 'workspaceMatrix']) {
             const root = await fs.mkdtemp(path.join(tmpdir(), `dashboard-${suite}-`));
             try {
                 await runTests({
@@ -95,6 +95,17 @@ async function main(): Promise<void> {
                 });
             } finally {
                 await fs.rm(root, { recursive: true, force: true });
+            }
+        }
+        // FEAT-041 T4: opt-in real-workspace results (needs local copies of the
+        // sources in docs/byoh/adapter-capabilities.md; never part of CI).
+        const fieldRoot = process.env.HARNESS_FIELD_ROOT;
+        if (fieldRoot) {
+            for (const name of (await fs.readdir(fieldRoot)).sort()) {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [path.join(fieldRoot, name)],
+                    extensionTestsPath: path.join(__dirname, 'fieldValidation.cjs'),
+                });
             }
         }
     } catch (err) {
