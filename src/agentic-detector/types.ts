@@ -181,6 +181,7 @@ export interface ArchitectureSummary {
 // === Composite profile ===
 
 export interface AgenticProfile {
+  sources?: import('../types.js').SourceIdentity[];
   workspaceRoot: string;
   scanTimestamp: number;
   layers: {

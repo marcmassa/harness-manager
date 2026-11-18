@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
 import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from './config/harnessConfig.js';
@@ -32,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
     // it until the file changes.
     const harnessConfig = new HarnessConfig(log);
     context.subscriptions.push(harnessConfig);
-    configureAdaptersWithHarnessConfig(harnessConfig);
+    const registry = new AdapterRegistry(createDefaultAdapters(harnessConfig), log);
 
     // FEAT-033: Run adapter registry (constructed early; wired to provider after provider creation)
     const runRegistry = new RunAdapterRegistry([
@@ -42,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
     ]);
 
     // T1 (R1, R4): pass context so provider can access workspaceState
-    const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log);
+    const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log, registry);
 
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
@@ -80,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     // FEAT-029 Phase 4: Agentic Architecture Detector singleton
-    const agenticDetector = new AgenticDetector(root, log, context.workspaceState);
+    const agenticDetector = new AgenticDetector(root, log, context.workspaceState, registry);
     // FEAT-034 T42: the optimizer report rides the SAME debounce as the advisory
     // scan — no second timer. Any coordinator write that already calls
     // scheduleScan() therefore refreshes the optimizer too (R47).
@@ -95,6 +96,9 @@ export function activate(context: vscode.ExtensionContext) {
         return data ? buildGraphContext() : undefined;
     });
     provider.setAgenticDetector(agenticDetector, scheduleScan);
+    context.subscriptions.push(harnessConfig.onDidChange(() => {
+        void provider._sendData().then(scheduleScan, error => log.error(`[Dashboard] Config refresh failed: ${error}`));
+    }));
 
     // FEAT-033: Wire RunCoordinator into the provider
     const runCoordinator = new RunCoordinator(runRegistry, root, context.workspaceState, log);
@@ -367,20 +371,6 @@ async function openLocalConfig(root: vscode.Uri, log: vscode.LogOutputChannel): 
     }
     const doc = await vscode.workspace.openTextDocument(file);
     await vscode.window.showTextDocument(doc, { preview: false });
-}
-
-/**
- * Plumb the per-extension HarnessConfig into every adapter that uses
- * it. Adapters that opt-in (isPathConfigurable() === true) implement
- * `setHarnessConfig(config)`; adapters that opt-out are silently
- * skipped — they don't read this file anyway.
- */
-function configureAdaptersWithHarnessConfig(harnessConfig: HarnessConfig): void {
-    for (const adapter of createDefaultAdapters()) {
-        if (typeof (adapter as { setHarnessConfig?: unknown }).setHarnessConfig === 'function') {
-            (adapter as unknown as { setHarnessConfig: (c: HarnessConfig) => void }).setHarnessConfig(harnessConfig);
-        }
-    }
 }
 
 export function deactivate() {

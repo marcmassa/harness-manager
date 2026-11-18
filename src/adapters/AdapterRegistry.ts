@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ParserResult } from '../types.js';
+import { attributeSources, type ProviderResult } from './sourceGraph.js';
 import { mergeResults, IAgentAdapter } from './IAgentAdapter.js';
 
 interface WarnLogger {
@@ -37,7 +38,7 @@ export class AdapterRegistry {
     }
 
     public async parse(root: vscode.Uri): Promise<ParserResult> {
-        const partials: Partial<ParserResult>[] = [];
+        const partials: ProviderResult[] = [];
         const detectedFrameworks: string[] = [];
 
         for (const adapter of this.adapters) {
@@ -53,14 +54,14 @@ export class AdapterRegistry {
 
             try {
                 const parsed = await adapter.parse(root);
-                partials.push(parsed);
+                partials.push({ providerId: adapter.id(), result: parsed });
                 detectedFrameworks.push(adapter.label());
             } catch (error: any) {
                 this.logger?.warn(`[${adapter.id()}] parse failed: ${error?.message ?? String(error)}`);
             }
         }
 
-        const merged = mergeResults(partials);
+        const merged = mergeResults(attributeSources(root, partials));
         merged.detectedFrameworks = Array.from(new Set(detectedFrameworks));
         return merged;
     }

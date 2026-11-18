@@ -85,6 +85,7 @@ export function scoreComponent(source: ComponentSource, findings: OptimizerFindi
     const score = Math.round(mean);
 
     return {
+        source: source.source,
         nodeId: source.nodeId,
         nodeType: source.nodeType,
         label: source.label,

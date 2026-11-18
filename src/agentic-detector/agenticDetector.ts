@@ -1,18 +1,20 @@
 import * as vscode from 'vscode';
 
-import { SignalScanner, EXCLUDED_GLOB_PATTERNS } from './signalScanner.js';
+import { EventEmitter } from './detectorEvents.js';
+import { detectCLIInstalls, detectMethodology, supplyChainDeps } from './workspaceDetection.js';
+import { SignalScanner } from './signalScanner.js';
 import { classify } from './maturityClassifier.js';
 import { analyze } from './patternAnalyzer.js';
 import { generate } from './advisoryEngine.js';
+import { resolveSourceUri } from '../adapters/sourceGraph.js';
 import { AdapterRegistry } from '../adapters/AdapterRegistry.js';
 import { createDefaultAdapters } from '../adapters/index.js';
 // FEAT-036: supply-chain layer — deterministic static scan + user-triggered audit.
-import { scanWorkspace, type SupplyChainFsDeps } from '../supply-chain/scanner.js';
+import { scanWorkspace } from '../supply-chain/scanner.js';
 import { runNpmAudit, type AuditRunResult } from '../supply-chain/auditRunner.js';
 import { emptyReport, type AuditState, type SupplyChainReport } from '../supply-chain/types.js';
 import type {
   AgenticProfile,
-  CLIInstall,
   GraphContext,
   MethodologyInfo,
 } from './types.js';
@@ -21,100 +23,6 @@ import type {
 
 const AGENTIC_DISMISSED_KEY = 'agenticDetector.dismissedSuggestionIds';
 const AGENTIC_ACKNOWLEDGED_KEY = 'agenticDetector.acknowledgedNodeIds';
-
-/**
- * Known CLI definitions for Layer-1 detection.
- * Each entry lists characteristic configuration file globs that signal
- * the presence of a particular agentic command-line tool.
- */
-const CLI_DEFINITIONS: Array<{ id: string; name: string; patterns: string[] }> = [
-  { id: 'claude-code',      name: 'Claude Code',      patterns: ['CLAUDE.md', '.claude/**'] },
-  { id: 'cursor',           name: 'Cursor',            patterns: ['.cursorrules', '.cursor/**'] },
-  { id: 'kiro',             name: 'Kiro',              patterns: ['kiro.json', '.kiro/**'] },
-  { id: 'opencode',         name: 'OpenCode',          patterns: ['opencode.json', 'opencode.jsonc', '.opencode/**'] },
-  { id: 'github-copilot',   name: 'GitHub Copilot',    patterns: ['.github/copilot-instructions.md'] },
-  { id: 'continue',         name: 'Continue',          patterns: ['continue.json', '.continue/**'] },
-  { id: 'windsurf',         name: 'Windsurf',          patterns: ['.windsurfrules'] },
-  { id: 'codebuff',         name: 'Codebuff',          patterns: ['.codebuff/**'] },
-];
-
-// ─── Lightweight EventEmitter ───────────────────────────────────────────────
-//
-// The VS Code extension host provides full Node.js built-ins at runtime,
-// including the 'events' module.  However, @types/node is not installed
-// in this project.  We define a minimal EventEmitter here so the class
-// compiles without a dependency on external type declarations.
-//
-// The VS Code extension host instantiates Node's EventEmitter under the
-// hood via the JavaScript engine; this local class mirrors its API.
-
-interface ListenerEntry {
-  listener: (...args: any[]) => void;
-  once: boolean;
-}
-
-/**
- * Minimal EventEmitter compatible with the Node.js API subset needed
- * by AgenticDetector (on, emit, removeAllListeners).
- */
-class EventEmitter {
-  private _events = new Map<string | symbol, ListenerEntry[]>();
-
-  /** Register a permanent listener. */
-  on(event: string | symbol, listener: (...args: any[]) => void): this {
-    return this._addListener(event, listener, false);
-  }
-
-  /** Register a one-shot listener. */
-  once(event: string | symbol, listener: (...args: any[]) => void): this {
-    return this._addListener(event, listener, true);
-  }
-
-  /** Emit an event to all registered listeners. */
-  emit(event: string | symbol, ...args: any[]): boolean {
-    const entries = this._events.get(event);
-    if (!entries || entries.length === 0) return false;
-
-    // Iterate over a snapshot so listeners can safely remove themselves
-    // during emission.
-    for (const entry of [...entries]) {
-      entry.listener(...args);
-    }
-
-    // Sweep one-shot listeners after emission
-    const remaining = (this._events.get(event) ?? []).filter(e => !e.once);
-    if (remaining.length > 0) {
-      this._events.set(event, remaining);
-    } else {
-      this._events.delete(event);
-    }
-
-    return true;
-  }
-
-  /** Remove all listeners, optionally for a specific event only. */
-  removeAllListeners(event?: string | symbol): this {
-    if (event !== undefined) {
-      this._events.delete(event);
-    } else {
-      this._events.clear();
-    }
-    return this;
-  }
-
-  // ── Private ──
-
-  private _addListener(
-    event: string | symbol,
-    listener: (...args: any[]) => void,
-    once: boolean,
-  ): this {
-    const entries = this._events.get(event) ?? [];
-    entries.push({ listener, once });
-    this._events.set(event, entries);
-    return this;
-  }
-}
 
 // ─── AgenticDetector ─────────────────────────────────────────────────────────
 
@@ -138,8 +46,6 @@ export class AgenticDetector extends EventEmitter {
   /** Cached profile from the last successful scan. */
   private _profile: AgenticProfile | null = null;
 
-  /** Disposables owned by this instance (watchers, subscriptions). */
-  private _disposables: vscode.Disposable[] = [];
 
   /** Active file-system watchers (one per unique watch glob). */
   private _watchers: vscode.FileSystemWatcher[] = [];
@@ -159,8 +65,7 @@ export class AgenticDetector extends EventEmitter {
   /** The Layer-2 signal scanner instance, wired to VS Code workspace APIs. */
   private readonly _scanner: SignalScanner;
 
-  /** Adapter registry for deduplicating files claimed by known adapter parsers (FEAT-015, FEAT-023). */
-  private readonly _registry: AdapterRegistry;
+
 
   /** Methodology from the previous scan, used to detect adoption transitions (T21/R58). */
   private _previousMethodology: MethodologyInfo | null = null;
@@ -185,6 +90,7 @@ export class AgenticDetector extends EventEmitter {
     private readonly _workspaceRoot: vscode.Uri,
     private readonly _log: vscode.LogOutputChannel,
     private readonly _workspaceState?: vscode.Memento,
+    private readonly _registry = new AdapterRegistry(createDefaultAdapters(), _log),
   ) {
     super();
 
@@ -194,8 +100,6 @@ export class AgenticDetector extends EventEmitter {
         vscode.workspace.findFiles(include, exclude),
       readFile: (uri) => vscode.workspace.fs.readFile(uri),
     });
-
-    this._registry = new AdapterRegistry(createDefaultAdapters(), this._log);
   }
 
   // ── Public API ─────────────────────────────────────────────────────────
@@ -232,7 +136,12 @@ export class AgenticDetector extends EventEmitter {
       // Remove signal matches whose files are already claimed by known
       // adapter parsers. Adapter-detected nodes stay in Layer 1;
       // discovered nodes stay in Layer 2.
-      const claimedFiles = await this._getAdapterClaimedFiles();
+      const native = await this._registry.parse(this._workspaceRoot);
+      const sources = native.graph.nodes.flatMap(node => node.source ? [node.source] : []);
+      const claimedFiles = new Set(native.graph.nodes.flatMap(node => {
+        const uri = resolveSourceUri(this._workspaceRoot, node.metadata._filePath);
+        return uri ? [uri.fsPath.replace(/\\/g, '/')] : [];
+      }));
       if (claimedFiles.size > 0) {
         for (const cat of categories) {
           cat.matches = cat.matches.filter((m) => {
@@ -247,10 +156,10 @@ export class AgenticDetector extends EventEmitter {
       }
 
       // ── Layer 1: Detect CLI installations ──
-      const cliInstalls = await this._detectCLIInstalls();
+      const cliInstalls = await detectCLIInstalls(this._workspaceRoot);
 
       // ── Layer 3: Detect methodology ──
-      const methodology = await this._detectMethodology();
+      const methodology = await detectMethodology(this._workspaceRoot);
 
       // ── FEAT-036: Supply-chain static scan ──
       // Reads ONLY workspace files plus the cached audit payload — it never
@@ -259,7 +168,7 @@ export class AgenticDetector extends EventEmitter {
       let supplyChain: SupplyChainReport;
       try {
         supplyChain = await scanWorkspace(
-          this._supplyChainDeps(),
+          supplyChainDeps(this._workspaceRoot),
           this._auditPayload,
           this._auditState,
         );
@@ -308,6 +217,7 @@ export class AgenticDetector extends EventEmitter {
         dismissedSuggestionIds: [],
         acknowledgedNodeIds: [],
         graphContext,
+        sources,
         supplyChain,
       };
 
@@ -423,48 +333,15 @@ export class AgenticDetector extends EventEmitter {
       return;
     }
 
-    const globs = this._scanner.getWatchGlobs();
+    const globs = new Set([...this._scanner.getWatchGlobs(), ...this._registry.watchGlobs(), 'feature_list.json', '.kiro/specs/**']);
     for (const glob of globs) {
-      const pattern = new vscode.RelativePattern(this._workspaceRoot, glob);
-      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-
+      const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(this._workspaceRoot, glob));
       watcher.onDidCreate(() => this._onFileChanged());
       watcher.onDidChange(() => this._onFileChanged());
       watcher.onDidDelete(() => this._onFileChanged());
-
       this._watchers.push(watcher);
-      this._disposables.push(watcher);
     }
-
-    // T21/R58: Watch for SDD methodology adoption — feature_list.json is not
-    // covered by any signal catalog glob, so we add an explicit watcher.
-    const featureListGlob = new vscode.RelativePattern(
-      this._workspaceRoot,
-      'feature_list.json',
-    );
-    const featureListWatcher =
-      vscode.workspace.createFileSystemWatcher(featureListGlob);
-    featureListWatcher.onDidCreate(() => this._onFileChanged());
-    featureListWatcher.onDidChange(() => this._onFileChanged());
-    featureListWatcher.onDidDelete(() => this._onFileChanged());
-    this._watchers.push(featureListWatcher);
-    this._disposables.push(featureListWatcher);
-
-    // FEAT-031 T18: Watch spec files edited directly in the editor
-    const specsGlob = new vscode.RelativePattern(
-      this._workspaceRoot,
-      '.kiro/specs/**',
-    );
-    const specsWatcher = vscode.workspace.createFileSystemWatcher(specsGlob);
-    specsWatcher.onDidCreate(() => this._onFileChanged());
-    specsWatcher.onDidChange(() => this._onFileChanged());
-    specsWatcher.onDidDelete(() => this._onFileChanged());
-    this._watchers.push(specsWatcher);
-    this._disposables.push(specsWatcher);
-
-    this._log.info(
-      `[AgenticDetector] File watcher started (${globs.length + 2} patterns)`,
-    );
+    this._log.info(`[AgenticDetector] File watcher started (${globs.size} patterns)`);
   }
 
   /**
@@ -476,10 +353,6 @@ export class AgenticDetector extends EventEmitter {
   stopWatching(): void {
     for (const watcher of this._watchers) {
       watcher.dispose();
-      const idx = this._disposables.indexOf(watcher);
-      if (idx !== -1) {
-        this._disposables.splice(idx, 1);
-      }
     }
     this._watchers = [];
     this._log.info('[AgenticDetector] File watcher stopped');
@@ -586,11 +459,6 @@ export class AgenticDetector extends EventEmitter {
       this._debounceTimer = null;
     }
 
-    for (const disposable of this._disposables) {
-      disposable.dispose();
-    }
-    this._disposables = [];
-
     this.removeAllListeners();
     this._profile = null;
   }
@@ -620,157 +488,4 @@ export class AgenticDetector extends EventEmitter {
     }, 500);
   }
 
-  /**
-   * FEAT-036: Filesystem adapter for the supply-chain scanner, wired to
-   * `vscode.workspace.fs`. Absent or unreadable files resolve to `null` —
-   * the scanner's degradation matrix handles them (no throws).
-   */
-  private _supplyChainDeps(): SupplyChainFsDeps {
-    const root = this._workspaceRoot;
-    return {
-      async readFile(relPath: string): Promise<string | null> {
-        try {
-          const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, relPath));
-          return Buffer.from(bytes).toString('utf8');
-        } catch {
-          return null;
-        }
-      },
-      async exists(relPath: string): Promise<boolean> {
-        try {
-          await vscode.workspace.fs.stat(vscode.Uri.joinPath(root, relPath));
-          return true;
-        } catch {
-          return false;
-        }
-      },
-    };
-  }
-
-  /**
-   * Collect the set of absolute file paths that existing adapter parsers
-   * (FEAT-015, FEAT-023) claim as their own. The AgenticDetector should
-   * NOT double-tag these files in Layer-2 signals.
-   *
-   * Runs the full adapter parse, which calls `detect()` on each adapter
-   * and collects all node `_filePath` metadata values. Relative paths
-   * are resolved to absolute by prepending the workspace root.
-   */
-  private async _getAdapterClaimedFiles(): Promise<Set<string>> {
-    try {
-      const result = await this._registry.parse(this._workspaceRoot);
-      const claimed = new Set<string>();
-      const rootFs = this._workspaceRoot.fsPath.replace(/\\/g, '/');
-      for (const node of result.graph.nodes) {
-        const fp = node.metadata?._filePath;
-        if (fp) {
-          const normalized = fp.replace(/\\/g, '/');
-          // Convert relative paths to absolute to match SignalMatch.filePath
-          const absolute = normalized.startsWith('/')
-            ? normalized
-            : `${rootFs}/${normalized}`;
-          claimed.add(absolute);
-        }
-      }
-      return claimed;
-    } catch {
-      return new Set<string>();
-    }
-  }
-
-  /**
-   * Detect known agentic CLI installations by searching for their
-   * characteristic configuration files in the workspace.
-   *
-   * Returns an empty array when no known CLI is detected.
-   */
-  private async _detectCLIInstalls(): Promise<CLIInstall[]> {
-    const installs: CLIInstall[] = [];
-    const exclude = `{${EXCLUDED_GLOB_PATTERNS.join(',')}}`;
-
-    for (const cli of CLI_DEFINITIONS) {
-      const foundFiles: string[] = [];
-
-      for (const pattern of cli.patterns) {
-        const uris = await vscode.workspace.findFiles(
-          new vscode.RelativePattern(this._workspaceRoot, pattern),
-          exclude,
-          5,
-        );
-        for (const uri of uris) {
-          foundFiles.push(uri.fsPath);
-        }
-      }
-
-      if (foundFiles.length > 0) {
-        installs.push({
-          cliId: cli.id,
-          cliName: cli.name,
-          detectedBy: 'agentic-detector',
-          configFiles: foundFiles,
-          isActive: true,
-          layer: 1,
-        });
-      }
-    }
-
-    return installs;
-  }
-
-  /**
-   * Detect an active project methodology by checking for well-known
-   * methodology configuration files.
-   *
-   * Currently supported:
-   *   - **Harness SDD** (`.agents/agentic.json`)
-   *   - **Custom SDD** (`feature_list.json`)
-   *
-   * Returns a "not active" `MethodologyInfo` when nothing is found.
-   */
-  private async _detectMethodology(): Promise<MethodologyInfo> {
-    // Harness SDD
-    const harnessConfig = await vscode.workspace.findFiles(
-      new vscode.RelativePattern(this._workspaceRoot, '.agents/agentic.json'),
-      undefined,
-      1,
-    );
-
-    if (harnessConfig.length > 0) {
-      return {
-        hasMethodology: true,
-        methodologyName: 'Harness SDD',
-        methodologyVersion: null,
-        configFile: harnessConfig[0].fsPath,
-        isActive: true,
-        layer: 3,
-      };
-    }
-
-    // Custom / generic SDD (feature_list.json is the canonical entry point)
-    const featureList = await vscode.workspace.findFiles(
-      new vscode.RelativePattern(this._workspaceRoot, 'feature_list.json'),
-      undefined,
-      1,
-    );
-
-    if (featureList.length > 0) {
-      return {
-        hasMethodology: true,
-        methodologyName: 'Custom SDD',
-        methodologyVersion: null,
-        configFile: featureList[0].fsPath,
-        isActive: true,
-        layer: 3,
-      };
-    }
-
-    return {
-      hasMethodology: false,
-      methodologyName: null,
-      methodologyVersion: null,
-      configFile: null,
-      isActive: false,
-      layer: 3,
-    };
-  }
 }
