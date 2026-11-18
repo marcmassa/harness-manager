@@ -75,7 +75,8 @@ describe('FEAT-037 R2 — zero legacy-package surface, everything on @xyflow/rea
 
     it('the 7 migrated touchpoints import from @xyflow/react', () => {
         for (const rel of [
-            'index.tsx',
+            // ReactFlowProvider moved from index.tsx to App.tsx when the entry was split.
+            'App.tsx',
             'WhiteboardCanvas.tsx',
             'layoutUtils.ts',
             'layoutUtils.test.ts',

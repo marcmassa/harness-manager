@@ -39,6 +39,7 @@ export class ProfileAdapter implements IAgentAdapter {
     public id(): string { return this.profile.id; }
     public label(): string { return this.profile.label; }
     public capabilities(): HarnessCapabilities { return { ...DISCOVERY_ONLY }; }
+    public operations(): [] { return []; }
     public isPathConfigurable(): boolean { return false; }
     public setHarnessConfig(): void { /* profiles are already resolved from the config */ }
 

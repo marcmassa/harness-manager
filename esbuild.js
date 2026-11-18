@@ -93,6 +93,11 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/operationGate.ts",
+      out: "operationGate.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/byohProviders.ts",
       out: "byohProviders.cjs",
       external: ["vscode"],

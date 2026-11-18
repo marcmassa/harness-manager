@@ -2,7 +2,7 @@
 
 FEAT-041 is in progress on spec/byoh-0.9-advisory-optimizer. T1 wires the configured registry into the parser and detector, preserves source ownership and legacy layout keys, and carries identity through the analysis results. Evidence is in progress/impl_byoh-source-capabilities.md.
 
-T2 is implemented: profile v1 providers, the apiVersion 1 companion registration returned by activate(), and one registry change event that refreshes watchers and both panels. Next is T3, host authorization and UI capability reporting. T4 covers the workspace matrix. FEAT-042 and FEAT-043 have approvals and depend on this contract.
+T2 is implemented: profile v1 providers, the apiVersion 1 companion registration returned by activate(), and one registry change event that refreshes watchers and both panels. T3 is implemented: one operation decision in the host for webview messages, commands and post-modal rechecks, with owner, path and operation availability shown for the selected resource. Next is T4, the workspace matrix in the Extension Host. FEAT-042 and FEAT-043 have approvals and depend on this contract.
 
 FEAT-040 is blocked on independent closing review on PR #31. FEAT-039 awaits architecture review. Real-workspace checks for the seven advertised adapters remain outstanding.
 

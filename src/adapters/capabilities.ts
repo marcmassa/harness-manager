@@ -23,3 +23,23 @@ export function isHarnessCapabilities(value: unknown): value is HarnessCapabilit
     const record = value as Record<string, unknown>;
     return CAPABILITY_KEYS.every(key => typeof record[key] === 'string' && LEVELS.has(record[key] as string));
 }
+
+const level = (row: string): HarnessCapabilities => {
+    const v = row.split(' ') as CapabilityLevel[];
+    return Object.fromEntries(CAPABILITY_KEYS.map((key, i) => [key, v[i]])) as HarnessCapabilities;
+};
+
+/**
+ * Coverage of the built-in adapters, in CAPABILITY_KEYS order. Mirrors the
+ * table in docs/byoh/adapter-capabilities.md (a test keeps them equal).
+ */
+export const BUILTIN_CAPABILITIES: Readonly<Record<string, HarnessCapabilities>> = {
+    'harness-sdd': level('supported supported supported unsupported unsupported partial unsupported'),
+    'claude-code': level('supported partial partial unsupported partial partial unsupported'),
+    'gemini-cli': level('supported partial partial partial partial partial unsupported'),
+    cursor: level('supported partial partial unsupported unsupported partial unsupported'),
+    copilot: level('supported partial partial unsupported unsupported partial unsupported'),
+    opencode: level('partial unsupported unsupported unsupported unsupported unsupported unsupported'),
+    kiro: level('partial partial partial unsupported unsupported partial unsupported'),
+    windsurf: level('partial partial partial unsupported unsupported partial unsupported'),
+};

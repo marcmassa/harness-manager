@@ -280,6 +280,22 @@ describe('companion registration (R6, R7)', () => {
         expect(api.apiVersion).toBe(1);
     });
 
+    it('validates declared operations and reports them through the registry (T3)', () => {
+        const registry = new AdapterRegistry([new ClaudeCodeAdapter()], undefined, realPath);
+        registry.setProfiles([teamProfile()]);
+        const api = createCompanionApi(registry);
+        expect(() => api.registerAdapter(companion({ operations: ['editing.teleport' as never] }))).toThrow(/unknown operation/);
+        expect(() => api.registerAdapter(companion({ operations: ['editing.deleteEntity'] }))).toThrow(/without that capability/);
+        api.registerAdapter(companion({ capabilities: { ...DISCOVERY_ONLY, editing: 'partial' }, operations: ['editing.reviewedTextEdit'] }));
+        expect([...registry.providerOperations('acme')]).toEqual(['editing.reviewedTextEdit']);
+        expect(registry.providerCapabilities('acme').editing).toBe('partial');
+        expect([...registry.providerOperations('claude-code')]).toEqual(['editing.reviewedTextEdit', 'agentRuns.launch']);
+        expect([...registry.providerOperations('team-guides')]).toEqual([]);
+        expect(registry.providerCapabilities('team-guides')).toEqual(DISCOVERY_ONLY);
+        expect([...registry.providerOperations('not-registered')]).toEqual([]);
+        expect(registry.providerLabel('team-guides')).toBe('Team guides');
+    });
+
     it('accepts registration without a workspace as a no-op', () => {
         expect(() => createCompanionApi(undefined).registerAdapter(companion()).dispose()).not.toThrow();
     });
