@@ -88,6 +88,11 @@ async function main() {
   // by VS Code at runtime). `mocha` is only used by bootstrap.
   const integrationEntryPoints = [
     {
+      in: "src/test/integration/saveIsolation.ts",
+      out: "saveIsolation.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/runIntegrationTests.ts",
       out: "runIntegrationTests.cjs",
       external: ["vscode"],

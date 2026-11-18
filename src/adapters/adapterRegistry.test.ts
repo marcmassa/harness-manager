@@ -383,6 +383,23 @@ describe('FEAT-026 — R18 / R19 — non-configurable adapters skip discovery', 
         expect(steeringNames).toEqual(['kiss']); // only the FEAT-024 entry
     });
 
+    it('preserves native paths and ownership for repository KISS and DRY hooks on rescan', async () => {
+        const hooks = ['kiss', 'dry'].map(kind => ({
+            event: 'on_file_saved_' + kind, script: '.kiro/hooks/on-file-saved-' + kind + '-check.sh',
+        }));
+        seedWorkspace({
+            '.agents/agentic.json': JSON.stringify({ default_agent: 'harness', hooks }),
+            ...Object.fromEntries(hooks.map(h => [h.script, '#!/bin/bash'])),
+        });
+        const adapter = new HarnessSddAdapter();
+        for (let scan = 0; scan < 2; scan++) {
+            const result = await adapter.parse(rootUri());
+            expect(result.graph?.nodes.filter(n => n.type === 'hook').map(n => [
+                n.metadata._framework, n.metadata.event, n.metadata._filePath,
+            ])).toEqual(hooks.map(h => ['harness-sdd', h.event, h.script]));
+        }
+    });
+
     it('(R19) OpenCodeAdapter is unaffected by .harness-dashboard/config.json (no discovery at all)', async () => {
         seedWorkspace({
             'opencode.jsonc': JSON.stringify({ name: 'sample', subagents: [{ name: 'builder' }] }),

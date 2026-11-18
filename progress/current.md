@@ -1,5 +1,5 @@
 # Current session state
 
-FEAT-039 is in progress, ready for independent review of the architecture and migration inventory. See progress/impl_byoh-product-architecture.md for evidence. FEAT-040 is the proposed revision of FEAT-027 and is awaiting maintainer approval. Its executable changes depend on that decision and the one-feature concurrency limit.
+FEAT-040 is implemented on spec/byoh-harness-platform and awaits independent closing review. All five tasks have verification evidence in progress/impl_repository-quality-hooks.md.
 
-The current release still registers its save verifier. The product capability API and declarative profiles have design contracts. Real-workspace adapter results remain in the P1 backlog.
+FEAT-039 is blocked on independent review of the architecture commit 3fff2d4. The migration inventory and the seven-adapter field validation plan are in docs/byoh. Real-workspace results are still outstanding.

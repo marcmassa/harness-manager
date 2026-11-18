@@ -146,6 +146,18 @@ Configure the OpenAI-compatible fallback provider to help define new specs with 
 
 ## Contributing
 
+From the repository root, run the contributor quality checks on a TypeScript file with:
+
+```sh
+FILE=src/parserLogic.ts bash hooks/run-hooks.sh on_file_saved_kiss
+FILE=src/parserLogic.ts bash hooks/run-hooks.sh on_file_saved_dry
+```
+
+These commands print JSON findings. The Dashboard has retired its Verify Code Quality
+command and its `harness-dashboard.codeQuality.*` settings, including `blockOnSave`
+and the development-branch name `warnBeforeSaveOnError`. Existing settings may be
+removed at your convenience. Each workspace controls its own save hooks.
+
 Issues and PRs welcome at [github.com/marcmassa/harness-manager](https://github.com/marcmassa/harness-manager).
 
 ---

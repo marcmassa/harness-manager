@@ -477,7 +477,7 @@
       "title": "Bring Your Own Harness — product architecture migration",
       "description": "Reorient Harness Dashboard around the harness each user already has. Define shared-core versus adapter-specific capabilities, audit all current features against BYOH, update DESIGN.md and classify each feature as shared, adapter-specific, optional integration, or repository development tooling. Keep KISS/DRY hooks for this repository's development only. Produce approved follow-up specs before changing affected runtime features; then build the capability model, custom adapter path, and support reporting in staged work.",
       "type": "feat",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "spec-author-vscode",
@@ -488,7 +488,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, reply to FEAT-039 spec_ready: continúa las tareas para orientar harness-manager a una estrategia de Bring Your Own Harness",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     },
     {
       "id": "FEAT-040",
@@ -496,11 +497,18 @@
       "title": "Repository development hooks — BYOH revision of FEAT-027",
       "description": "Keep KISS and DRY as contributor checks and retire their activation in the shipped extension.",
       "type": "chore",
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
-      "sprint": "Next"
+      "sprint": "Next",
+      "spec_approval": {
+        "spec_digest": "e82601760da82c2f6adab758c53736a5e62b69fa112beafac81f964ab905cdd3",
+        "task_digest": "adac100abe404ea7e6d6e79af4d6f73fc62c183fda40306f721b113271ca4060",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18: aprobado, in response to the FEAT-040 design and approval request",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     }
   ]
 }
