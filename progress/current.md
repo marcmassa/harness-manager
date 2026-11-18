@@ -1,7 +1,5 @@
 # Current session state
 
-FEAT-040 awaits independent closing review on spec/byoh-harness-platform. All five tasks have evidence in progress/impl_repository-quality-hooks.md. The follow-up review restricted the whiteboard command handler to the two actions in FEAT-033 R27–R29. Both npm audits returned zero findings. The separate TypeScript check still reports 218 baseline diagnostics.
+FEAT-040 awaits independent closing review on PR #31. FEAT-039 awaits independent architecture review. The seven advertised adapters still need real-workspace validation.
 
-FEAT-039 awaits independent review of architecture commit 3fff2d4. Real-workspace validation of the seven advertised adapters remains open. The field validation plan is in docs/byoh.
-
-The historical spec inventory and its outstanding acceptance checks are in progress/spec-review/README.md.
+FEAT-041 (source ownership and operations), FEAT-042 (Advisory) and FEAT-043 (Optimizer) are ready for maintainer review for 0.9.0. Implement FEAT-041 first after approval and availability of the implementation slot. Debugging evidence and release acceptance are in docs/byoh/v0.9.0.md.
