@@ -1,6 +1,7 @@
 // FEAT-034 — Component Optimizer — scoring (design.md §E, R10–R12)
 
 import type {
+    ComponentCoverage,
     ComponentScore,
     ComponentSource,
     OptimizerDimension,
@@ -70,19 +71,29 @@ export function tierFor(score: number): ScoreTier {
  * The component score is the arithmetic mean of the dimension scores, rounded
  * to the nearest integer.
  */
-export function scoreComponent(source: ComponentSource, findings: OptimizerFinding[]): ComponentScore {
+export function scoreComponent(
+    source: ComponentSource,
+    findings: OptimizerFinding[],
+    // FEAT-043 R2: default keeps every dimension evaluated (pre-FEAT-043 callers and tests).
+    coverage: ComponentCoverage = { evaluated: [...DIMENSIONS], skipped: [] },
+): ComponentScore {
     // Derived from DIMENSIONS rather than written out: a hand-maintained literal
     // silently produced NaN when the dimension set grew from four to six.
+    const evaluated = new Set(coverage.evaluated);
     const dimensions = Object.fromEntries(
-        DIMENSIONS.map(d => [d, 100]),
-    ) as Record<OptimizerDimension, number>;
+        DIMENSIONS.map(d => [d, evaluated.has(d) ? 100 : null]),
+    ) as Record<OptimizerDimension, number | null>;
 
     for (const f of findings) {
-        dimensions[f.dimension] = Math.max(0, dimensions[f.dimension] - SEVERITY_WEIGHT[f.severity]);
+        const current = dimensions[f.dimension] ?? 100; // a finding proves its dimension was evaluated
+        dimensions[f.dimension] = Math.max(0, current - SEVERITY_WEIGHT[f.severity]);
     }
 
-    const mean = DIMENSIONS.reduce((sum, d) => sum + dimensions[d], 0) / DIMENSIONS.length;
-    const score = Math.round(mean);
+    // A skipped dimension contributes neither a penalty nor a perfect score.
+    const scored = DIMENSIONS.filter(d => dimensions[d] !== null);
+    const score = scored.length === 0
+        ? null
+        : Math.round(scored.reduce((sum, d) => sum + (dimensions[d] as number), 0) / scored.length);
 
     return {
         source: source.source,
@@ -90,16 +101,20 @@ export function scoreComponent(source: ComponentSource, findings: OptimizerFindi
         nodeType: source.nodeType,
         label: source.label,
         score,
-        tier: tierFor(score),
+        tier: score === null ? null : tierFor(score),
         dimensions,
         tokenEstimate: source.tokenEstimate,
         findingCount: findings.length,
+        coverage: { evaluated: scored, skipped: coverage.skipped },
     };
 }
 
-/** R12: architecture rollup — mean of all component scores, 0 when empty. */
-export function rollup(components: ComponentScore[]): number {
-    if (components.length === 0) return 0;
-    const sum = components.reduce((acc, c) => acc + c.score, 0);
-    return Math.round(sum / components.length);
+/**
+ * R12: architecture rollup — mean of the scored components. FEAT-043 R2: an
+ * unscored component changes nothing; null when no component was scored.
+ */
+export function rollup(components: ComponentScore[]): number | null {
+    const scored = components.filter((c): c is ComponentScore & { score: number } => c.score !== null);
+    if (scored.length === 0) return null;
+    return Math.round(scored.reduce((acc, c) => acc + c.score, 0) / scored.length);
 }

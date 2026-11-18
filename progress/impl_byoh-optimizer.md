@@ -34,3 +34,34 @@ Other changes:
 | R4 | applicability.test.ts: the `OPT-S02` finding carries its source and owner. Panel display is T2. |
 
 Verified: 891 unit tests.
+
+## T2 — Scorer, corpus and panel coverage
+
+How scoring works now:
+- The engine records, per component, the dimensions that at least one applicable rule evaluated, and the rules it skipped with the reason from `applicability()`. This is `ComponentScore.coverage`.
+- `scoreComponent` averages only the evaluated dimensions. A skipped dimension is `null`: neither a penalty nor a perfect 100. A finding proves its dimension was evaluated.
+- With no evaluable dimension, `score` and `tier` are `null`: the component is unscored rather than 0 or 100.
+- `rollup` averages scored components only, so adding an unscored component leaves the architecture score unchanged. With none scored it is `null`, not 0, and `scoredComponents` reports how many were aggregated.
+
+Corpus statistics are keyed by cohort (`owner::type`, or the type when there is no owner). Each cohort sets its own median budgets and its frontmatter and heading majorities, so one format's sizes and habits never calibrate another's. A cohort below the sample minimum falls back to the absolute budget, as before, and the finding's detail says the corpus was too small. Relative findings name the cohort ("the median harness-sdd skill").
+
+The panel:
+- shows "Unscored" instead of a tier badge, "—" for an unscored architecture score, and an "n/6" column with the evaluated dimensions;
+- in the expansion, lists the evaluated dimensions and every rule not evaluated, with its reason;
+- shows the owning provider on each finding;
+- draws an unevaluated radar axis at the centre and labels it "n/a";
+- averages architecture radar axes over the components that evaluated them;
+- gives no whiteboard chip to an unscored component.
+
+`OptimizerPanel.tsx` (52 KB) was split to stay under the staged-file limit:
+- **Moved verbatim:** `optimizerParts.tsx`, `optimizerControls.tsx`, `ComponentExpansion.tsx`, `OptimizerFilters.tsx` (filter bar and rule batches).
+- **Extracted pure helper:** `optimizerCoverage.ts`.
+
+| Requirement | Verification |
+|---|---|
+| R1 | coverage.test.ts: an end-to-end scan of a Cursor rule records the skipped convention rules and keeps the shared ones. |
+| R2 | coverage.test.ts: partial evaluation averages only evaluated dimensions; a clean, fully evaluated component scores 100; the aggregate is unchanged when an unscored component is added; cohorts keep one format from calibrating another. OptimizerCoverage.test.ts: radar averages and the "n/6" column. |
+| R3 | coverage.test.ts: an all-skipped component and architecture are unscored, with the skipped rules and reasons. OptimizerCoverage.test.ts renders "Unscored", "—" and the not-evaluated list. scorer.test.ts: an empty rollup is unscored. |
+| R4 | Findings carry their source (T1); the panel shows the owning provider beside the rule ID and the native path. |
+
+Verified: 902 unit tests, build.

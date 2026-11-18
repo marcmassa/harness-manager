@@ -119,6 +119,8 @@ export function useDashboardActions(s: DashboardState) {
         const map = new Map<string, { score: number; tier: string; findingCount: number }>();
         if (!optimizerEnabled || !optimizerReport?.ok) return map;
         for (const c of optimizerReport.components) {
+            // FEAT-043 R3: an unscored component gets no chip rather than a misleading number.
+            if (c.score === null || c.tier === null) continue;
             map.set(c.nodeId, { score: c.score, tier: c.tier, findingCount: c.findingCount });
         }
         return map;
