@@ -13,3 +13,8 @@
 - Exclude .harness/, .githooks/ and hooks/ via .vscodeignore; package now 373,009 B (93%), with 33 backup files retained on disk.
 - Build, 819 tests, package, ZIP runtime-asset checks and check.sh (36 checks) pass; pre-existing missing adapter-test warnings remain.
 - Regenerated local Claude/Gemini adapters; moved obsolete Codex fallback to /private/tmp/harness-codex-fallback-20261116.toml. No spec, release or framework update.
+
+## 2026-11-18 — BYOH architecture review candidate
+- Classified the 38 baseline features and documented eight built-in adapters, including legacy Windsurf.
+- Added inventory checks to the normal test suite and prepared FEAT-040 for human review.
+- Build, 821 tests, package (373,009 B), and check.sh (35 checks) pass.
