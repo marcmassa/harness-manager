@@ -102,6 +102,8 @@ export interface MaturityInfo {
     level: MaturityLevel;
     whatIsNeeded: string;
   } | null;
+  /** FEAT-042 R4: inputs the assessment could not use, named for the user. */
+  unavailableInputs?: string[];
 }
 
 // === Architecture patterns ===
@@ -182,6 +184,8 @@ export interface ArchitectureSummary {
 
 export interface AgenticProfile {
   sources?: import('../types.js').SourceIdentity[];
+  /** FEAT-042: provider-attributed evidence that Layer-2 deduplication removed (evidence.ts). */
+  evidence?: import('./evidence.js').EvidenceItem[];
   workspaceRoot: string;
   scanTimestamp: number;
   layers: {

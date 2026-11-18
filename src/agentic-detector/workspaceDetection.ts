@@ -69,37 +69,23 @@ export async function detectCLIInstalls(root: vscode.Uri): Promise<CLIInstall[]>
  * Returns a "not active" `MethodologyInfo` when nothing is found.
  */
 export async function detectMethodology(root: vscode.Uri): Promise<MethodologyInfo> {
-  // Harness SDD
-  const harnessConfig = await vscode.workspace.findFiles(
-    new vscode.RelativePattern(root, '.agents/agentic.json'),
-    undefined,
-    1,
-  );
-
-  if (harnessConfig.length > 0) {
+  // FEAT-042 R3: a governed lifecycle is feature or spec records, in any
+  // layout. A Harness SDD manifest alone declares roles, not a lifecycle.
+  const first = async (glob: string) => (await vscode.workspace.findFiles(new vscode.RelativePattern(root, glob), undefined, 1))[0];
+  const [manifest, featureList, kiroSpecs, specs] = await Promise.all([
+    first('.agents/agentic.json'),
+    first('feature_list.json'),
+    first('.kiro/specs/*/requirements.md'),
+    first('specs/*/requirements.md'),
+  ]);
+  const record = featureList ?? kiroSpecs ?? specs;
+  if (record) {
     return {
       hasMethodology: true,
-      methodologyName: 'Harness SDD',
+      // Names kept for the adoption events: Harness SDD, Custom SDD.
+      methodologyName: manifest && featureList ? 'Harness SDD' : featureList ? 'Custom SDD' : 'Spec documents',
       methodologyVersion: null,
-      configFile: harnessConfig[0].fsPath,
-      isActive: true,
-      layer: 3,
-    };
-  }
-
-  // Custom / generic SDD (feature_list.json is the canonical entry point)
-  const featureList = await vscode.workspace.findFiles(
-    new vscode.RelativePattern(root, 'feature_list.json'),
-    undefined,
-    1,
-  );
-
-  if (featureList.length > 0) {
-    return {
-      hasMethodology: true,
-      methodologyName: 'Custom SDD',
-      methodologyVersion: null,
-      configFile: featureList[0].fsPath,
+      configFile: record.fsPath,
       isActive: true,
       layer: 3,
     };

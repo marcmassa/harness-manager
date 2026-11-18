@@ -517,7 +517,7 @@
       "title": "BYOH source ownership and operation capabilities",
       "description": "Give built-in and user-defined sources stable ownership, read-only discovery and a common decision for visible and executable actions.",
       "type": "feat",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -528,7 +528,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     },
     {
       "id": "FEAT-042",
@@ -536,7 +537,7 @@
       "title": "BYOH Advisory findings, maturity and actions",
       "description": "Derive Advisory findings and maturity from attributed evidence and scope each available action to its actual provider.",
       "type": "feat",
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
