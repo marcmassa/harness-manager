@@ -1,4 +1,4 @@
-// Launch both suites against the development bundle in a real VS Code host.
+// Launch the suites against the development bundle in a real VS Code host.
 import { downloadAndUnzipVSCode, runTests } from '@vscode/test-electron';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
@@ -86,6 +86,15 @@ async function main(): Promise<void> {
             },
         });
         await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
+        const root = await fs.mkdtemp(path.join(tmpdir(), 'dashboard-ownership-'));
+        try {
+            await runTests({
+                vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
+                extensionTestsPath: path.join(__dirname, 'sourceOwnership.cjs'),
+            });
+        } finally {
+            await fs.rm(root, { recursive: true, force: true });
+        }
     } catch (err) {
         // `runTests` throws on any test failure. We log and re-throw
         // with a non-zero exit code so `npm run test:integration`

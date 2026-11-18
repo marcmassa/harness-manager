@@ -25,7 +25,15 @@ export interface MarkdownFileContent {
     exists: boolean;
 }
 
+export interface SourceIdentity {
+    workspaceUri: string;
+    providerId: string;
+    nativeId: string;
+    sourceUri?: string;
+}
+
 export interface HarnessNode {
+    source?: SourceIdentity;
     id: string;
     type: NodeType;
     label: string;

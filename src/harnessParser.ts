@@ -19,14 +19,12 @@ export interface ParseOptions {
 }
 
 export class HarnessParser {
-    private readonly _registry: AdapterRegistry;
 
     constructor(
         private readonly workspaceRoot: vscode.Uri,
-        log?: vscode.LogOutputChannel
-    ) {
-        this._registry = new AdapterRegistry(createDefaultAdapters(), log);
-    }
+        log?: vscode.LogOutputChannel,
+        private readonly _registry = new AdapterRegistry(createDefaultAdapters(), log),
+    ) {}
 
     public getWatchGlobs(): string[] {
         return this._registry.watchGlobs();

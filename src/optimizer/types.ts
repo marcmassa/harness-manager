@@ -39,6 +39,7 @@ export type OptimizableType = 'agent' | 'subagent' | 'skill' | 'steering' | 'hoo
 export type PathKind = 'file' | 'directory' | 'missing' | 'unresolved';
 
 export interface ComponentSource {
+    source?: import('../types.js').SourceIdentity;
     nodeId: string;
     nodeType: OptimizableType;
     label: string;
@@ -143,6 +144,7 @@ export interface OptimizerRule {
 }
 
 export interface ComponentScore {
+    source?: import('../types.js').SourceIdentity;
     nodeId: string;
     nodeType: OptimizableType;
     label: string;

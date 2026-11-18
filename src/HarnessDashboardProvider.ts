@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { HarnessParser } from './harnessParser.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { isKnownWebviewMessage, isWhiteboardToolbarCommand, type DashboardData } from './types.js';
@@ -30,8 +31,9 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         private readonly _workspaceRoot: vscode.Uri,
         private readonly _context: vscode.ExtensionContext,
         private readonly _log: vscode.LogOutputChannel,
+        registry: AdapterRegistry,
     ) {
-        this._parser = new HarnessParser(this._workspaceRoot, this._log);
+        this._parser = new HarnessParser(this._workspaceRoot, this._log, registry);
         const writer = new HarnessWriter(this._workspaceRoot);
         // scheduleScan is set after the provider is constructed (via setAgenticDetector)
         this._whiteboardCoordinator = new WhiteboardCoordinator(writer, this._parser, this._context, this._workspaceRoot, this._log);
@@ -160,9 +162,9 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         send({ type: 'init', data: result });
     }
 
-    /** Backward-compatible: send data to the sidebar webview. */
+    /** Refresh the active dashboard surfaces and their shared graph. */
     public async _sendData(): Promise<void> {
-        return this._sendDataTo();
+        if (this._view || this._panel) await this._sendDataTo(message => this.postToWebview(message));
     }
 
     public sendAdvisoryProfile(profile: AgenticProfile): void {

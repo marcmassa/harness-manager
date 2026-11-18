@@ -50,3 +50,7 @@
 ## 2026-11-18 — BYOH 0.9.0 spec approvals
 - Recorded the maintainer’s approval for FEAT-041, FEAT-042 and FEAT-043 against the specs at d7b4c7e.
 - FEAT-041 remains queued behind FEAT-040. The start transition enforced the single-feature concurrency limit.
+
+## 2026-11-18 — FEAT-041 source identity
+- Recorded FEAT-040 as blocked pending the independent review on PR #31 and started the approved FEAT-041.
+- Connected the configured registry to discovery and both analysis paths. Covered mixed-owner ID collisions, retained positions and custom Claude paths with unit and Extension Host tests.
