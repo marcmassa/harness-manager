@@ -14,9 +14,7 @@ import { OptimizerCoordinator } from './coordinators/OptimizerCoordinator.js';
 import type { OperationGate } from './operations/operationGate.js';
 import { bindRunTarget } from './operations/operations.js';
 
-export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'harness-dashboard.dashboard';
-    private _view?: vscode.WebviewView;
+export class HarnessDashboardProvider {
     private _panel?: vscode.WebviewPanel;
     private readonly _parser: HarnessParser;
     private _agenticDetector?: AgenticDetector;
@@ -68,27 +66,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
     /** Post a message to whichever view is currently active (FEAT-031). */
     public postToWebview(msg: unknown): void {
-        this._view?.webview.postMessage(msg);
         this._panel?.webview.postMessage(msg);
-    }
-
-    public resolveWebviewView(webviewView: vscode.WebviewView): void {
-        this._view = webviewView;
-
-        webviewView.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [this._extensionUri],
-        };
-
-        this._attachWebview(webviewView.webview, false);
-
-        // FEAT-045 R14: the scheduler decides when to scan; it owns the watchers.
-        this._onVisibility?.('sidebar', webviewView.visible);
-        webviewView.onDidChangeVisibility(() => this._onVisibility?.('sidebar', webviewView.visible));
-        webviewView.onDidDispose(() => {
-            if (this._view === webviewView) this._view = undefined;
-            this._onVisibility?.('sidebar', false);
-        });
     }
 
     private _onVisibility?: (surface: string, visible: boolean) => void;
@@ -100,17 +78,31 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
     /** FEAT-045: parse and cache the graph even when no webview is open (tree views read it). */
     public async refresh(): Promise<DashboardData | null> {
-        await this._sendDataTo(msg => this.postToWebview(msg));
+        let latest = this._sendDataTo(msg => this.postToWebview(msg));
+        // A newer parse (a webview's `ready`) may supersede this one: wait for the latest.
+        while (latest) { const current = latest; await current; latest = this._lastParse !== current ? this._lastParse : null; }
         return this._cachedData;
     }
+
+    private _lastParse: Promise<void> | null = null;
+    private readonly _resultListeners: Array<() => void> = [];
+    /** FEAT-045 R3: the graph or a report changed; the tree views refresh. */
+    public onResultsChanged(fn: () => void): void { this._resultListeners.push(fn); }
+    public notifyResultsChanged(): void { for (const fn of this._resultListeners) fn(); }
 
 
     /**
      * Send dashboard data to a specific webview target.
      * @param postMessage  Optional send function; defaults to the sidebar webview.
      */
-    private async _sendDataTo(postMessage?: (msg: unknown) => Thenable<boolean> | void): Promise<void> {
-        const send = postMessage || this._view?.webview.postMessage.bind(this._view?.webview);
+    private _sendDataTo(postMessage?: (msg: unknown) => Thenable<boolean> | void): Promise<void> {
+        const parse = this._parseAndSend(postMessage);
+        this._lastParse = parse;
+        return parse;
+    }
+
+    private async _parseAndSend(postMessage?: (msg: unknown) => Thenable<boolean> | void): Promise<void> {
+        const send = postMessage;
         if (!send) return;
 
         this._log.info('Parsing project data…');
@@ -174,6 +166,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             return;
         }
         this._cachedData = result;
+        this.notifyResultsChanged();
         // FEAT-041 T3 (R3): owner, native path and operation availability per resource,
         // computed by the same decision the host applies at dispatch.
         await this._gate?.refreshRunners();
@@ -182,9 +175,19 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         send({ type: 'init', data: result, ownership });
     }
 
+    /** FEAT-045 R15: a reloaded webview gets the cached graph; no second parse. */
+    private async _sendCachedTo(postMessage: (msg: unknown) => Thenable<boolean> | void): Promise<void> {
+        const data = this._cachedData;
+        if (!data) return this._sendDataTo(postMessage);
+        await this._gate?.refreshRunners();
+        const gate = this._gate;
+        const ownership = gate ? Object.fromEntries(data.graph.nodes.map(node => [node.id, gate.describe(node)])) : {};
+        postMessage({ type: 'init', data, ownership });
+    }
+
     /** Refresh the active dashboard surfaces and their shared graph. */
     public async _sendData(): Promise<void> {
-        if (this._view || this._panel) await this._sendDataTo(message => this.postToWebview(message));
+        if (this._panel) await this._sendDataTo(message => this.postToWebview(message));
     }
 
     public sendAdvisoryProfile(profile: AgenticProfile): void {
@@ -240,7 +243,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             switch (data.type) {
                 case 'ready':
                 case 'getData':
-                    await this._sendDataTo(postMessage);
+                    // FEAT-045 R5: a tab requested while the panel's webview was reloading.
+                    if (data.type === 'ready' && this._pendingTab) { postMessage({ type: 'activateTab', tab: this._pendingTab }); this._pendingTab = undefined; }
+                    if (data.type === 'ready') await this._sendCachedTo(postMessage);
+                    else await this._sendDataTo(postMessage);
                     if (this._agenticDetector) {
                         const profile = this._agenticDetector.getProfile();
                         if (profile) {
@@ -324,6 +330,7 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
      */
     /** FEAT-045 R5, R6: the one editor panel's view type, also its serializer key. */
     public static readonly panelType = 'harness-dashboard.fullDashboard';
+    private _pendingTab?: string;
 
     /**
      * Open the Dashboard in the editor, or reveal it on `tab` when it is
@@ -331,6 +338,8 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
      */
     public async openFullWindowPanel(tab?: string): Promise<void> {
         if (this._panel) {
+            // A hidden panel's webview reloads on reveal: keep the tab until it says `ready`.
+            if (tab && !this._panel.visible) this._pendingTab = tab;
             this._panel.reveal(undefined, false);
             if (tab) this._panel.webview.postMessage({ type: 'activateTab', tab });
             return;
@@ -352,6 +361,8 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
     /** Attach a new or restored panel; `tab` is the panel's saved or requested tab. */
     public adoptPanel(panel: vscode.WebviewPanel, tab?: string): void {
+        // R5: one panel. Releases before 0.9 opened several; restore only the first.
+        if (this._panel && this._panel !== panel) { panel.dispose(); return; }
         this._panel = panel;
         panel.webview.options = HarnessDashboardProvider.panelOptions(this._extensionUri);
         this._attachWebview(panel.webview, true, tab);

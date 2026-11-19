@@ -15,6 +15,28 @@ function make(empty = false) {
 const tick = (ms = 20) => new Promise(r => setTimeout(r, ms));
 
 describe('ScanScheduler', () => {
+    it('reports a failed scan as its own state, not as ready (R8)', async () => {
+        const { scheduler, effects, states } = make();
+        effects.scan.mockRejectedValueOnce(new Error('boom'));
+        await scheduler.ensureScanned();
+        expect(states).toEqual(['scanning', 'error']);
+    });
+
+    it('starts no scan after dispose, even when a change was pending', async () => {
+        const { scheduler, effects } = make();
+        let release!: () => void;
+        effects.scan.mockImplementationOnce(() => new Promise(r => { release = () => r({ empty: false }); }));
+        scheduler.setVisible('sources', true);
+        await tick();
+        scheduler.onChange();                 // during the first scan: marks stale
+        scheduler.dispose();
+        release();
+        await tick(40);
+        expect(effects.scan).toHaveBeenCalledTimes(1);
+        await scheduler.refresh();
+        expect(effects.scan).toHaveBeenCalledTimes(1);
+    });
+
     it('does nothing on construction (activation)', () => {
         const { effects } = make();
         expect(effects.scan).not.toHaveBeenCalled();

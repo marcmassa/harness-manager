@@ -37,6 +37,12 @@ export async function run(): Promise<void> {
         assert.ok(!provider.readyTabs.has('advisory'), 'the advisory chunk loaded without being shown');
         await provider.openFullWindowPanel('advisory');
         await until(() => provider.readyTabs.has('advisory'), 'the advisory chunk to load on first display');
+        // R5: reveal a panel hidden behind another editor (its webview reloads) on a new tab.
+        const doc = await vscode.workspace.openTextDocument({ content: 'hide the panel' });
+        await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Two, preview: false }); // the panel's column
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await provider.openFullWindowPanel('timeline');
+        await until(() => provider.readyTabs.has('timeline'), 'the timeline tab after revealing a hidden panel');
         console.log(`FEAT-045 webview chunks: ${[...provider.readyTabs].join(', ')}`);
         console.log('FEAT-045 webview chunks passed');
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');

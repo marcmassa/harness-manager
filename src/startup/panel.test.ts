@@ -4,15 +4,19 @@ import { readFileSync } from 'node:fs';
 
 const commands = new Map<string, (...a: unknown[]) => unknown>();
 const serializers = new Map<string, { deserializeWebviewPanel(p: unknown, s: unknown): Promise<void> }>();
-const panels: Array<{ options: Record<string, unknown>; reveal: ReturnType<typeof vi.fn>; html: string; posted: unknown[] }> = [];
+const panels: Array<{ options: Record<string, unknown>; reveal: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn>; html: string; posted: unknown[]; webview: { html: string }; receive(m: unknown): Promise<void> | undefined }> = [];
 
 function fakePanel(options: Record<string, unknown> = {}) {
     const posted: unknown[] = [];
+    let handler: ((m: unknown) => Promise<void>) | undefined;
     const webview = {
         options, html: '', cspSource: 'csp', asWebviewUri: (u: unknown) => u,
-        onDidReceiveMessage: () => ({ dispose() {} }), postMessage: (m: unknown) => { posted.push(m); return Promise.resolve(true); },
+        onDidReceiveMessage: (fn: (m: unknown) => Promise<void>) => { handler = fn; return { dispose() {} }; }, postMessage: (m: unknown) => { posted.push(m); return Promise.resolve(true); },
     };
-    const panel = { webview, visible: true, reveal: vi.fn(), onDidChangeViewState: () => ({ dispose() {} }), onDidDispose: () => ({ dispose() {} }), get html() { return webview.html; }, options, posted };
+    let onDispose: (() => void) | undefined;
+    const panel = { webview, visible: true, reveal: vi.fn(), onDidChangeViewState: () => ({ dispose() {} }),
+        onDidDispose: (fn: () => void) => { onDispose = fn; return { dispose() {} }; }, dispose: vi.fn(() => onDispose?.()),
+        get html() { return webview.html; }, options, posted, receive: (m: unknown) => handler?.(m) };
     Object.defineProperty(panel, 'options', { get: () => webview.options });
     panels.push(panel as never);
     return panel;
@@ -57,13 +61,40 @@ describe('editor panel (R5, R6)', () => {
     it('restores a panel through its serializer, on its saved tab', async () => {
         const serializer = serializers.get('harness-dashboard.fullDashboard');
         expect(serializer).toBeDefined();
+        panels[0].dispose();
         const restored = fakePanel();
         await serializer!.deserializeWebviewPanel(restored, { tab: 'optimizer' });
         expect(restored.webview.html).toContain('window.__harness_initial_tab = "optimizer"');
         expect(restored.webview.options).not.toHaveProperty('retainContextWhenHidden');
+        restored.dispose();
         const forged = fakePanel();
         await serializer!.deserializeWebviewPanel(forged, { tab: '"; alert(1); "' });
         expect(forged.webview.html).toContain('window.__harness_initial_tab = "whiteboard"');
+    });
+
+    it('keeps one panel when VS Code restores several from an older release', async () => {
+        const serializer = serializers.get('harness-dashboard.fullDashboard')!;
+        const extra = fakePanel();
+        await serializer.deserializeWebviewPanel(extra, { tab: 'advisory' });
+        expect(extra.dispose).toHaveBeenCalledTimes(1);
+        expect(extra.webview.html).toBe('');
+    });
+
+    it('activates a requested tab once a hidden panel reloads and reports ready', async () => {
+        const { HarnessDashboardProvider } = await import('../HarnessDashboardProvider.js');
+        const { AdapterRegistry } = await import('../adapters/AdapterRegistry.js');
+        const log = { info() {}, warn() {}, error() {}, debug() {} };
+        const provider = new HarnessDashboardProvider(context.extensionUri as never, { fsPath: '/w', path: '/w' } as never, context as never, log as never, new AdapterRegistry([], log as never));
+        const panel = fakePanel();
+        provider.adoptPanel(panel as never);
+        Object.assign(panel, { visible: false });
+        await provider.openFullWindowPanel('optimizer');
+        panel.posted.length = 0;                       // the reload drops what was posted before
+        await panel.receive({ type: 'ready' });
+        expect(panel.posted[0]).toEqual({ type: 'activateTab', tab: 'optimizer' });
+        panel.posted.length = 0;
+        await panel.receive({ type: 'ready' });
+        expect(panel.posted.some(m => (m as { type: string }).type === 'activateTab')).toBe(false);
     });
 });
 
