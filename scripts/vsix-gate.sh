@@ -93,6 +93,10 @@ for entry in $REQUIRED; do
 		missing="$missing$entry\n"
 	fi
 done
+# FEAT-045: the webview's lazily loaded tabs ship as chunks next to it.
+if ! echo "$LISTING" | grep -q "extension/dist/webview-chunks/.*\.js\$"; then
+	missing="${missing}extension/dist/webview-chunks/*.js\n"
+fi
 if [ -n "$missing" ]; then
 	echo "GATE FAIL [presence]: required entries missing from the package (FEAT-038 R4):" >&2
 	printf "$missing" >&2

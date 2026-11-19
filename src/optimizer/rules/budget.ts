@@ -2,7 +2,7 @@
 // OPT-B01 .. OPT-B03
 
 import type { ComponentSource, OptimizableType, OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { resolveBudget } from '../corpusStats.js';
+import { resolveBudget, cohortKey } from '../corpusStats.js';
 
 function finding(
     ruleId: string,
@@ -45,11 +45,11 @@ export const optB01: OptimizerRule = {
         const absolute = budgetFor(source.nodeType, config);
         if (absolute === undefined || absolute <= 0) return [];
 
-        const resolved = resolveBudget(source.nodeType, absolute, corpus, config.budgetMedianMultiple);
+        const resolved = resolveBudget(cohortKey(source), absolute, corpus, config.budgetMedianMultiple);
         if (resolved.threshold <= 0 || source.tokenEstimate <= resolved.threshold) return [];
 
         const basis = resolved.basis === 'relative'
-            ? `${config.budgetMedianMultiple}× the median ${source.nodeType} in this workspace (${resolved.median} tokens, n=${resolved.sampleSize})`
+            ? `${config.budgetMedianMultiple}× the median ${source.source?.providerId ? `${source.source.providerId} ` : ''}${source.nodeType} in this workspace (${resolved.median} tokens, n=${resolved.sampleSize})`
             : `the configured budget of ${absolute} tokens (corpus too small to calibrate: n=${resolved.sampleSize})`;
 
         return [
@@ -78,7 +78,7 @@ export const optB02: OptimizerRule = {
         if (!source.exists) return [];
         const absolute = budgetFor(source.nodeType, config);
         if (absolute === undefined || absolute <= 0) return [];
-        const resolved = resolveBudget(source.nodeType, absolute, corpus, config.budgetMedianMultiple);
+        const resolved = resolveBudget(cohortKey(source), absolute, corpus, config.budgetMedianMultiple);
         if (resolved.threshold <= 0 || source.tokenEstimate <= resolved.threshold) return [];
 
         const sections: string[] = [];
@@ -90,17 +90,20 @@ export const optB02: OptimizerRule = {
         if (sections.length < 3) return [];
 
         const candidates = sections.slice(2);
+        // FEAT-043: a references/ file is part of the component only in folder-per-component
+        // formats (<name>/SKILL.md, <name>/SUBAGENT.md); elsewhere it would be scanned as a new one.
+        const ownFolder = /(?:^|\/)(?:SKILL|SUBAGENT)\.md$/i.test(source.filePath);
         return [
             finding('OPT-B02', ctx, {
                 severity: 'info',
                 dimension: 'budget',
                 title: 'Extractable reference content',
                 detail: `Sections after the second (${candidates.join(', ')}) are candidates for extraction into references/.`,
-                fix: {
-                    type: 'extract-to-references',
+                ...(ownFolder ? { fix: {
+                    type: 'extract-to-references' as const,
                     label: 'Extract to references/',
                     payload: { sections: candidates.join(',') },
-                },
+                } } : {}),
             }),
         ];
     },

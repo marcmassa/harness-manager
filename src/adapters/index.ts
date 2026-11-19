@@ -1,3 +1,4 @@
+import type { HarnessConfig } from '../config/harnessConfig.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
     ConfigurationRegistry,
@@ -22,13 +23,13 @@ export function disposeConfigurationRegistry(): void {
     ConfigurationRegistry.resetInstance();
 }
 
-export function createDefaultAdapters(): IAgentAdapter[] {
+export function createDefaultAdapters(config?: HarnessConfig): IAgentAdapter[] {
     // Ensure the singleton is constructed before any adapter
     // is built, so `watchGlobs()` can read the registry
     // without a `getInstance` call deferring the construction.
     getConfigurationRegistry();
 
-    return [
+    const adapters = [
         new HarnessSddAdapter(),
         new ClaudeCodeAdapter(),
         new GeminiCliAdapter(),
@@ -38,6 +39,10 @@ export function createDefaultAdapters(): IAgentAdapter[] {
         new WindsurfAdapter(),
         new KiroAdapter(),
     ];
+    if (config) {
+        for (const adapter of adapters) adapter.setHarnessConfig(config);
+    }
+    return adapters;
 }
 
 export {

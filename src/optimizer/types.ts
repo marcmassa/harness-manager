@@ -39,6 +39,7 @@ export type OptimizableType = 'agent' | 'subagent' | 'skill' | 'steering' | 'hoo
 export type PathKind = 'file' | 'directory' | 'missing' | 'unresolved';
 
 export interface ComponentSource {
+    source?: import('../types.js').SourceIdentity;
     nodeId: string;
     nodeType: OptimizableType;
     label: string;
@@ -66,6 +67,10 @@ export interface QuickFix {
 }
 
 export interface OptimizerFinding {
+    /** FEAT-043 R4: native source and owner of the component. */
+    source?: import('../types.js').SourceIdentity;
+    /** FEAT-044: shown, but excluded from scores (cost is its own section, not a dimension). */
+    informational?: true;
     ruleId: string;            // OPT-<F><NN>
     nodeId: string;
     nodeType: OptimizableType;
@@ -104,19 +109,23 @@ export interface OptimizerFinding {
  */
 export type RuleConfidence = 'fact' | 'heuristic' | 'opinion';
 
-/** Per-node-type corpus statistics, used for relative (self-calibrating) thresholds. */
+/**
+ * Per-cohort corpus statistics, used for relative (self-calibrating) thresholds.
+ * FEAT-043: a cohort is `owner::type` (see `cohortKey`), so one format's sizes
+ * and conventions never calibrate another's; without an owner it is the type.
+ */
 export interface CorpusStats {
     /** Median token estimate per node type across the scanned corpus. */
-    medianTokensByType: Map<OptimizableType, number>;
+    medianTokensByType: Map<string, number>;
     /** How many components of each type the median was computed from. */
-    sampleSizeByType: Map<OptimizableType, number>;
+    sampleSizeByType: Map<string, number>;
     /**
      * Frontmatter keys used by a majority of same-typed components — the
      * author's de-facto convention, derived rather than prescribed.
      */
-    commonFrontmatterKeysByType: Map<OptimizableType, string[]>;
+    commonFrontmatterKeysByType: Map<string, string[]>;
     /** `##` headings used by a majority of same-typed components. */
-    commonHeadingsByType: Map<OptimizableType, string[]>;
+    commonHeadingsByType: Map<string, string[]>;
 }
 
 /** Everything a rule may read. Pure — no vscode, no fs. */
@@ -139,25 +148,51 @@ export interface OptimizerRule {
     defaultSeverity: OptimizerSeverity;
     /** Epistemic tier. Determines the severity ceiling applied by the scorer. */
     confidence: RuleConfidence;
+    /**
+     * FEAT-043 R2: why this rule cannot evaluate this component (for example an
+     * uncalibrated cohort), or null. A rule that cannot evaluate is recorded as
+     * skipped and does not mark its dimension evaluated.
+     */
+    cannotEvaluate?(ctx: RuleContext): string | null;
+    /**
+     * FEAT-044: false for informational rules (context cost) whose findings are
+     * shown but never change a score or a dimension's coverage.
+     */
+    scored?: false;
     evaluate(ctx: RuleContext): OptimizerFinding[];
 }
 
 export interface ComponentScore {
+    source?: import('../types.js').SourceIdentity;
     nodeId: string;
     nodeType: OptimizableType;
     label: string;
-    score: number;                                  // 0–100
-    tier: ScoreTier;
-    dimensions: Record<OptimizerDimension, number>;
+    /** 0–100 over evaluated dimensions only; null when none could be evaluated (FEAT-043 R2, R3). */
+    score: number | null;
+    tier: ScoreTier | null;
+    /** null: no applicable rule evaluated this dimension — neither a penalty nor a perfect score. */
+    dimensions: Record<OptimizerDimension, number | null>;
     tokenEstimate: number;
     findingCount: number;
+    /** FEAT-043: what was evaluated, and why the rest was not. */
+    coverage: ComponentCoverage;
+}
+
+export interface ComponentCoverage {
+    evaluated: OptimizerDimension[];
+    skipped: { ruleId: string; reason: string }[];
 }
 
 export interface OptimizerReport {
     ok: boolean;
     error?: string;
     scanTimestamp: number;
-    architectureScore: number;
+    /** Mean of scored components; null when no component could be scored. */
+    architectureScore: number | null;
+    /** FEAT-043 R2: how many components the architecture score aggregates. */
+    scoredComponents?: number;
+    /** FEAT-044: per-provider session context cost and optional money estimates. */
+    cost?: import('../cost/costSection.js').CostSection;
     totalComponents: number;
     truncated: boolean;
     components: ComponentScore[];

@@ -17,7 +17,14 @@
 // majority to mean anything.
 
 import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { headingsOf } from '../corpusStats.js';
+import { headingsOf, cohortKey, MIN_SAMPLE_FOR_CONVENTION } from '../corpusStats.js';
+
+function uncalibrated(ctx: RuleContext): string | null {
+    const n = ctx.corpus.sampleSizeByType.get(cohortKey(ctx.source)) ?? 0;
+    return n < MIN_SAMPLE_FOR_CONVENTION
+        ? `only ${n} ${ctx.source.source?.providerId ?? ''} ${ctx.source.nodeType} component${n === 1 ? '' : 's'}; consistency needs ${MIN_SAMPLE_FOR_CONVENTION} to calibrate`.replace('  ', ' ')
+        : null;
+}
 
 function finding(
     ruleId: string,
@@ -39,6 +46,8 @@ const ALL_OPTIMIZABLE = ['agent', 'subagent', 'skill', 'steering', 'hook'] as co
 
 export const optC01: OptimizerRule = {
     id: 'OPT-C01',
+    /** FEAT-043 R2: an owner::type cohort below the convention minimum cannot be compared. */
+    cannotEvaluate: ctx => uncalibrated(ctx),
     appliesTo: ALL_OPTIMIZABLE,
     dimension: 'consistency',
     defaultSeverity: 'info',
@@ -48,7 +57,7 @@ export const optC01: OptimizerRule = {
         const { source, corpus } = ctx;
         if (!source.exists) return [];
 
-        const common = corpus.commonFrontmatterKeysByType.get(source.nodeType) ?? [];
+        const common = corpus.commonFrontmatterKeysByType.get(cohortKey(source)) ?? [];
         if (common.length === 0) return [];
 
         const own = new Set(Object.keys(source.frontmatter));
@@ -77,6 +86,8 @@ export const optC01: OptimizerRule = {
 
 export const optC02: OptimizerRule = {
     id: 'OPT-C02',
+    /** FEAT-043 R2: an owner::type cohort below the convention minimum cannot be compared. */
+    cannotEvaluate: ctx => uncalibrated(ctx),
     appliesTo: ALL_OPTIMIZABLE,
     dimension: 'consistency',
     defaultSeverity: 'info',
@@ -86,7 +97,7 @@ export const optC02: OptimizerRule = {
         const { source, corpus } = ctx;
         if (!source.exists || !source.body) return [];
 
-        const common = corpus.commonHeadingsByType.get(source.nodeType) ?? [];
+        const common = corpus.commonHeadingsByType.get(cohortKey(source)) ?? [];
         if (common.length === 0) return [];
 
         const own = new Set(headingsOf(source.body));

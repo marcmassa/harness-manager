@@ -30,6 +30,8 @@ async function main() {
     "extension.cjs", "webview.js", "webview.css",
     "extension.cjs.map", "webview.js.map", "webview.css.map",
   ]);
+  // Chunk names carry a content hash: clear them so stale chunks never ship.
+  // (pruneStaleDistOutputs removed the folder above; it is rebuilt from scratch.)
 
   const extensionCtx = await esbuild.context({
     entryPoints: ["src/extension.ts"],
@@ -55,7 +57,11 @@ async function main() {
         minify: !watch,
         sourcemap: watch,
         platform: "browser",
-        outfile: `dist/${ep.out}`,
+        // FEAT-045 R19: each lazily loaded tab is its own chunk.
+        splitting: true,
+        outdir: "dist",
+        entryNames: ep.out.replace(/\.js$/, ""),
+        chunkNames: "webview-chunks/[name]-[hash]",
         loader: { ".css": "css" },
       })
     )
@@ -87,6 +93,61 @@ async function main() {
   // transitive imports differ. `vscode` is the host API (provided
   // by VS Code at runtime). `mocha` is only used by bootstrap.
   const integrationEntryPoints = [
+    {
+      in: "src/test/integration/sourceOwnership.ts",
+      out: "sourceOwnership.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/fieldValidation.ts",
+      out: "fieldValidation.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/startupTiming.ts",
+      out: "startupTiming.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/webviewChunks.ts",
+      out: "webviewChunks.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/costMatrix.ts",
+      out: "costMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/optimizerMatrix.ts",
+      out: "optimizerMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/advisoryMatrix.ts",
+      out: "advisoryMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/workspaceMatrix.ts",
+      out: "workspaceMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/operationGate.ts",
+      out: "operationGate.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/byohProviders.ts",
+      out: "byohProviders.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/saveIsolation.ts",
+      out: "saveIsolation.cjs",
+      external: ["vscode"],
+    },
     {
       in: "src/test/integration/runIntegrationTests.ts",
       out: "runIntegrationTests.cjs",

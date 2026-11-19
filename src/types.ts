@@ -25,7 +25,17 @@ export interface MarkdownFileContent {
     exists: boolean;
 }
 
+export interface SourceIdentity {
+    workspaceUri: string;
+    providerId: string;
+    nativeId: string;
+    sourceUri?: string;
+    /** FEAT-044: when the resource enters a model's context, as declared by its owner. */
+    loadMode?: import('./cost/loadMode.js').LoadMode;
+}
+
 export interface HarnessNode {
+    source?: SourceIdentity;
     id: string;
     type: NodeType;
     label: string;
@@ -63,14 +73,11 @@ export interface DashboardData {
     milestones: Milestone[];
     errors: ParserError[];
     detectedFrameworks?: string[];
+    /** FEAT-041: IDs of providers whose detect() succeeded in this scan, with or without nodes. */
+    detectedProviders?: string[];
 }
 
-export interface ParserResult {
-    graph: HarnessGraph;
-    milestones: Milestone[];
-    errors: ParserError[];
-    detectedFrameworks?: string[];
-}
+export type ParserResult = DashboardData;
 
 // ── Webview message discriminator (FEAT-030 R5, R6) ──────────────────────────
 
@@ -110,6 +117,10 @@ export type WebviewMessageType =
     | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt'
     // FEAT-036: supply-chain health — user-triggered npm audit (R6, R7)
     | 'runSupplyChainAudit'
+    // FEAT-044: read-only cost comparison with git HEAD
+    | 'compareCostWithHead' | 'costComparison'
+    // FEAT-045: a lazily loaded tab mounted
+    | 'tabReady'
     | 'supplyChainAuditResult';
 
 export interface WebviewMessage {
@@ -153,7 +164,14 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
     // FEAT-036: supply-chain health
     'runSupplyChainAudit', 'supplyChainAuditResult',
+    'compareCostWithHead', 'costComparison',
+    'tabReady',
 ]);
+
+// FEAT-033 R27–R29 limit the gear menu to these two host actions.
+export function isWhiteboardToolbarCommand(command: unknown): command is string {
+    return command === 'harness-dashboard.scaffoldMissing' || command === 'harness-dashboard.syncFromFilesystem';
+}
 
 export function isKnownWebviewMessage(msg: unknown): msg is WebviewMessage {
     return (

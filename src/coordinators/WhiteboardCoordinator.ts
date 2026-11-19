@@ -1,18 +1,21 @@
 import * as vscode from 'vscode';
+import { withInferenceAction } from '../cost/inferenceLedger.js';
 import { HarnessWriter } from '../harnessWriter.js';
 import { HarnessParser } from '../harnessParser.js';
 import type { MarkdownFileContent, WebviewMessage } from '../types.js';
 import { openFileInEditor } from '../fileUtils.js';
 import { generateText } from '../lmUtils.js';
 import { ARCHITECTURE_TEMPLATES } from '../whiteboard/architectureTemplates.js';
+import type { Decision } from '../operations/operations.js';
+import { removeEdge, removeUsesEdge, upsertEdge, upsertUsesEdge } from './viewRelations.js';
+
+/** FEAT-041 T3: re-run the host decision after a modal confirmation (R4). */
+export type AuthorizeFn = (msg: { type: string; [key: string]: unknown }) => Promise<Decision>;
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
-export type CustomUsesEdge = { source: string; target: string };
-export type CustomEdge = { source: string; target: string; label: string };
-
-export const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
-export const CUSTOM_EDGES_KEY = 'harness-dashboard.customEdges';
+export type { CustomUsesEdge, CustomEdge } from './viewRelations.js';
+export { CUSTOM_USES_EDGES_KEY, CUSTOM_EDGES_KEY } from './viewRelations.js';
 
 /**
  * Handles whiteboard/graph message types: node CRUD, edge CRUD, suggestion
@@ -31,6 +34,12 @@ export class WhiteboardCoordinator {
 
     setScheduleScan(fn: () => void): void {
         this._scheduleScan = fn;
+    }
+
+    private _authorize?: AuthorizeFn;
+
+    setAuthorize(fn: AuthorizeFn): void {
+        this._authorize = fn;
     }
 
     async handle(
@@ -95,6 +104,9 @@ export class WhiteboardCoordinator {
                 if (edgeLabel !== 'uses') {
                     // Non-uses edges (manages/governs/triggers) are stored in workspaceState
                     await this._upsertCustomEdge(msg.source as string, msg.target as string, edgeLabel);
+                } else if (msg.operationMode === 'view-local') {
+                    // FEAT-041: an owner that cannot persist the link keeps it as view data.
+                    await this._upsertCustomUsesEdge(msg.source as string, msg.target as string);
                 } else {
                     try {
                         await this._writer.createEdge(msg.source as string, msg.target as string);
@@ -112,7 +124,7 @@ export class WhiteboardCoordinator {
             }
 
             case 'deleteEdge':
-                await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
+                await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses', msg.operationMode === 'view-local');
                 await sendData(postMessage);
                 this._scheduleScan?.();
                 return true;
@@ -124,7 +136,15 @@ export class WhiteboardCoordinator {
                     'Yes, Delete'
                 );
                 if (result === 'Yes, Delete') {
-                    await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses');
+                    // Ownership may have changed while the modal was open.
+                    const again = await this._authorize?.(msg);
+                    if (again && !again.ok) {
+                        postMessage({ type: 'operationDenied', requestType: msg.type, reason: again.reason });
+                        void vscode.window.showWarningMessage(`Harness Dashboard: ${again.reason}`);
+                        return true;
+                    }
+                    const viewLocal = again ? again.mode === 'view-local' : msg.operationMode === 'view-local';
+                    await this._deleteEdgeWithFallback(msg.source as string, msg.target as string, (msg.label as string) || 'uses', viewLocal);
                     await sendData(postMessage);
                     this._scheduleScan?.();
                 }
@@ -151,7 +171,11 @@ export class WhiteboardCoordinator {
             }
 
             case 'acceptSuggestion':
-                await this._writer.acceptSuggestion(msg.subagentId as string, msg.skillId as string);
+                if (msg.operationMode === 'view-local') {
+                    await this._upsertCustomUsesEdge(msg.subagentId as string, msg.skillId as string);
+                } else {
+                    await this._writer.acceptSuggestion(msg.subagentId as string, msg.skillId as string);
+                }
                 await sendData(postMessage);
                 this._scheduleScan?.();
                 return true;
@@ -223,7 +247,7 @@ export class WhiteboardCoordinator {
                     // modelFamily from wizard overrides workspace config (lets user pick Copilot/Kiro/etc.)
                     const model = (modelFamily as string | undefined) || config.get<string>('ai.model', 'gpt-4o-mini');
                     const prompt = `You are helping design an AI agent named "${name}".\nRole: ${role}\nNode type: ${nodeType}\n\nGenerate 5 specific capabilities for this agent. Reply with ONLY a JSON array of strings, no markdown, no explanation.\nExample: ["Analyzes TypeScript code", "Generates test cases", "Reviews PRs for correctness"]`;
-                    const result = await generateText(prompt, this._log, { apiKey, endpoint, model });
+                    const result = await withInferenceAction('agent-description', () => generateText(prompt, this._log, { apiKey, endpoint, model }));
                     if (result.ok) {
                         const text = result.text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
                         const capabilities = JSON.parse(text);
@@ -251,6 +275,13 @@ export class WhiteboardCoordinator {
                 }
                 // Create edges for connected skills
                 for (const skillId of ((connectSkillIds as string[]) ?? [])) {
+                    // FEAT-041: the link is persisted only when the skill's owner can store it.
+                    const link = await this._authorize?.({ type: 'acceptSuggestion', subagentId: skillId, skillId });
+                    if (link && !link.ok) continue;
+                    if (link?.mode === 'view-local') {
+                        await this._upsertCustomUsesEdge(name as string, skillId);
+                        continue;
+                    }
                     try {
                         await this._writer.createEdge(name as string, skillId);
                     } catch {
@@ -324,48 +355,22 @@ export class WhiteboardCoordinator {
         );
     }
 
-    private async _upsertCustomUsesEdge(source: string, target: string): Promise<void> {
-        if (!source || !target || source === target) return;
-        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
-        if (current.some((edge) => edge.source === source && edge.target === target)) return;
-        await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, [...current, { source, target }]);
-    }
+    // View-only relationships live in workspace state (viewRelations.ts).
+    private _upsertCustomUsesEdge(source: string, target: string) { return upsertUsesEdge(this._context.workspaceState, source, target); }
+    private _upsertCustomEdge(source: string, target: string, label: string) { return upsertEdge(this._context.workspaceState, source, target, label); }
+    private _removeCustomUsesEdge(source: string, target: string) { return removeUsesEdge(this._context.workspaceState, source, target); }
+    private _removeCustomEdge(source: string, target: string, label: string) { return removeEdge(this._context.workspaceState, source, target, label); }
 
-    private async _upsertCustomEdge(source: string, target: string, label: string): Promise<void> {
-        if (!source || !target || source === target) return;
-        const current = this._context.workspaceState.get<CustomEdge[]>(CUSTOM_EDGES_KEY, []);
-        if (current.some(e => e.source === source && e.target === target && e.label === label)) return;
-        await this._context.workspaceState.update(CUSTOM_EDGES_KEY, [...current, { source, target, label }]);
-    }
-
-    private async _removeCustomUsesEdge(source: string, target: string): Promise<void> {
-        const current = this._context.workspaceState.get<CustomUsesEdge[]>(CUSTOM_USES_EDGES_KEY, []);
-        const updated = current.filter(
-            (edge) => !((edge.source === source && edge.target === target) ||
-                        (edge.source === target && edge.target === source))
-        );
-        if (updated.length !== current.length) {
-            await this._context.workspaceState.update(CUSTOM_USES_EDGES_KEY, updated);
-        }
-    }
-
-    private async _removeCustomEdge(source: string, target: string, label: string): Promise<void> {
-        const current = this._context.workspaceState.get<CustomEdge[]>(CUSTOM_EDGES_KEY, []);
-        const updated = current.filter(
-            e => !((e.source === source && e.target === target && e.label === label) ||
-                   (e.source === target && e.target === source && e.label === label))
-        );
-        if (updated.length !== current.length) {
-            await this._context.workspaceState.update(CUSTOM_EDGES_KEY, updated);
-        }
-    }
-
-    private async _deleteEdgeWithFallback(source: string, target: string, label: string): Promise<void> {
+    private async _deleteEdgeWithFallback(source: string, target: string, label: string, viewLocal = false): Promise<void> {
         // Non-uses edges are only in workspaceState
         if (label !== 'uses') {
             await this._removeCustomEdge(source, target, label);
-            // Also attempt to delete from any writer storage (graceful fail)
-            try { await this._writer.deleteEdge(source, target, label); } catch { /* no-op */ }
+            return;
+        }
+        // FEAT-041: a view-local link never reaches the writer, so a foreign
+        // owner's delete cannot create or edit a Harness SDD manifest.
+        if (viewLocal) {
+            await this._removeCustomUsesEdge(source, target);
             return;
         }
         try {

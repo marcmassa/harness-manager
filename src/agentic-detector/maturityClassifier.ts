@@ -5,115 +5,25 @@ import type {
   SignalCategory,
 } from './types.js';
 import { MATURITY_DEFINITIONS } from './types.js';
+import { hasGovernedLifecycle, sharedCategories, unavailableInputs } from './evidence.js';
 
 /**
- * Signal categories that indicate structured/organized directories
- * vs. scattered single files.
+ * Categories whose presence shows structure rather than scattered files.
+ * Provider-parsed resources count: an adapter only reads declared layouts.
  */
-const ORGANIZED_DIR_CATEGORIES: SignalCategory[] = [
-  'prompts',
-  'rules',
-  'skills',
-  'tools',
-];
+const ORGANIZED_CATEGORIES: SignalCategory[] = ['prompts', 'rules', 'skills', 'tools', 'agent-methodologies'];
 
-/**
- * The "full stack" categories required for L4 (Managed).
- */
-const FULL_STACK_CATEGORIES: SignalCategory[] = [
-  'tools',
-  'skills',
-  'mcp',
-];
+/** The "full stack" categories required for L4 (Managed). */
+const FULL_STACK_CATEGORIES: SignalCategory[] = ['tools', 'skills', 'mcp'];
 
-/**
- * Harness-specific signal identifiers from the catalog.
- */
-const HARNESS_SIGNAL_IDS = new Set([
-  'harness-agentic-json',
-  'harness-subagents',
-  'harness-agents-md',
-  'harness-steering',
-  'harness-skills',
-  'harness-commands',
-  'harness-hooks',
-]);
-
-/**
- * Count non-empty signal categories from Layer-2 results.
- */
-function countActiveCategories(profile: AgenticProfile): number {
-  return profile.layers['2'].categories.filter(c => c.count > 0).length;
-}
-
-/**
- * Check if Harness implementation is detected (Layer 2).
- * Harness = existence of .agents/agentic.json or subagents/ structure.
- */
-function hasHarness(profile: AgenticProfile): boolean {
-  const categories = profile.layers['2'].categories;
-  for (const cat of categories) {
-    for (const match of cat.matches) {
-      if (HARNESS_SIGNAL_IDS.has(match.matchedPattern)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Check if organized directories exist: at least one of prompts/, rules/,
- * skills/, tools/ directories (not just scattered files).
- */
-function hasOrganizedDirectories(profile: AgenticProfile): boolean {
-  const categoryMap = new Map<SignalCategory, number>();
-  for (const c of profile.layers['2'].categories) {
-    categoryMap.set(c.category, c.count);
-  }
-
-  // Consider a category "organized" if it has an entry with matching globs
-  // that indicate a directory structure. For now, any non-zero count in
-  // these categories implies files exist; in a more refined version we'd
-  // check if the globs include directory patterns.
-  for (const cat of ORGANIZED_DIR_CATEGORIES) {
-    if ((categoryMap.get(cat) ?? 0) > 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Check if all "full stack" categories have matches (for L4).
- */
-function hasFullStack(profile: AgenticProfile): boolean {
-  const categoryMap = new Map<SignalCategory, number>();
-  for (const c of profile.layers['2'].categories) {
-    categoryMap.set(c.category, c.count);
-  }
-
-  for (const cat of FULL_STACK_CATEGORIES) {
-    if ((categoryMap.get(cat) ?? 0) === 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Check if SDD methodology is active (Layer 3).
- */
-function hasSDD(profile: AgenticProfile): boolean {
-  return profile.layers['3'].methodology.isActive;
-}
-
-/**
- * Count Layer-1 CLI installs.
- */
-function countCLIInstalls(profile: AgenticProfile): number {
-  return profile.layers['1'].cliInstalls.length;
-}
+// FEAT-042 R3: every check reads the shared evidence (evidence.ts), so two
+// layouts with equivalent workflows get the same level. There is no
+// framework shortcut: a Harness SDD manifest is evidence of roles and skills
+// like any other provider's files, not a level of its own.
+const countActiveCategories = (profile: AgenticProfile) => sharedCategories(profile).size;
+const hasOrganizedStructure = (profile: AgenticProfile) => ORGANIZED_CATEGORIES.some(cat => sharedCategories(profile).has(cat));
+const hasFullStack = (profile: AgenticProfile) => FULL_STACK_CATEGORIES.every(cat => sharedCategories(profile).has(cat));
+const countCLIInstalls = (profile: AgenticProfile) => profile.layers['1'].cliInstalls.length;
 
 /**
  * Determine what's needed to reach the next maturity level.
@@ -123,13 +33,13 @@ function nextLevelHint(current: MaturityLevel): { level: MaturityLevel; whatIsNe
     case 'L0':
       return { level: 'L1', whatIsNeeded: 'Add agentic files such as prompts, rules, or configure an agentic CLI' };
     case 'L1':
-      return { level: 'L2', whatIsNeeded: 'Organize agentic files into structured directories (prompts/, rules/, skills/) or adopt the Harness framework' };
+      return { level: 'L2', whatIsNeeded: 'Organize agentic files into a structure your tools read: role definitions, skills or rule directories' };
     case 'L2':
-      return { level: 'L3', whatIsNeeded: 'Install and configure an agentic CLI (Claude Code, Kiro, Cursor, etc.) alongside your implementation' };
+      return { level: 'L3', whatIsNeeded: 'Configure an agent CLI alongside your implementation' };
     case 'L3':
       return { level: 'L4', whatIsNeeded: 'Add tools, skills, and MCP servers to cover the full agentic stack' };
     case 'L4':
-      return { level: 'L5', whatIsNeeded: 'Adopt SDD methodology: add feature_list.json with lifecycle, specs/, and progress/ for full governance' };
+      return { level: 'L5', whatIsNeeded: 'Track work in a governed lifecycle: a feature registry or spec documents in any layout' };
     case 'L5':
       return null;
   }
@@ -142,43 +52,31 @@ function nextLevelHint(current: MaturityLevel): { level: MaturityLevel; whatIsNe
  * 1. Count Layer-1 CLI installs
  * 2. Count non-empty Layer-2 signal categories
  * 3. Check for organized directories (prompts/, rules/, skills/, tools/)
- * 4. Check for Harness implementation
+ * 4. (FEAT-042) No framework shortcut: categories come from shared evidence
  * 5. Check for tools + skills + mcp all present (full stack)
- * 6. Check for Layer-3 SDD methodology
+ * 6. Check for a governed lifecycle (feature registry or spec documents)
  * 7. Resolve to highest matching level
  */
 export function classify(profile: AgenticProfile): MaturityInfo {
   const cliCount = countCLIInstalls(profile);
   const activeCats = countActiveCategories(profile);
-  const organized = hasOrganizedDirectories(profile);
-  const harness = hasHarness(profile);
+  const organized = hasOrganizedStructure(profile);
   const fullStack = hasFullStack(profile);
-  const sdd = hasSDD(profile);
+  const lifecycle = hasGovernedLifecycle(profile);
 
   let level: MaturityLevel;
 
-  // L5: Full stack + SDD methodology
-  if (sdd && cliCount > 0 && activeCats >= 3 && fullStack) {
-    level = 'L5';
-  }
-  // L4: Full stack + CLI + structured (but no SDD)
-  else if (cliCount > 0 && activeCats >= 3 && fullStack) {
-    level = 'L4';
-  }
-  // L3: CLI + structured (3+ categories with organized dirs OR Harness)
-  else if (cliCount > 0 && (activeCats >= 3 || harness)) {
-    level = 'L3';
-  }
-  // L2: Structured implementation (3+ cats with organized dirs) OR Harness
-  else if ((activeCats >= 3 && organized) || harness) {
-    level = 'L2';
-  }
-  // L1: Any signal (1-2 cats, or CLI only, or scattered files)
-  else if (activeCats >= 1 || cliCount > 0) {
-    level = 'L1';
-  }
-  // L0: Nothing detected
-  else {
+  if (lifecycle && cliCount > 0 && activeCats >= 3 && fullStack) {
+    level = 'L5'; // full stack + governed lifecycle
+  } else if (cliCount > 0 && activeCats >= 3 && fullStack) {
+    level = 'L4'; // full stack + CLI
+  } else if (cliCount > 0 && activeCats >= 3) {
+    level = 'L3'; // CLI + three active categories
+  } else if (activeCats >= 3 && organized) {
+    level = 'L2'; // structured implementation
+  } else if (activeCats >= 1 || cliCount > 0) {
+    level = 'L1'; // any signal
+  } else {
     level = 'L0';
   }
 
@@ -190,5 +88,6 @@ export function classify(profile: AgenticProfile): MaturityInfo {
     description: def.description,
     color: def.color,
     nextLevel: nextLevelHint(level),
+    unavailableInputs: unavailableInputs(profile),
   };
 }

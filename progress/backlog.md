@@ -29,7 +29,9 @@ _(cleared — see Completed sections below)_
 
 
 
-- [ ] **Validate each of the 7 advertised adapters against a real-world repo of its framework**. Today the 7 advertised adapters (Harness SDD, Claude Code, Cursor, GitHub Copilot, OpenCode, Kiro, Gemini CLI) exist and have unit tests, but the README's "universal support" claim is only honest after each adapter has been smoke-tested with a representative workspace. Suggested smoke fixture per adapter: a 5-line `CLAUDE.md` for `ClaudeCodeAdapter`, etc. The 8th adapter (`WindsurfAdapter`) is retained for legacy workspaces but is not advertised; per ADR-003 it is not part of the "7" we are validating. (Updated for the configurable-paths release: Kiro was added as the 7th advertised adapter. The canonical `harness-sdd` and `opencode` adapters are first-class; the 5 universal adapters shipped earlier are now 6 with Kiro; `windsurf` is the deprecation-still-supported 8th.) *(Blocked: requires access to repos using each framework.)*
+- [ ] **Click through the 7 advertised adapters in the webview** — the scripted real-workspace runs passed for all seven on 2026-11-19 ([results](../docs/byoh/field-results-2026-11-19.md)). The remaining step of the smoke procedure is manual: locate each expected entity on the canvas and open its source from the detail panel.
+
+- [ ] **Resolve source paths against the parsed root (multi-root prerequisite)** — `toRelativePath` relies on `vscode.workspace.asRelativePath`, which is relative to the containing workspace folder. Parsing a root nested inside a workspace folder prefixes paths with the subfolder name and breaks source URIs (seen with Harness SDD, Kiro and Cursor in the 2026-11-19 field run). Single-folder workspaces are unaffected.
 
 ## P2 — Nice to have (whenever possible)
 
@@ -61,3 +63,5 @@ _(cleared — see Completed sections below)_
 
 - ✅ **Development-tree npm audit remediation** — main at `5522ad3`: 9 findings (3 high, 5 moderate, 1 low), production 0. Compatible lockfile updates plus scoped Mocha/vsce overrides reduce both audits to 0. Evidence and override retirement criteria: `docs/security/2026-11-16-maintenance.md`.
 - ✅ **macOS e2e harness** — `@vscode/test-electron@3.1.0` runs current stable VS Code 1.146.0 on darwin-arm64 without `VSCODE_TEST_PATH`; integration test passes before and after the final dependency overrides. The previous Electron/Code ENOENT no longer reproduces.
+
+- FEAT-045: retake README screenshots (`full-window.png` and a new Sources/Findings sidebar capture) for the native views and the editor Dashboard.

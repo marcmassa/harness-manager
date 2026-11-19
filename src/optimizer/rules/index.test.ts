@@ -6,11 +6,12 @@ describe('rule registry (R7, R30)', () => {
         const ids = ALL_RULES.map(r => r.id);
         expect(new Set(ids).size).toBe(ids.length);
         for (const id of ids) {
-            expect(id).toMatch(/^OPT-[SBODHC]\d{2}$/);
+            expect(id).toMatch(/^OPT-[SBODHCK]\d{2}$/);
         }
     });
 
-    it('includes all nineteen shipped rules', () => {
+    // FEAT-044 adds the context cost family OPT-K01–K03 to the nineteen FEAT-034 rules.
+    it('includes all twenty-two shipped rules', () => {
         expect(ALL_RULES.map(r => r.id).sort()).toEqual([
             'OPT-B01',
             'OPT-B02',
@@ -22,6 +23,9 @@ describe('rule registry (R7, R30)', () => {
             'OPT-H01',
             'OPT-H02',
             'OPT-H03',
+            'OPT-K01',
+            'OPT-K02',
+            'OPT-K03',
             'OPT-O01',
             'OPT-O02',
             'OPT-O03',

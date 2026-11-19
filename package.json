@@ -1,15 +1,12 @@
 {
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
-  "description": "Visual whiteboard to map, trace and manage AI agent architectures (subagents, skills, relationships). Supports Harness SDD, Claude Code, Gemini CLI, Cursor, Copilot and more.",
+  "description": "See, check and price the AI agent harness you already have: agents, skills, rules and their relationships, in any supported format or your own layout.",
   "version": "0.8.2",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
-  "galleryBanner": {
-    "color": "#12121e",
-    "theme": "dark"
-  },
+  "galleryBanner": { "color": "#12121e", "theme": "dark" },
   "keywords": [
     "ai agents",
     "agent architecture",
@@ -24,87 +21,75 @@
     "graph",
     "spec driven development"
   ],
-  "categories": [
-    "Visualization",
-    "Other"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/marcmassa/harness-manager"
-  },
-  "bugs": {
-    "url": "https://github.com/marcmassa/harness-manager/issues"
-  },
-  "engines": {
-    "vscode": "^1.85.0"
-  },
+  "categories": ["Visualization", "Other"],
+  "repository": { "type": "git", "url": "https://github.com/marcmassa/harness-manager" },
+  "bugs": { "url": "https://github.com/marcmassa/harness-manager/issues" },
+  "engines": { "vscode": "^1.85.0" },
   "type": "module",
-  "activationEvents": [
-    "onView:harness-dashboard.dashboard"
-  ],
+  "activationEvents": ["onWebviewPanel:harness-dashboard.fullDashboard"],
   "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
-        {
-          "id": "harness-dashboard",
-          "title": "Harness Dashboard",
-          "icon": "media/icon.svg"
-        }
+        { "id": "harness-dashboard", "title": "Harness", "icon": "media/icon.svg" }
       ]
     },
     "views": {
       "harness-dashboard": [
+        { "id": "harness-dashboard.sources", "name": "Sources", "icon": "media/icon.svg", "contextualTitle": "Harness" },
         {
-          "type": "webview",
-          "id": "harness-dashboard.dashboard",
-          "name": "Dashboard"
+          "id": "harness-dashboard.findings",
+          "name": "Findings",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Harness"
         }
       ]
     },
     "commands": [
       {
         "command": "harness-dashboard.openDashboard",
-        "title": "Harness: Open Dashboard"
+        "title": "Open Dashboard",
+        "category": "Harness Dashboard",
+        "icon": "$(window)"
+      },
+      {
+        "command": "harness-dashboard.refresh",
+        "title": "Refresh",
+        "category": "Harness Dashboard",
+        "icon": "$(refresh)"
       },
       {
         "command": "harness-dashboard.openLocalConfig",
-        "title": "Harness Dashboard: Open Local Configuration",
-        "category": "Harness Dashboard"
+        "title": "Open Local Configuration",
+        "category": "Harness Dashboard",
+        "icon": "$(gear)"
       },
-      {
-        "command": "harness-dashboard.verifyCodeQuality",
-        "title": "Harness: Verify Code Quality"
-      },
-      {
-        "command": "harness-dashboard.checkLM",
-        "title": "Harness Dashboard: Check AI Provider Status",
-        "category": "Harness Dashboard"
-      },
-      {
-        "command": "harness-dashboard.rescanAgentic",
-        "title": "Harness Dashboard: Re-scan Agentic Architecture",
-        "category": "Harness Dashboard"
-      },
+      { "command": "harness-dashboard.checkLM", "title": "Check AI Provider Status", "category": "Harness Dashboard" },
       {
         "command": "harness-dashboard.scaffoldMissing",
-        "title": "Harness: Scaffold Missing Agent Files",
+        "title": "Scaffold Missing Harness SDD Files",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.syncFromFilesystem",
-        "title": "Harness: Sync Agents from Filesystem",
+        "title": "Sync Harness SDD Agents from Filesystem",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.optimizeComponents",
-        "title": "Harness: Optimize Components",
+        "title": "Optimize Components",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.runSupplyChainAudit",
-        "title": "Harness Dashboard: Run npm audit (Supply Chain)",
+        "title": "Run npm Audit (Supply Chain)",
         "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.openSettings",
+        "title": "Open Settings",
+        "category": "Harness Dashboard",
+        "icon": "$(gear)"
       }
     ],
     "configuration": {
@@ -114,112 +99,79 @@
           "type": "string",
           "scope": "resource",
           "default": ".claude",
-          "description": "Path to the Claude Code agent configuration directory (relative to workspace root)."
+          "description": "Path to the Claude Code agent configuration directory (workspace-relative)."
         },
         "harness-dashboard.adapters.claude-code.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Claude Code adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Claude Code hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.cursor.path": {
           "type": "string",
           "scope": "resource",
           "default": ".cursor",
-          "description": "Path to the Cursor agent configuration directory (relative to workspace root)."
+          "description": "Path to the Cursor agent configuration directory (workspace-relative)."
         },
         "harness-dashboard.adapters.cursor.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Cursor adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Cursor hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.gemini-cli.path": {
           "type": "string",
           "scope": "resource",
           "default": ".gemini",
-          "description": "Path to the Gemini CLI agent configuration directory (relative to workspace root)."
+          "description": "Path to the Gemini CLI agent configuration directory (workspace-relative)."
         },
         "harness-dashboard.adapters.gemini-cli.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Gemini CLI adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Gemini CLI hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.copilot.path": {
           "type": "string",
           "scope": "resource",
           "default": ".github",
-          "description": "Path to the GitHub Copilot instructions directory (relative to workspace root). The .vscode/prompts/ directory is unaffected by this setting."
+          "description": "Path to the GitHub Copilot instructions directory (workspace-relative). The .vscode/prompts/ directory is unaffected by this setting."
         },
         "harness-dashboard.adapters.copilot.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Copilot adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Copilot hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.windsurf.path": {
           "type": "string",
           "scope": "resource",
           "default": ".windsurf",
-          "description": "Path to the Windsurf rules directory (relative to workspace root)."
+          "description": "Path to the Windsurf rules directory (workspace-relative)."
         },
         "harness-dashboard.adapters.windsurf.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Windsurf adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Windsurf hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.adapters.kiro.path": {
           "type": "string",
           "scope": "resource",
           "default": ".kiro",
-          "description": "Path to the Kiro agent configuration directory (relative to workspace root)."
+          "description": "Path to the Kiro agent configuration directory (workspace-relative)."
         },
         "harness-dashboard.adapters.kiro.discovery": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Auto-discover hook and steering files for the Kiro adapter (R9). Per-adapter overrides go in .harness-dashboard/config.json."
+          "description": "Discover Kiro hook and steering files. Overrides: .harness-dashboard/config.json."
         },
         "harness-dashboard.discovery.root": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Scan <workspace-root>/hooks/ and <workspace-root>/steering/ for hook/steering files regardless of which adapters are detected (R8, R10). Disable if you keep your hooks/steering only under framework-specific roots."
-        },
-        "harness-dashboard.codeQuality.verifyOnSave": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Run the KISS and DRY hooks on every save of a TS/TSX file under src/."
-        },
-        "harness-dashboard.codeQuality.blockOnSave": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": false,
-          "description": "Cancel the save if the verifier reports any error-severity issue."
-        },
-        "harness-dashboard.codeQuality.kissEnabled": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Enable the KISS (anti-overengineering) hook."
-        },
-        "harness-dashboard.codeQuality.dryEnabled": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Enable the DRY (anti-duplication) hook."
-        },
-        "harness-dashboard.codeQuality.severity": {
-          "type": "string",
-          "enum": [
-            "warning",
-            "error"
-          ],
-          "default": "warning",
-          "description": "Severity for all reported issues. 'error' promotes all warnings to errors."
+          "description": "Scan <workspace-root>/hooks/ and <workspace-root>/steering/ for hook/steering files regardless of which adapters are detected. Disable if they live only under tool-specific folders."
         },
         "harness-dashboard.ai.apiKey": {
           "type": "string",
@@ -243,7 +195,7 @@
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Enable the Component Optimizer: scores every agent, subagent, skill, steering and hook file and reports structural, context-budget, integration and hygiene findings."
+          "description": "Enable the Component Optimizer: scores agent, skill, steering and hook files against the rules their format supports."
         },
         "harness-dashboard.optimizer.tokenBudget.skill": {
           "type": "number",
@@ -281,9 +233,7 @@
           "type": "array",
           "scope": "resource",
           "default": [],
-          "items": {
-            "type": "string"
-          },
+          "items": { "type": "string" },
           "description": "Optimizer rule IDs to skip entirely, e.g. [\"OPT-H03\", \"OPT-O02\"]. Disabled rules contribute no findings and no score deduction."
         },
         "harness-dashboard.optimizer.budgetMedianMultiple": {
@@ -291,23 +241,47 @@
           "scope": "resource",
           "default": 2.5,
           "minimum": 1,
-          "description": "Multiple of the median same-typed component above which OPT-B01/OPT-B02 report a component as unusually large. Judging against your own corpus avoids penalising a workspace whose components are uniformly large. Used once the workspace has at least 5 components of that type; below that the absolute tokenBudget values apply."
+          "description": "Multiple of the median same-typed component above which OPT-B01/OPT-B02 report a component as unusually large. Used from 5 components of that type and owner; below that the absolute tokenBudget values apply."
         },
         "harness-dashboard.optimizer.assistedFixes.enabled": {
           "type": "boolean",
           "scope": "resource",
           "default": true,
-          "description": "Offer AI-assisted and delegated fixes on optimizer findings. AI Refine proposes content that you review in a diff before anything is written; Delegate hands a scoped task to an installed terminal agent, which edits files directly with no diff preview."
+          "description": "Offer AI Refine (reviewed in a diff before writing) and Delegate (a terminal agent edits files directly, no preview) on findings."
+        },
+        "harness-dashboard.cost.prices": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "markdownDescription": "Optional price table for cost estimates: `date` and `models` (`inputPerMTok`, optional `family`). No prices ship or are fetched; estimates show the date.",
+          "properties": {
+            "date": { "type": "string" },
+            "models": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "inputPerMTok": { "type": "number", "minimum": 0 },
+                  "outputPerMTok": { "type": "number", "minimum": 0 },
+                  "family": { "type": "string" }
+                },
+                "required": ["inputPerMTok"]
+              }
+            }
+          }
+        },
+        "harness-dashboard.cost.calibration": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
+          "markdownDescription": "Optional calibration factor per model family, applied only to money estimates for that family."
         },
         "harness-dashboard.optimizer.assistedFixes.mode": {
           "type": "string",
           "scope": "resource",
           "default": "both",
-          "enum": [
-            "both",
-            "ai-only",
-            "delegate-only"
-          ],
+          "enum": ["both", "ai-only", "delegate-only"],
           "enumDescriptions": [
             "Offer both AI Refine and Delegate.",
             "Offer only AI Refine, which always previews its proposal in a diff before writing.",
@@ -316,7 +290,123 @@
           "description": "Which assisted fix modes to offer."
         }
       }
-    }
+    },
+    "menus": {
+      "commandPalette": [
+        { "command": "harness-dashboard.openDashboard", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.refresh", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.openLocalConfig", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.scaffoldMissing", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.syncFromFilesystem", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.runSupplyChainAudit", "when": "workspaceFolderCount > 0" }
+      ],
+      "view/title": [
+        {
+          "command": "harness-dashboard.refresh",
+          "when": "view == harness-dashboard.sources || view == harness-dashboard.findings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "harness-dashboard.openDashboard",
+          "when": "view == harness-dashboard.sources",
+          "group": "navigation@2"
+        },
+        {
+          "command": "harness-dashboard.openSettings",
+          "when": "view == harness-dashboard.sources",
+          "group": "settings@0"
+        },
+        {
+          "command": "harness-dashboard.openLocalConfig",
+          "when": "view == harness-dashboard.sources",
+          "group": "settings@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "harness-dashboard.openDashboard",
+          "when": "view == harness-dashboard.sources && viewItem == resource",
+          "group": "inline"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "harness-dashboard.sources",
+        "when": "harnessDashboard.state == noFolder || workbenchState == empty",
+        "contents": "Open a folder to see the agent harness it contains.\n[Open Folder](command:vscode.openFolder)"
+      },
+      {
+        "view": "harness-dashboard.sources",
+        "when": "harnessDashboard.state == scanning",
+        "contents": "Scanning the workspace for agent harnesses…"
+      },
+      {
+        "view": "harness-dashboard.sources",
+        "when": "harnessDashboard.state == empty",
+        "contents": "No agent harness found. Supported formats are detected automatically; for another layout, [declare a harness profile](command:harness-dashboard.openLocalConfig). Learn how in [Bring Your Own Harness](https://github.com/marcmassa/harness-manager/blob/main/docs/byoh/v0.9.0.md)."
+      },
+      {
+        "view": "harness-dashboard.sources",
+        "when": "harnessDashboard.state == error",
+        "contents": "The last scan failed; details are in the Harness Dashboard output.\n[Refresh](command:harness-dashboard.refresh)"
+      },
+      {
+        "view": "harness-dashboard.findings",
+        "when": "harnessDashboard.state == ready",
+        "contents": "No findings for the detected harness."
+      },
+      {
+        "view": "harness-dashboard.findings",
+        "when": "harnessDashboard.state != ready",
+        "contents": "Findings appear here once a harness has been scanned. [Refresh](command:harness-dashboard.refresh)"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "harness-dashboard.gettingStarted",
+        "title": "Get started with Harness Dashboard",
+        "description": "See, check and price the agent harness you already have, in any supported format or your own.",
+        "steps": [
+          {
+            "id": "open",
+            "title": "Open the Dashboard",
+            "description": "Supported formats are detected automatically. The whiteboard, Advisory, Optimizer and timeline open in an editor tab.\n[Open the Dashboard](command:harness-dashboard.openDashboard)",
+            "media": { "svg": "media/walkthrough/dashboard.svg", "altText": "A graph of agents and skills" },
+            "completionEvents": ["onCommand:harness-dashboard.openDashboard"]
+          },
+          {
+            "id": "sources",
+            "title": "Review detected sources",
+            "description": "Sources lists every provider found and each file it owns.\n[Show Sources](command:harness-dashboard.sources.focus)",
+            "media": { "svg": "media/walkthrough/sources.svg", "altText": "A list of providers and files" },
+            "completionEvents": ["onView:harness-dashboard.sources"]
+          },
+          {
+            "id": "profile",
+            "title": "Declare a profile for a custom layout",
+            "description": "Agents in your own folders? Describe them in a profile ([Bring Your Own Harness](https://github.com/marcmassa/harness-manager/blob/main/docs/byoh/v0.9.0.md)).\n[Open Local Configuration](command:harness-dashboard.openLocalConfig)",
+            "media": { "svg": "media/walkthrough/profile.svg", "altText": "A configuration file" },
+            "completionEvents": ["onCommand:harness-dashboard.openLocalConfig"]
+          },
+          {
+            "id": "findings",
+            "title": "Review findings",
+            "description": "Advisory and Optimizer results, grouped by owner.\n[Show Findings](command:harness-dashboard.findings.focus)",
+            "media": { "svg": "media/walkthrough/findings.svg", "altText": "A list of findings" },
+            "completionEvents": ["onView:harness-dashboard.findings"]
+          },
+          {
+            "id": "cost",
+            "title": "Explore context cost",
+            "description": "See what each harness costs per session and what loads only on demand.\n[Optimize Components](command:harness-dashboard.optimizeComponents)",
+            "media": { "svg": "media/walkthrough/cost.svg", "altText": "A bar chart of token cost" },
+            "completionEvents": ["onCommand:harness-dashboard.optimizeComponents"]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.js",
@@ -356,12 +446,7 @@
     "form-data": "4.0.6",
     "undici": "7.29.0",
     "diff": "9.0.0",
-    "mocha": {
-      "glob": "14.0.6",
-      "minimatch": "11.0.8"
-    },
-    "@vscode/vsce": {
-      "minimatch": "11.0.8"
-    }
+    "mocha": { "glob": "14.0.6", "minimatch": "11.0.8" },
+    "@vscode/vsce": { "minimatch": "11.0.8" }
   }
 }

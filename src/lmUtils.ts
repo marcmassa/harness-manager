@@ -7,6 +7,8 @@
 // fallback provider.
 // ============================================================================
 
+import { currentInferenceAction, recordInference } from './cost/inferenceLedger.js';
+import { estimateTokens } from './optimizer/tokenEstimator.js';
 import * as vscode from 'vscode';
 import * as https from 'https';
 
@@ -61,10 +63,34 @@ export async function sendChatRequest(
         for await (const chunk of response.text) {
             result += chunk;
         }
+        await recordLmUsage(model, prompt, result);
         return result;
     } catch {
         return undefined;
     }
+}
+
+/**
+ * FEAT-044 R11: count with the model's own tokenizer when the API offers
+ * `countTokens` (engine ^1.85, so feature-detected), else estimate locally.
+ * Called once per action, after completion.
+ */
+async function recordLmUsage(model: vscode.LanguageModelChat, prompt: string, output: string): Promise<void> {
+    const count = (model as { countTokens?: (text: string) => Thenable<number> }).countTokens;
+    let input = estimateTokens(prompt);
+    let out = estimateTokens(output);
+    let reported = false;
+    if (typeof count === 'function') {
+        try {
+            // Bounded: metering must never hold back the AI result.
+            const counted = await Promise.race([
+                Promise.all([count.call(model, prompt), count.call(model, output)]),
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+            ]);
+            if (counted) { [input, out] = counted; reported = true; }
+        } catch { /* keep the local estimate */ }
+    }
+    recordInference({ provider: model.vendor ?? 'vscode.lm', model: model.family ?? model.id ?? 'unknown', inputTokens: input, outputTokens: out, reported });
 }
 
 /** Provider that uses the VS Code `vscode.lm` API (GitHub Copilot, Kiro, etc.).
@@ -104,6 +130,8 @@ export function openAiCompatibleRequest(
     model: string,
     prompt: string,
 ): Promise<string> {
+    // FEAT-044: label the call now; the response callback may run outside this context.
+    const action = currentInferenceAction();
     return new Promise<string>((resolve, reject) => {
         const url = new URL(endpoint);
         const body = JSON.stringify({
@@ -132,6 +160,15 @@ export function openAiCompatibleRequest(
                         const content: string | undefined =
                             parsed?.choices?.[0]?.message?.content;
                         if (content !== undefined) {
+                            // FEAT-044 R11: the provider's own usage when it reports one.
+                            const usage = parsed?.usage;
+                            const reported = typeof usage?.prompt_tokens === 'number' && typeof usage?.completion_tokens === 'number';
+                            recordInference({
+                                provider: url.hostname, model,
+                                inputTokens: reported ? usage.prompt_tokens : estimateTokens(prompt),
+                                outputTokens: reported ? usage.completion_tokens : estimateTokens(content),
+                                reported,
+                            }, action);
                             resolve(content);
                         } else {
                             reject(

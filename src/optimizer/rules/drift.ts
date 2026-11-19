@@ -64,7 +64,10 @@ export const optD01: OptimizerRule = {
             : undefined;
         if (name) {
             const duplicate = all.find(
-                o => o.nodeId !== source.nodeId && o.nodeType === source.nodeType && o.exists && o.frontmatter.name === name,
+                // FEAT-043: names collide only within one owner's format; two harnesses
+                // in a mixed workspace may each have a "reviewer" (FEAT-041 keeps them distinct).
+                o => o.nodeId !== source.nodeId && o.nodeType === source.nodeType && o.exists && o.frontmatter.name === name
+                    && o.source?.providerId === source.source?.providerId,
             );
             if (duplicate) {
                 findings.push(

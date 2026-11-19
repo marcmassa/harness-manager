@@ -4,18 +4,21 @@
 // `handle(msg, postMessage, sendData): Promise<boolean>`, returning false for
 // message types it does not own so the caller can fall through the chain.
 
+import { withInferenceAction, type InferenceLedger } from '../cost/inferenceLedger.js';
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
-import { sendWhenShellReady } from '../terminalUtils.js';
 import type { HarnessWriter } from '../harnessWriter.js';
 import type { DashboardData, WebviewMessage } from '../types.js';
 import { loadComponents } from '../optimizer/componentLoader.js';
 import { scan, type GraphEdge } from '../optimizer/optimizerEngine.js';
 import { computeFix } from '../optimizer/quickFix.js';
 import { buildRefinePrompt, normalizeRefineResponse } from '../optimizer/aiRefine.js';
-import { buildDelegateTask, type DelegateScope } from '../optimizer/delegateTask.js';
-import { sendPromptToHostChat, detectChatHost } from '../chatHandoffHost.js';
-import { createProviderChain, vscodeLmProvider, createOpenAiCompatibleProvider } from '../lmUtils.js';
+import { delegateFindings } from './optimizerDelegation.js';
+import { handoffToChat, requestRefine } from './optimizerRefine.js';
+import { buildCostSection } from '../cost/costSection.js';
+import { compareWithHead, readHeadVersions } from '../cost/baselineDiff.js';
+import { createGitRunner } from '../cost/gitRunner.js';
+import { previewAndWrite, type PreviewWriteOptions } from './optimizerWrite.js';
+import { detectChatHost } from '../chatHandoffHost.js';
 import type { RunAdapterRegistry } from '../run/runAdapterRegistry.js';
 import { OptimizerDiffProvider } from '../optimizer/optimizerDiffProvider.js';
 import type {
@@ -25,22 +28,18 @@ import type {
     OptimizerReport,
     QuickFix,
 } from '../optimizer/types.js';
+import type { AuthorizeFn } from './WhiteboardCoordinator.js';
 import {
     DISMISSED_FINDINGS_KEY,
     OPTIMIZER_DIFF_SCHEME,
     dismissalKey,
     disabledReport,
     readOptimizerConfig,
-    buildRefineProviderOptions,
 } from './optimizerConfig.js';
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
 
-/** R12 — abandon a refine that has not returned in this long. */
-const REFINE_TIMEOUT_MS = 30_000;
-/** R20 — batches larger than this need a second confirmation. */
-const MAX_DELEGATE_COMPONENTS = 20;
 /** R7 — per-workspace model override for the optimizer specifically. */
 const AI_MODEL_KEY = 'harness-dashboard.optimizer.aiModel';
 
@@ -77,6 +76,18 @@ export class OptimizerCoordinator {
         this._scheduleScan = fn;
     }
 
+    private _authorize?: AuthorizeFn;
+    private _ledger?: InferenceLedger;
+
+    /** FEAT-044 R11: the local inference ledger, summarised in the cost section. */
+    setInferenceLedger(ledger: InferenceLedger): void {
+        this._ledger = ledger;
+    }
+
+    setAuthorize(fn: AuthorizeFn): void {
+        this._authorize = fn;
+    }
+
     /** T16 — the terminal adapters FEAT-033 already detects (R14). */
     setRunRegistry(registry: RunAdapterRegistry): void {
         this._runRegistry = registry;
@@ -92,6 +103,18 @@ export class OptimizerCoordinator {
 
     private _dismissed(): Set<string> {
         return new Set(this._context.workspaceState.get<string[]>(DISMISSED_FINDINGS_KEY, []));
+    }
+
+    /** FEAT-043 R6: a reason when a component's file no longer matches the last scan. */
+    private async _staleSource(nodeIds: readonly string[]): Promise<string | null> {
+        for (const id of nodeIds) {
+            const source = this._cachedSources.find(s => s.nodeId === id);
+            if (!source) return `"${id}" is no longer in the current scan — re-scan and try again`;
+            if (source.exists && (await this._readFile(source.filePath)) !== source.raw) {
+                return `${source.filePath} changed since the last scan — re-scan and try again`;
+            }
+        }
+        return null;
     }
 
     /** Distinguishes a directory from an absent path — see OPT-D01. */
@@ -135,6 +158,16 @@ export class OptimizerCoordinator {
      * guarantees that, and the load step is guarded here (R53).
      */
     async runScan(): Promise<OptimizerReport> {
+        const report = await this._runScan();
+        this._onReport?.();
+        return report;
+    }
+
+    private _onReport?: () => void;
+    /** FEAT-045 R3: told after every scan, so the Findings view follows the report. */
+    setReportListener(fn: () => void): void { this._onReport = fn; }
+
+    private async _runScan(): Promise<OptimizerReport> {
         const config = this._config();
         // R50: when disabled we do not scan at all, rather than scan and discard.
         if (!config.enabled) {
@@ -172,8 +205,9 @@ export class OptimizerCoordinator {
                 this._dismissed(),
             );
             this._cachedSources = sources;
-            this._cachedReport = report;
-            return report;
+            // FEAT-044: context cost travels with the report, read from user settings only.
+            this._cachedReport = { ...report, cost: { ...buildCostSection(sources, vscode.workspace.getConfiguration('harness-dashboard')), inference: this._ledger?.summary() } };
+            return this._cachedReport;
         } catch (e: unknown) {
             const error = e instanceof Error ? e.message : String(e);
             this._log.error(`[Optimizer] Scan failed: ${error}`);
@@ -280,12 +314,40 @@ export class OptimizerCoordinator {
                 await this._aiRefine(msg, postMessage);
                 return true;
 
+            case 'compareCostWithHead': {
+                // FEAT-044 R13–R15: read-only; a failure degrades to "unavailable", never an error.
+                if (!vscode.workspace.isTrusted) {
+                    postMessage({ type: 'costComparison', comparison: { available: false, reason: 'Trust this workspace to compare with git HEAD.' } });
+                    return true;
+                }
+                const paths = this._cachedSources.map(s => s.filePath).filter(Boolean);
+                const head = await readHeadVersions(paths, createGitRunner(this._workspaceRoot.fsPath))
+                    .catch(() => ({ available: false as const, reason: 'git could not be run in this workspace.' }));
+                postMessage({ type: 'costComparison', comparison: compareWithHead(this._cachedSources, head) });
+                return true;
+            }
+
             case 'handoffToChat':
-                await this._handoffToChat(msg, postMessage);
+                await handoffToChat(msg, postMessage, {
+                    assistAllowed: kind => this._assistAllowed(kind),
+                    staleSource: ids => this._staleSource(ids),
+                    sources: this._cachedSources,
+                    findings: this._cachedReport?.findings ?? [],
+                    log: this._log,
+                });
                 return true;
 
             case 'delegateFinding':
-                await this._delegate(msg, postMessage);
+                await delegateFindings(msg, postMessage, {
+                    assistAllowed: kind => this._assistAllowed(kind),
+                    staleSource: ids => this._staleSource(ids),
+                    runRegistry: this._runRegistry,
+                    findings: this._cachedReport?.findings ?? [],
+                    workspaceRoot: this._workspaceRoot,
+                    scheduleScan: this._scheduleScan,
+                    authorize: this._authorize,
+                    log: this._log,
+                });
                 return true;
 
             default:
@@ -300,7 +362,8 @@ export class OptimizerCoordinator {
     private async _applyQuickFix(msg: WebviewMessage, postMessage: PostMessageFn): Promise<void> {
         const nodeId = msg.nodeId as string;
         const ruleId = msg.ruleId as string;
-        const fix = msg.fix as QuickFix | undefined;
+        // FEAT-043 R5: the fix comes from the host's own current finding, never from the message.
+        const fix = this._cachedReport?.findings.find(f => f.ruleId === ruleId && f.nodeId === nodeId)?.fix;
 
         const source = this._cachedSources.find(s => s.nodeId === nodeId);
         if (!source || !fix) {
@@ -329,70 +392,17 @@ export class OptimizerCoordinator {
         });
     }
 
-    /**
-     * FEAT-035 T11 — the shared tail of every write path: stage → diff → modal
-     * → write → rescan → clear.
-     *
-     * Extracted so the deterministic fixes and AI Refine cannot drift apart.
-     * They must not: this function is the single place that enforces FEAT-034
-     * R32, that nothing reaches disk before the user confirms.
-     */
-    private async _previewAndWrite(opts: {
-        source: ComponentSource;
-        ruleId: string;
-        content: string;
-        extraFile?: { relPath: string; content: string };
-        title: string;
-        prompt: string;
-        /** Which message type the webview is listening for on this path. */
-        resultType: 'quickFixResult' | 'aiRefineResult';
-        /** Non-blocking notices shown in the modal before the user decides (R11). */
-        warnings?: string[];
-        provider?: string;
-        postMessage: PostMessageFn;
-    }): Promise<void> {
-        const { source, ruleId, content, extraFile, title, prompt, resultType, warnings, provider, postMessage } = opts;
-        let virtualUri: vscode.Uri | undefined;
-
-        try {
-            virtualUri = vscode.Uri.parse(`${OPTIMIZER_DIFF_SCHEME}:/${source.nodeId}/${ruleId}.md`);
-            this.diffProvider.stage(virtualUri, content);
-
-            const fileUri = vscode.Uri.joinPath(this._workspaceRoot, ...source.filePath.split('/'));
-            await vscode.commands.executeCommand('vscode.diff', fileUri, virtualUri, title);
-
-            const detail = [
-                ...(warnings ?? []),
-                'The proposed content is shown in the diff editor. Nothing has been written yet.',
-            ].join('\n\n');
-
-            const choice = await vscode.window.showInformationMessage(
-                prompt,
-                { modal: true, detail },
-                'Apply',
-            );
-
-            if (choice !== 'Apply') {
-                postMessage({ type: resultType, ok: false, reason: 'cancelled', ruleId, nodeId: source.nodeId });
-                return;
-            }
-
-            await this._writer.writeFileAtPath(source.filePath, content);
-            // extract-to-references is the only fix that produces a second file;
-            // writing the trimmed component without it would lose the content.
-            if (extraFile) {
-                await this._writer.writeFileAtPath(extraFile.relPath, extraFile.content);
-            }
-
-            this._scheduleScan?.();
-            postMessage({ type: resultType, ok: true, ruleId, nodeId: source.nodeId, provider });
-        } catch (e: unknown) {
-            const reason = e instanceof Error ? e.message : String(e);
-            this._log.error(`[Optimizer] ${resultType} ${ruleId} on ${source.nodeId} failed: ${reason}`);
-            postMessage({ type: resultType, ok: false, reason, ruleId, nodeId: source.nodeId });
-        } finally {
-            if (virtualUri) this.diffProvider.clear(virtualUri);
-        }
+    /** FEAT-035 T11 / FEAT-043 R5 — the shared write path, in optimizerWrite.ts. */
+    private _previewAndWrite(opts: PreviewWriteOptions): Promise<void> {
+        return previewAndWrite(opts, {
+            diffProvider: this.diffProvider,
+            workspaceRoot: this._workspaceRoot,
+            writer: this._writer,
+            readFile: rel => this._readFile(rel),
+            authorize: this._authorize,
+            scheduleScan: this._scheduleScan,
+            log: this._log,
+        });
     }
 
     // ── FEAT-035 — AI Refine (R5–R13) ───────────────────────────────────────
@@ -427,53 +437,20 @@ export class OptimizerCoordinator {
             return;
         }
 
+        // FEAT-043 R6: no prompt is built from content that changed since the scan.
+        const stale = await this._staleSource([nodeId]);
+        if (stale) {
+            postMessage({ type: 'aiRefineResult', ok: false, reason: stale, ruleId, nodeId });
+            return;
+        }
+
         this._refinesInFlight.add(key);
         try {
-            const cfg = vscode.workspace.getConfiguration('harness-dashboard');
             const selected = this._context.workspaceState.get<string>(AI_MODEL_KEY, '');
-            const apiKey = cfg.get<string>('ai.apiKey', '');
-            const endpoint = cfg.get<string>('ai.endpoint', 'https://api.openai.com/v1/chat/completions');
-
-            // See buildRefineProviderOptions: the editor's model families and the
-            // HTTP provider's model names are different namespaces.
-            const { chainOptions, httpOptions } = buildRefineProviderOptions({
-                selectedFamily: selected,
-                apiKey,
-                endpoint,
-                httpModel: cfg.get<string>('ai.model', 'gpt-4o-mini'),
-            });
-            const chain = createProviderChain(
-                [vscodeLmProvider, createOpenAiCompatibleProvider(httpOptions)],
-                chainOptions,
-            );
-
-            // R12: abandon rather than hang. Losing the response is fine — nothing
-            // has been written at this point.
-            const result = await Promise.race([
-                chain.tryGenerate(buildRefinePrompt({ source, finding })),
-                new Promise<{ ok: false; error: string }>(resolve =>
-                    setTimeout(() => resolve({ ok: false, error: 'timed out after 30s' }), REFINE_TIMEOUT_MS),
-                ),
-            ]);
-
+            const result = await withInferenceAction('ai-refine', () => requestRefine(buildRefinePrompt({ source, finding }), selected));
             if (!result.ok) {
-                // The chain reports only its LAST provider's error, so a missing
-                // API key masks the more useful fact that the editor exposed no
-                // model at all. Say what the user can actually act on.
-                let reason = result.error;
-                if (!apiKey) {
-                    let editorModels = 0;
-                    try {
-                        editorModels = (await vscode.lm.selectChatModels()).length;
-                    } catch {
-                        editorModels = 0;
-                    }
-                    reason = editorModels === 0
-                        ? 'no language model available from this editor, and no API key configured — pick a model in your editor (Copilot/Kiro) or set harness-dashboard.ai.apiKey'
-                        : `the editor has ${editorModels} model(s) but the request failed: ${result.error}`;
-                }
                 this._log.error(`[Optimizer] AI refine ${key} failed: ${result.error}`);
-                postMessage({ type: 'aiRefineResult', ok: false, reason, ruleId, nodeId });
+                postMessage({ type: 'aiRefineResult', ok: false, reason: result.reason, ruleId, nodeId });
                 return;
             }
 
@@ -491,7 +468,7 @@ export class OptimizerCoordinator {
                 prompt: `Apply the AI proposal to ${source.label}?`,
                 resultType: 'aiRefineResult',
                 warnings: normalized.warnings,
-                provider: chain.name,
+                provider: result.provider,
                 postMessage,
             });
         } catch (e: unknown) {
@@ -502,150 +479,4 @@ export class OptimizerCoordinator {
             this._refinesInFlight.delete(key);
         }
     }
-
-    // ── FEAT-035 — Delegate to a terminal agent (R14–R20) ───────────────────
-
-    /**
-     * R16 — is the working tree dirty? Delegation writes to it directly, so git
-     * is the user's only way back. A missing binary or a non-repo is reported as
-     * "no version control detected", never as an error.
-     */
-    private async _gitState(): Promise<'clean' | 'dirty' | 'no-vcs'> {
-        return new Promise(resolve => {
-            try {
-                const child = spawn('git', ['status', '--porcelain'], {
-                    cwd: this._workspaceRoot.fsPath,
-                    timeout: 5000,
-                });
-                let out = '';
-                child.stdout.on('data', (c: Buffer) => { out += c.toString('utf8'); });
-                child.on('error', () => resolve('no-vcs'));
-                child.on('close', code => {
-                    if (code !== 0) return resolve('no-vcs');
-                    resolve(out.trim().length > 0 ? 'dirty' : 'clean');
-                });
-            } catch {
-                resolve('no-vcs');
-            }
-        });
-    }
-
-    private _buildScope(msg: WebviewMessage): DelegateScope | null {
-        const findings = this._cachedReport?.findings ?? [];
-        const scopeKind = msg.scope as string | undefined;
-        const nodeId = msg.nodeId as string | undefined;
-        const ruleId = msg.ruleId as string | undefined;
-
-        if (scopeKind === 'component' && nodeId) {
-            const own = findings.filter(f => f.nodeId === nodeId);
-            return own.length > 0 ? { kind: 'component', nodeId, findings: own } : null;
-        }
-        if (scopeKind === 'rule' && ruleId) {
-            const same = findings.filter(f => f.ruleId === ruleId);
-            return same.length > 0 ? { kind: 'rule', ruleId, findings: same } : null;
-        }
-        const one = findings.find(f => f.ruleId === ruleId && f.nodeId === nodeId);
-        return one ? { kind: 'finding', finding: one } : null;
-    }
-
-    private async _delegate(msg: WebviewMessage, postMessage: PostMessageFn): Promise<void> {
-        const fail = (reason: string) => postMessage({ type: 'delegateResult', ok: false, reason });
-
-        if (!this._assistAllowed('delegate')) return fail('assisted fixes are disabled');
-
-        const adapters = (await this._runRegistry?.detect()) ?? [];
-        const usable = adapters.filter(a => a.id !== 'generic');
-        if (usable.length === 0) return fail('no terminal agent CLI detected');
-
-        const scope = this._buildScope(msg);
-        if (!scope) return fail('findings not found — re-scan and try again');
-
-        const task = buildDelegateTask(scope);
-        if (task.filePaths.length === 0) return fail('no resolvable file paths in this scope');
-
-        // R20 — a batch large enough to rewrite much of the architecture gets a
-        // second, explicit confirmation naming the count.
-        if (task.componentCount > MAX_DELEGATE_COMPONENTS) {
-            const proceed = await vscode.window.showWarningMessage(
-                `Delegate across ${task.componentCount} components?`,
-                { modal: true, detail: `This exceeds the ${MAX_DELEGATE_COMPONENTS}-component threshold. The agent will edit all of them directly.` },
-                'Continue',
-            );
-            if (proceed !== 'Continue') return fail('cancelled');
-        }
-
-        const git = await this._gitState();
-        const vcsNote =
-            git === 'dirty'
-                ? 'Your working tree has uncommitted changes. The agent edits files directly and there is no diff preview — git is the only way back, and uncommitted work is not protected.'
-                : git === 'no-vcs'
-                    ? 'No version control was detected in this workspace. The agent edits files directly and there is no diff preview, so these changes cannot be reverted.'
-                    : 'The agent edits files directly. There is no diff preview; your working tree is clean, so git can revert the result.';
-
-        // R17 — the weaker contract is stated, not hidden.
-        const adapterId = (msg.adapterId as string) || usable[0].id;
-        const adapter = this._runRegistry?.getById(adapterId) ?? usable[0];
-        const go = await vscode.window.showWarningMessage(
-            `Delegate ${task.componentCount} component${task.componentCount === 1 ? '' : 's'} to ${adapter.name}?`,
-            { modal: true, detail: vcsNote },
-            'Delegate',
-        );
-        if (go !== 'Delegate') return fail('cancelled');
-
-        try {
-            const terminal = vscode.window.createTerminal({
-                name: `Optimizer → ${adapter.name}`,
-                cwd: this._workspaceRoot.fsPath,
-            });
-            terminal.show();
-
-            // `interactive: false` is required, not cosmetic. The adapters default
-            // to interactive, which for Claude Code emits a bare `claude` and drops
-            // the task entirely — the CLI would open with no instructions at all.
-            // Only the non-interactive form passes the task through (`--print`).
-            const command = adapter.buildCommand(
-                { id: scope.kind, type: 'skill', name: 'component-optimizer', filePath: task.filePaths[0] },
-                { task: task.text, interactive: false },
-            );
-
-            await sendWhenShellReady(terminal, command);
-
-            // R19 — whatever the agent changed becomes visible on the next scan.
-            const sub = vscode.window.onDidCloseTerminal(closed => {
-                if (closed === terminal) {
-                    this._scheduleScan?.();
-                    sub.dispose();
-                }
-            });
-
-            postMessage({ type: 'delegateResult', ok: true, adapterId: adapter.id, componentCount: task.componentCount });
-        } catch (e: unknown) {
-            const reason = e instanceof Error ? e.message : String(e);
-            this._log.error(`[Optimizer] Delegation failed: ${reason}`);
-            fail(reason);
-        }
-    }
-
-    // ── FEAT-035 — hand the prompt to the host's own chat agent ─────────────
-
-    private async _handoffToChat(msg: WebviewMessage, postMessage: PostMessageFn): Promise<void> {
-        const nodeId = msg.nodeId as string;
-        const ruleId = msg.ruleId as string;
-        const post = (r: { ok: boolean; host?: string; reason?: string }) =>
-            postMessage({ type: 'handoffResult', ...r, ruleId, nodeId });
-
-        if (!this._assistAllowed('ai')) return post({ ok: false, reason: 'assisted fixes are disabled' });
-
-        const source = this._cachedSources.find(s => s.nodeId === nodeId);
-        const finding = this._cachedReport?.findings.find(f => f.ruleId === ruleId && f.nodeId === nodeId);
-        if (!source || !finding) {
-            return post({ ok: false, reason: 'component or finding not found — re-scan and try again' });
-        }
-
-        post(await sendPromptToHostChat(buildRefinePrompt({ source, finding }), {
-            log: this._log,
-            context: 'Optimizer',
-        }));
-    }
-
 }

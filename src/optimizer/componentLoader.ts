@@ -53,6 +53,7 @@ function emptySource(
     pathKind: PathKind,
 ): ComponentSource {
     return {
+        source: node.source,
         nodeId: node.id,
         nodeType,
         label: node.label,
@@ -128,6 +129,7 @@ async function loadOne(
     };
 
     return {
+        source: node.source,
         nodeId: node.id,
         nodeType,
         label: node.label,

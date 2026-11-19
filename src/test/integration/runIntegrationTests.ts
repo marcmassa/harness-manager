@@ -1,34 +1,34 @@
-/**
- * runIntegrationTests.ts — entry point for the end-to-end integration
- * test suite (FEAT-021).
- *
- * This file is the script that `@vscode/test-electron`'s `runTests()`
- * function downloads and executes in a separate Node process. It uses
- * Mocha (the test runner that `@vscode/test-electron` ships with) to
- * discover and run the actual test files in this directory.
- *
- * Why Mocha and not Vitest: `@vscode/test-electron` is hard-wired to
- * Mocha. Using Vitest would require custom glue code that is not worth
- * the complexity for a single test file. The unit tests (Vitest) and
- * the integration test (Mocha) are disjoint by `include`/`exclude`
- * rules in `vitest.config.ts` and this entry point respectively.
- *
- * Lifecycle:
- *   1. `downloadAndUnzipVSCode()` — downloads a real VS Code build
- *      (≈ 100 MB on first run) into a cache directory. Subsequent
- *      runs reuse the cache.
- *   2. `runTests({ ... })` — launches the cached VS Code binary with
- *      the extension's `.vsix` installed, pointing `vscode.workspace`
- *      at the fixture from `src/test/fixtures/harness-sdd-minimal/`.
- *   3. Inside the launched VS Code, Mocha runs the test files matched
- *      by the `tests` glob below. Each test uses the real `vscode`
- *      API to drive the extension's message channel.
- *   4. The exit code is propagated back to the parent process so that
- *      `npm run test:integration` fails loudly on a test failure.
- */
-
+// Launch the suites against the development bundle in a real VS Code host.
 import { downloadAndUnzipVSCode, runTests } from '@vscode/test-electron';
 import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+
+async function checkSaveIsolation(vscodeExecutablePath: string, extensionDevelopmentPath: string) {
+    const root = await fs.mkdtemp(path.join(tmpdir(), 'dashboard-save-'));
+    try {
+        for (const dir of ['src', '.vscode', '.kiro/hooks']) {
+            await fs.mkdir(path.join(root, dir), { recursive: true });
+        }
+        await fs.writeFile(path.join(root, 'src/sample.ts'), 'export const value = 1;\n');
+        await fs.writeFile(path.join(root, '.vscode/settings.json'), JSON.stringify({
+            'harness-dashboard.codeQuality.verifyOnSave': true,
+            'harness-dashboard.codeQuality.blockOnSave': true,
+            'harness-dashboard.codeQuality.warnBeforeSaveOnError': true,
+            'harness-dashboard.codeQuality.severity': 'error',
+        }));
+        for (const kind of ['kiss', 'dry']) {
+            const script = path.join(root, '.kiro/hooks', 'on-file-saved-' + kind + '-check.sh');
+            await fs.writeFile(script, '#!/bin/sh\ntouch "$(dirname "$0")/../../hook-ran"\n', { mode: 0o755 });
+        }
+        await runTests({
+            vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
+            extensionTestsPath: path.join(__dirname, 'saveIsolation.cjs'),
+        });
+    } finally {
+        await fs.rm(root, { recursive: true, force: true });
+    }
+}
 
 async function main(): Promise<void> {
     // The extension root is the parent of `out/test/integration/`. The
@@ -85,6 +85,68 @@ async function main(): Promise<void> {
                 HARNESS_DASHBOARD_FIXTURE: fixtureWorkspace,
             },
         });
+        await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
+        for (const suite of ['sourceOwnership', 'byohProviders', 'operationGate', 'workspaceMatrix', 'advisoryMatrix', 'webviewChunks']) {
+            const root = await fs.mkdtemp(path.join(tmpdir(), `dashboard-${suite}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [root],
+                    extensionTestsPath: path.join(__dirname, `${suite}.cjs`),
+                });
+            } finally {
+                await fs.rm(root, { recursive: true, force: true });
+            }
+        }
+        // FEAT-045 T7: activation and first Sources content, one host per layout.
+        for (const layout of ['empty', 'claude', 'custom']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-startup-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'startupTiming.cjs'),
+                    extensionTestsEnv: { ...process.env, STARTUP_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
+        // FEAT-043 T4: one host per layout, each opened as its own workspace folder.
+        for (const layout of ['claude', 'custom', 'mixed', 'sdd']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-optimizer-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'optimizerMatrix.cjs'),
+                    extensionTestsEnv: { ...process.env, OPTIMIZER_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
+        // FEAT-044 T6: one host per layout for context cost.
+        for (const layout of ['sdd', 'claude', 'custom', 'mixed']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-cost-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'costMatrix.cjs'),
+                    extensionTestsEnv: { ...process.env, COST_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
+        // FEAT-041 T4: opt-in real-workspace results (needs local copies of the
+        // sources in docs/byoh/adapter-capabilities.md; never part of CI).
+        const fieldRoot = process.env.HARNESS_FIELD_ROOT;
+        if (fieldRoot) {
+            for (const name of (await fs.readdir(fieldRoot)).sort()) {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [path.join(fieldRoot, name)],
+                    extensionTestsPath: path.join(__dirname, 'fieldValidation.cjs'),
+                });
+            }
+        }
     } catch (err) {
         // `runTests` throws on any test failure. We log and re-throw
         // with a non-zero exit code so `npm run test:integration`

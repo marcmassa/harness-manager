@@ -9,13 +9,15 @@ Source review of src/adapters, src/discovery/hooksAndSteering.ts, src/harnessWri
 | Adapter | Discovery | Hooks | Steering | Commands | Agent runs | Editing | Validation |
 |---|---|---|---|---|---|---|---|
 | harness-sdd | supported | supported | supported | unsupported | unsupported | partial | unsupported |
-| claude-code | supported | partial | partial | unsupported | partial | unsupported | unsupported |
-| gemini-cli | supported | partial | partial | partial | partial | unsupported | unsupported |
-| cursor | supported | partial | partial | unsupported | unsupported | unsupported | unsupported |
-| copilot | supported | partial | partial | unsupported | unsupported | unsupported | unsupported |
+| claude-code | supported | partial | partial | unsupported | partial | partial | unsupported |
+| gemini-cli | supported | partial | partial | partial | partial | partial | unsupported |
+| cursor | supported | partial | partial | unsupported | unsupported | partial | unsupported |
+| copilot | supported | partial | partial | unsupported | unsupported | partial | unsupported |
 | opencode | partial | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
-| kiro | partial | partial | partial | unsupported | unsupported | unsupported | unsupported |
-| windsurf | partial | partial | partial | unsupported | unsupported | unsupported | unsupported |
+| kiro | partial | partial | partial | unsupported | unsupported | partial | unsupported |
+| windsurf | partial | partial | partial | unsupported | unsupported | partial | unsupported |
+
+FEAT-041 T3 implements this table in `src/adapters/capabilities.ts` and the operation list in `src/operations/operations.ts`; a unit test keeps both equal to this page. Editing for the file-based formats other than Harness SDD is `partial` because they accept only `editing.reviewedTextEdit`: an Optimizer fix shown as a diff and confirmed before it lands. Structural writes (create, delete, link, relabel, lifecycle) exist only for Harness SDD; a relationship between owners that cannot persist it stays view data. Profiles declare no operation.
 
 Harness SDD reads declared manifest hooks and steering. Its writer covers specific entities and links. Claude and Gemini terminal runners additionally need an installed CLI and a compatible target. Gemini imports TOML commands as skills. Cursor reads MDC rules, Copilot reads instructions and prompts, Kiro reads Markdown agents and skills, and legacy Windsurf reads rules. The shared directory scanner covers only its supported extensions and configured paths. OpenCode reads the root JSON/JSONC and a subagents array. These limits matter when a native format has other representations.
 
@@ -34,6 +36,8 @@ An optional entry in .harness-dashboard/config.json describes a native Markdown 
               {"glob":"team/skills/*.md","type":"skill","idField":"id","labelField":"title"}],
   "relationships":[{"fromType":"agent","field":"skills","toType":"skill","label":"uses"}]}]}
 ```
+
+An entity may also declare `loadMode` (`always`, `on-trigger`, `delegated`, `on-event`, `manual`); omitting it keeps the profile valid and the resources `unknown` (FEAT-044). A companion declares the same per node as `metadata._loadMode`.
 
 Match a marker under the current workspace folder, parse frontmatter with the existing reader, then resolve references within that profile. Reject paths outside the root, including resolved symlink targets. Report duplicate native IDs, unknown versions and unresolved references with their source URI. Skip the affected entry and keep other providers available. The profile only describes reads. Scans must be cancellable and bounded. Existing adapters and extraPaths fields retain their meanings.
 
