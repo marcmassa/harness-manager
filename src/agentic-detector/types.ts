@@ -194,6 +194,8 @@ export interface AgenticProfile {
   sources?: import('../types.js').SourceIdentity[];
   /** FEAT-042: provider-attributed evidence that Layer-2 deduplication removed (evidence.ts). */
   evidence?: import('./evidence.js').EvidenceItem[];
+  /** FEAT-042: providers whose detection succeeded, with or without nodes (same input as the gate). */
+  detectedProviders?: string[];
   workspaceRoot: string;
   scanTimestamp: number;
   layers: {

@@ -31,16 +31,19 @@ describe('recommendations follow the present harness (R5)', () => {
         expect(actionsOf(withProviders(makeProfile(), []), 'no-signals-detected')).toEqual(['scaffold-main-agent']);
     });
 
-    it('does not offer a provider entry point that already exists', () => {
+    it('offers CLAUDE.md where Claude Code is present without it, and not inside another harness', () => {
         const claudeCli = makeProfile({ cliInstalls: [{ cliId: 'claude-code', cliName: 'Claude Code', detectedBy: 't', configFiles: ['.claude'], isActive: true }] });
+        expect(actionsOf(withProviders(claudeCli, ['claude-code']), 'add-claude-md')).toEqual(['create-claude-md']);
         expect(actionsOf(withProviders(claudeCli, []), 'add-claude-md')).toEqual(['create-claude-md']);
+        expect(actionsOf(withProviders(claudeCli, ['cursor']), 'add-claude-md')).toEqual([]);
     });
 });
 
 describe('the host decides each resolved action (R6)', () => {
     it('maps Advisory actions to operations', () => {
         expect(requestForAction({ type: 'open-file', payload: { filePath: 'a.md' } })).toBeNull();
-        expect(requestForAction({ type: 'create-file', payload: { relPath: 'CLAUDE.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace', format: 'claude-code' });
+        expect(requestForAction({ type: 'create-file', payload: { relPath: 'CLAUDE.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace', adoptFormat: 'claude-code' });
+        expect(requestForAction({ type: 'create-file', payload: { relPath: 'AGENTS.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace' });
         expect(requestForAction({ type: 'scaffold-skill', payload: {} })).toEqual({ op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' });
         expect(requestForAction({ type: 'run-command', payload: { command: 'npm audit fix' } })).toEqual({ op: 'workspace.command', targets: 'workspace' });
     });
@@ -53,10 +56,14 @@ describe('the host decides each resolved action (R6)', () => {
         expect(run(['claude-code'])).toMatchObject({ ok: false, reason: expect.stringContaining('Adopt Harness explicitly first') });
     });
 
-    it('refuses to recreate an existing provider entry point and every action when untrusted', () => {
+    // Review H3: Claude Code detected through its agents but without CLAUDE.md must still get it.
+    it('creates a provider entry point inside its own harness or none, never inside another', () => {
         const claudeMd = requestForAction({ type: 'create-file', payload: { relPath: 'CLAUDE.md' } })!;
-        expect(decide(claudeMd.op, claudeMd.targets, gate(['claude-code']), { format: claudeMd.format })).toMatchObject({ ok: false });
-        expect(decide(claudeMd.op, claudeMd.targets, gate([], false), { format: claudeMd.format })).toMatchObject({ ok: false, reason: 'This workspace is not trusted.' });
+        const run = (detected: string[], trusted = true) => decide(claudeMd.op, claudeMd.targets, gate(detected, trusted), { adoptFormat: claudeMd.adoptFormat });
+        expect(run(['claude-code'])).toMatchObject({ ok: true });
+        expect(run([])).toMatchObject({ ok: true });
+        expect(run(['cursor'])).toMatchObject({ ok: false, reason: expect.stringContaining('Adopt Claude Code explicitly first') });
+        expect(run([], false)).toMatchObject({ ok: false, reason: 'This workspace is not trusted.' });
     });
 
     it('keeps the explicit supply-chain audit available in any harness', () => {
