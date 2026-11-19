@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { createCompanionApi, type HarnessDashboardApiV1 } from './adapters/companionApi.js';
 import { OperationGate } from './operations/operationGate.js';
+import { InferenceLedger, setInferenceRecorder, withInferenceAction } from './cost/inferenceLedger.js';
 import { registerScaffoldCommands } from './commands/scaffoldCommands.js';
 import type { OperationRequest } from './operations/operations.js';
 import { HarnessWriter } from './harnessWriter.js';
@@ -121,6 +122,10 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
 
     // FEAT-041 T3 (R4): one host decision for webview messages and commands.
     const gate = new OperationGate(registry, () => provider.getCachedData() ?? undefined, runRegistry);
+    // FEAT-044 R11, R12: counts of the Dashboard's own model calls, in workspace state only.
+    const ledger = new InferenceLedger(context.workspaceState);
+    setInferenceRecorder(entry => { void ledger.record(entry); });
+    provider.optimizerCoordinator.setInferenceLedger(ledger);
     provider.setOperationGate(gate);
     context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => { void provider._sendData(); }));
     /** True (after telling the user why) when the operation is not available. */
@@ -210,11 +215,11 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
             const diagSummary = await diagnoseLmAvailability(log);
 
             // Then try a simple generation
-            const result = await generateText(
+            const result = await withInferenceAction('provider-check', () => generateText(
                 'Say "OK" and nothing else.',
                 log,
                 { apiKey, endpoint, model },
-            );
+            ));
 
             // Log full results
             const lines = [

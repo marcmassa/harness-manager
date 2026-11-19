@@ -19,6 +19,11 @@ export const CostSection = ({ cost }: { cost?: Cost }) => {
                     {o.unpriced.length > 0 && ` · unpriced ${o.unpriced.length} (${tok(o.unpriced.reduce((s, r) => s + r.tokens, 0))}, load mode unknown)`}
                 </div>
             ))}
+            {cost.inference && cost.inference.actions > 0 && (
+                <div data-cost-inference style={{ color: 'var(--vscode-descriptionForeground)' }}>
+                    {`Dashboard AI actions here: ${cost.inference.actions} · input ${tok(cost.inference.inputTokens)} · output ${tok(cost.inference.outputTokens)} (${cost.inference.reportedEntries} reported by the provider, the rest estimated)`}
+                </div>
+            )}
             {cost.money.map(m => (
                 <div key={m.model} data-cost-money={m.model}>
                     {`≈ ${m.perSession.toFixed(4)} per session on ${m.model} (estimate; prices as of ${m.priceDate}; calibration ×${m.factor}${m.calibrated ? '' : ', none configured'})`}

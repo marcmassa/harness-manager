@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { withInferenceAction } from '../cost/inferenceLedger.js';
 import type { WebviewMessage } from '../types.js';
 import { generateText } from '../lmUtils.js';
 import { sendPromptToHostChat, detectChatHostName } from '../chatHandoffHost.js';
@@ -179,7 +180,7 @@ export class SddCoordinator {
                 const currentDescription = (msg.currentDescription as string) || '';
                 const target = (msg.target as string) || 'createDescription';
                 const prompt = buildFeatureDescriptionPrompt({ title, mode, currentDescription, target });
-                const result = await generateText(prompt, this._log);
+                const result = await withInferenceAction('spec-assist', () => generateText(prompt, this._log));
                 postMessage({ type: 'featureDescriptionResult', ...result, target });
                 return true;
             }
@@ -276,7 +277,7 @@ export class SddCoordinator {
         const templateContent = tplFound ? tplFound.content : getFallbackTemplate(file);
         const existing = await this._getSpecFile(featureName, file);
         const prompt = buildAIPrompt(feature, file, templateContent, existing.content);
-        return generateText(prompt, this._log);
+        return withInferenceAction('spec-assist', () => generateText(prompt, this._log));
     }
 
     private async _generateSpecDraft(featureName: string, file: 'requirements' | 'design' | 'tasks', userPrompt: string, contextContent?: string): Promise<{ ok: boolean; text?: string; error?: string }> {
@@ -288,7 +289,7 @@ export class SddCoordinator {
 
         const prompt = buildSpecDraftPrompt({ file, userPrompt, templateContent, contextContent, feature });
 
-        const result = await generateText(prompt, this._log);
+        const result = await withInferenceAction('spec-assist', () => generateText(prompt, this._log));
         if (result.ok && result.text) {
             const saveResult = await this._saveSpecFile(featureName, file, result.text);
             if (!saveResult.ok) return { ok: true, text: result.text, error: `Generated but save failed: ${saveResult.error}` };

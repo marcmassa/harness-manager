@@ -105,3 +105,24 @@ Findings on resources the host would not let you edit (`editing.reviewedTextEdit
 | R10 | costRules.test.ts and CostSection.test.ts: an unevaluated provider is shown with its missing evidence and excluded from the total. |
 
 Verified: 960 unit tests, build.
+
+## T4 — Inference ledger
+
+`src/cost/inferenceLedger.ts` records each completed model call made by the Dashboard itself: action, provider, model, input and output tokens, and whether the counts were reported or estimated. Both providers in `lmUtils` record at one point each:
+
+- **OpenAI-compatible:** reads `usage.prompt_tokens` and `usage.completion_tokens` (reported), or falls back to the local estimate (estimated). The action is captured when the request starts, because the response callback may run outside the caller's context.
+- **`vscode.lm`:** calls `model.countTokens` when the API offers it. The engine range is `^1.85`, so it is feature-detected, and a throwing count falls back. It is called once per action, after completion.
+
+Callers label their calls with `withInferenceAction` (AsyncLocalStorage): AI refine, spec assistance in the coordinator (draft, generate, feature description; the legacy SDD view keeps the default `ai-assist` label), agent descriptions, semantic matching and the provider check. The ledger:
+- lives in workspace state, capped at the newest 500 entries;
+- stores counts and labels only, never prompts, responses, keys or paths;
+- feeds the cost section's "Dashboard AI actions here" line.
+
+Delegated terminal runs are not metered, as stated in design.md.
+
+| Requirement | Verification |
+|---|---|
+| R11 | inferenceLedger.test.ts: reported OpenAI-compatible usage with its action label; a local estimate flagged as estimated when no usage is reported; `countTokens` present, absent and failing; the 500-entry cap and summary. |
+| R12 | inferenceLedger.test.ts: stored entries have exactly the metadata keys, and contain neither the prompt, the response nor the API key. |
+
+Verified: 973 unit tests, build.
