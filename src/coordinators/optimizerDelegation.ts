@@ -3,7 +3,8 @@
 // agent edits files directly, no diff preview — is stated before handoff.
 
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
+import { createGitRunner } from '../cost/gitRunner.js';
+import type { GitRunner } from '../cost/baselineDiff.js';
 import { sendWhenShellReady } from '../terminalUtils.js';
 import type { WebviewMessage } from '../types.js';
 import type { OptimizerFinding } from '../optimizer/types.js';
@@ -35,24 +36,15 @@ export interface DelegationDeps {
  * is the user's only way back. A missing binary or a non-repo is reported as
  * "no version control detected", never as an error.
  */
-export async function gitState(root: vscode.Uri): Promise<'clean' | 'dirty' | 'no-vcs'> {
-    return new Promise(resolve => {
-        try {
-            const child = spawn('git', ['status', '--porcelain'], {
-                cwd: root.fsPath,
-                timeout: 5000,
-            });
-            let out = '';
-            child.stdout.on('data', (c: Buffer) => { out += c.toString('utf8'); });
-            child.on('error', () => resolve('no-vcs'));
-            child.on('close', code => {
-                if (code !== 0) return resolve('no-vcs');
-                resolve(out.trim().length > 0 ? 'dirty' : 'clean');
-            });
-        } catch {
-            resolve('no-vcs');
-        }
-    });
+export async function gitState(root: vscode.Uri, run: GitRunner = createGitRunner(root.fsPath)): Promise<'clean' | 'dirty' | 'no-vcs'> {
+    // FEAT-048 R5: through the guarded runner — no shell, core.fsmonitor disabled.
+    try {
+        const { code, stdout, timedOut, truncated } = await run(['status', '--porcelain']);
+        if (code !== 0 || timedOut) return 'no-vcs';
+        return truncated || stdout.trim().length > 0 ? 'dirty' : 'clean';
+    } catch {
+        return 'no-vcs';
+    }
 }
 
 export function buildScope(msg: WebviewMessage, findings: readonly OptimizerFinding[]): DelegateScope | null {
