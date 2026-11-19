@@ -4,7 +4,8 @@ import { createCompanionApi, type HarnessDashboardApiV1 } from './adapters/compa
 import { OperationGate } from './operations/operationGate.js';
 import { InferenceLedger, setInferenceRecorder, withInferenceAction } from './cost/inferenceLedger.js';
 import { registerScaffoldCommands } from './commands/scaffoldCommands.js';
-import { createStartup } from './startup/startupWiring.js';
+import { createStartup, STATE_CONTEXT_KEY } from './startup/startupWiring.js';
+import { contributedCommandIds, registerFolderlessCommands } from './startup/folderless.js';
 import type { OperationRequest } from './operations/operations.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
@@ -22,7 +23,12 @@ import { HarnessDashboardProvider } from './HarnessDashboardProvider.js';
 
 export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV1 {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
-    if (!root) return createCompanionApi(undefined);
+    if (!root) {
+        // FEAT-045 R17: commands still resolve; R8: the welcome view explains why.
+        registerFolderlessCommands(context, contributedCommandIds(context));
+        void vscode.commands.executeCommand('setContext', STATE_CONTEXT_KEY, 'noFolder');
+        return createCompanionApi(undefined);
+    }
 
     // OutputChannel with log:true — visible in Output > Harness Dashboard, supports severity filtering
     const log = vscode.window.createOutputChannel('Harness Dashboard', { log: true });
@@ -143,6 +149,8 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     provider.optimizerCoordinator.setRunRegistry(runRegistry);
 
     context.subscriptions.push(
+        // FEAT-045 T2: the view toolbar's Refresh — one scan through the scheduler.
+        vscode.commands.registerCommand('harness-dashboard.refresh', () => scheduler.refresh()),
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
             await scheduler.ensureScanned();
             await agenticDetector.scan(buildGraphContext());

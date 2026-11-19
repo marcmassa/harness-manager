@@ -24,3 +24,25 @@ The Dashboard provider no longer keeps watchers of its own; it reports visibilit
 | R16 | scanScheduler.test.ts: progress wraps every scan; the state follows `scanning` → `ready` or `empty`. |
 
 Verified: 987 unit tests; fifteen Extension Host runs; build.
+
+## T2 — Commands with and without a folder
+
+The manifest and command changes:
+- Every contributed command has category `Harness Dashboard` and a title without a prefix ("Open Dashboard", "Optimize Components", …).
+- Toolbar commands carry product icons: Open Dashboard, the new Refresh, Open Local Configuration.
+- Commands that write Harness SDD files name it: "Scaffold Missing Harness SDD Files", "Sync Harness SDD Agents from Filesystem".
+- `menus.commandPalette` hides every workspace command with `workspaceFolderCount > 0`. Only "Check AI Provider Status" works without a folder.
+
+With no folder open, `activate()` still:
+- registers every contributed command; each answers with one information message;
+- sets the `noFolder` state for the welcome view;
+- returns the companion API.
+
+Refresh scans immediately, visible or not, through the scheduler.
+
+| Requirement | Verification |
+|---|---|
+| R17 | commands.test.ts: every workspace command is hidden from the palette without a folder; folderless registration covers every contributed command and answers once with the message. |
+| R18 | commands.test.ts: category and unprefixed title on every command; provider-specific commands name Harness SDD. scanScheduler.test.ts: explicit refresh. |
+
+Verified: 1002 unit tests, build.

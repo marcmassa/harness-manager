@@ -59,6 +59,11 @@ export class ScanScheduler {
         return this.firstScan;
     }
 
+    /** An explicit user refresh: scan now, visible or not. */
+    public refresh(): Promise<void> {
+        return this.firstScan ? this.run() : this.ensureScanned();
+    }
+
     /** A watched file, the profile or the provider set changed. */
     public onChange(): void {
         if (!this.firstScan) return;          // nothing scanned yet: the first scan will see it
