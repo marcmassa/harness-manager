@@ -87,3 +87,13 @@ VSIX: 334,084 bytes (83 %), down from 390,247.
 | R2 | controls.test.ts: native `<button type="button">` with `disabled` and `aria-disabled`; a text area with `aria-label` and `readonly`; a spinner with `role="progressbar"` and `aria-label`; focus style from `--vscode-focusBorder`; reduced motion. NodeDetailPanel.test.ts: editing is read-only when FEAT-041 denies it. |
 
 **Pending, by hand:** a light, dark and high-contrast look at the Advisory tab, the node detail panel and the loading state. This is left for the maintainer's review, because an agent cannot view the running webview here.
+
+## T4 — Specs Manager availability
+
+`src/webview/tabs.ts` defines when the Specs Manager tab exists: when the scan has milestones or `feature` nodes from any provider. "Spec entry" is read as a feature node in the shared scan. Specs found only by the Specs Manager's own lazy filesystem discovery do not count, because discovering them would need a scan before the tab is shown.
+
+`App.tsx` lists only the available tabs. It moves an unavailable tab to the whiteboard, whether that tab was restored, requested or lost after a rescan. Before the first data arrives, a restored tab is kept.
+
+| Requirement | Verification |
+|---|---|
+| R5 | tabs.test.ts: the tab is hidden without data and shown with milestones or feature nodes; fallback for restored, requested and unknown tabs; a restored tab is kept before data. webviewChunks (Extension Host): in a Claude-only fixture the Specs Manager never mounts. |

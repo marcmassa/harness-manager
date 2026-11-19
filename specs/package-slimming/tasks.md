@@ -15,7 +15,7 @@
   - Test that the Advisory engine has no supply-chain rule.
   - Test that a stored supply-chain dismissal is ignored.
   - _(R4)_
-- [ ] **T4** — Show the Specs Manager tab only with milestones or specs.
+- [x] **T4** — Show the Specs Manager tab only with milestones or specs.
   - Test the tab list with and without them.
   - Test the fallback for a restored or requested unavailable tab.
   - _(R5)_
