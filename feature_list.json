@@ -616,7 +616,7 @@
       "name": "tree-view-presentation",
       "title": "Tree view presentation and Dashboard access",
       "type": "feat",
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -635,7 +635,7 @@
       "name": "package-slimming",
       "title": "Package slimming and scope alignment",
       "type": "chore",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -647,7 +647,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-19, maintainer reply “aprobadas” to FEAT-046 and FEAT-047 presented at spec_ready",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     }
   ]
 }
