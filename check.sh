@@ -162,11 +162,18 @@ fi
 # ── TypeScript checks (if applicable) ─────────────────
 if ! $SPEC_ONLY && ! $PY_ONLY && ! $GO_ONLY && [ -f "package.json" ]; then
 	section "TypeScript — Build"
-	npm run build 2>&1 | tail -3 && pass "npm run build" || fail "npm run build"
+	# FEAT-048 R9: judge the command's own exit status, not tail's (a pipe hides it).
+	if build_out=$(npm run build 2>&1); then pass "npm run build"; else echo "$build_out" | tail -3; fail "npm run build"; fi
 
 	if [ -f "vitest.config.js" ] || [ -f "vitest.config.ts" ]; then
 		section "TypeScript — Tests"
-		npm test -- --run 2>&1 | tail -10 && pass "npm test" || warn "npm test: some tests failed"
+		if test_out=$(npm test -- --run 2>&1); then
+			pass "npm test"
+		else
+			echo "$test_out" | tail -10
+			failed=$(echo "$test_out" | sed -n 's/.*Tests[^0-9]*\([0-9][0-9]*\) failed.*/\1/p' | tail -1)
+			fail "npm test: ${failed:-some} test(s) failed"
+		fi
 	fi
 fi
 
