@@ -146,6 +146,12 @@ export interface OptimizerRule {
     defaultSeverity: OptimizerSeverity;
     /** Epistemic tier. Determines the severity ceiling applied by the scorer. */
     confidence: RuleConfidence;
+    /**
+     * FEAT-043 R2: why this rule cannot evaluate this component (for example an
+     * uncalibrated cohort), or null. A rule that cannot evaluate is recorded as
+     * skipped and does not mark its dimension evaluated.
+     */
+    cannotEvaluate?(ctx: RuleContext): string | null;
     evaluate(ctx: RuleContext): OptimizerFinding[];
 }
 

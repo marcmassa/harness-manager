@@ -52,3 +52,11 @@ describe('Optimizer coverage (R2, R3)', () => {
         expect(averageDimensions([a, b])).toEqual({ structure: 90, clarity: null, budget: 100, integration: null, hygiene: 80, consistency: null });
     });
 });
+
+describe('unscored architecture (FEAT-043 review)', () => {
+    it('names no weakest dimension when nothing was evaluated', async () => {
+        const { weakestDimension } = await import('./optimizerParts.js');
+        expect(weakestDimension({ structure: null, clarity: null, budget: null, integration: null, hygiene: null, consistency: null })).toBe('—');
+        expect(weakestDimension({ structure: 50, clarity: null, budget: 90, integration: null, hygiene: null, consistency: null })).toBe('Structure');
+    });
+});

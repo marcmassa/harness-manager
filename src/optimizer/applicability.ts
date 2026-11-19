@@ -62,9 +62,10 @@ type Conventions = Partial<Record<ConventionKey, readonly OptimizableType[]>>;
  */
 export const PROVIDER_CONVENTIONS: Readonly<Record<string, Conventions>> = {
     'harness-sdd': {
-        frontmatter: ['skill', 'subagent', 'steering'],
+        // The primary agent is typed `agent` but is a SUBAGENT.md (see AGENT_FILE below).
+        frontmatter: ['skill', 'subagent', 'steering', 'agent'],
         nameMatchesDirectory: ['skill', 'subagent'],
-        description: ['skill', 'subagent'],
+        description: ['skill', 'subagent', 'agent'],
         triggerMarkers: ['skill'],
         requiredSections: ['skill', 'subagent'],
         hookContract: ['hook', 'steering'],
@@ -88,6 +89,12 @@ export const PROVIDER_CONVENTIONS: Readonly<Record<string, Conventions>> = {
     },
 };
 
+/**
+ * Where a format's `agent` node is a real component file. Harness SDD's
+ * synthetic manifest root is not; its primary agent's SUBAGENT.md is.
+ */
+const AGENT_FILE: Readonly<Record<string, RegExp>> = { 'harness-sdd': /(?:^|\/)SUBAGENT\.md$/ };
+
 export interface Applicability {
     applies: boolean;
     /** Why a rule was skipped, shown as missing evidence (R3). */
@@ -104,7 +111,8 @@ export function applicability(ruleId: string, source: ComponentSource): Applicab
     if (requirement.kind === 'shared') return { applies: true };
     const owner = ownerOf(source);
     const types = owner ? PROVIDER_CONVENTIONS[owner]?.[requirement.convention] : undefined;
-    if (types?.includes(source.nodeType)) return { applies: true };
+    const fileOk = !(owner && AGENT_FILE[owner] && source.nodeType === 'agent') || AGENT_FILE[owner].test(source.filePath);
+    if (types?.includes(source.nodeType) && fileOk) return { applies: true };
     return {
         applies: false,
         reason: `${owner ?? 'Unknown owner'} does not document the "${requirement.convention}" convention for ${source.nodeType} components`,

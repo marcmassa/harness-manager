@@ -106,7 +106,6 @@ export function scan(
                     coverage.skipped.push({ ruleId: rule.id, reason: fit.reason ?? 'not applicable' });
                     continue;
                 }
-                if (!coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
 
                 const ctx: RuleContext = {
                     source,
@@ -118,6 +117,12 @@ export function scan(
                     config,
                     corpus,
                 };
+                const unable = rule.cannotEvaluate?.(ctx) ?? null;
+                if (unable) {
+                    coverage.skipped.push({ ruleId: rule.id, reason: unable });
+                    continue;
+                }
+                if (!coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
 
                 try {
                     const found = rule.evaluate(ctx);

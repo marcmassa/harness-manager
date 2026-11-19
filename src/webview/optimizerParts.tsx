@@ -147,7 +147,8 @@ export function tierOf(score: number | null): ScoreTier | null {
 export function weakestDimension(dimensions: Record<OptimizerDimension, number | null>): string {
     // FEAT-043 R2: an unevaluated dimension is not the weakest one.
     const evaluated = RADAR_AXES.filter(d => dimensions[d] !== null);
-    let worst = evaluated[0] ?? RADAR_AXES[0];
+    if (evaluated.length === 0) return '—'; // FEAT-043 R3: nothing evaluated, nothing is weakest
+    let worst = evaluated[0];
     for (const d of evaluated) {
         if ((dimensions[d] as number) < (dimensions[worst] as number)) worst = d;
     }
