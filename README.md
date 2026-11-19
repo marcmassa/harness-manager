@@ -1,9 +1,9 @@
 # Harness Dashboard
 
-**Visual whiteboard for AI agent architectures** — map, trace and manage subagents, skills and relationships across any agentic framework.
+**See, check and price the AI agent harness you already have** — agents, subagents, skills, rules and hooks, in any supported format or your own layout. Bring Your Own Harness: no framework is privileged.
 
 [![CI](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/marcmassa/harness-manager/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.8.2-blue)](https://github.com/marcmassa/harness-manager/releases)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue)](https://github.com/marcmassa/harness-manager/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blueviolet)](https://code.visualstudio.com/updates/v1_85)
 
 ![Harness Dashboard icon](media/icon.png)
@@ -12,10 +12,14 @@
 
 ## Screenshots
 
+![Harness Dashboard 0.9.0: the Activity Bar's Sources and Findings views with type icons, load mode, tokens and scores per resource and Open Dashboard entries, a subagent file open in the editor, and the Dashboard whiteboard showing Harness, Kiro and OpenCode providers side by side](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/dashboard-0-9-0.png)
+
+*0.9.0 — Bring Your Own Harness: native Sources and Findings views beside the editor Dashboard, one workspace mixing Harness SDD, Kiro and OpenCode.*
+
 | Whiteboard | SDD Panel |
 |---|---|
 | ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/sdd-panel.png) |
-| **Architecture Analysis & Advisory** | **Full-window Dashboard** |
+| **Architecture Analysis & Advisory** | **Editor Dashboard** |
 | ![Advisory tab with maturity badge, SVG signal bars, suggestions and CLI detection](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/achitecture-advisory.png) | ![Harness Dashboard opened as a full editor panel, detached from the activity bar](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/full-window.png) |
 | **Component Optimizer** *(new in 0.8.0)* | |
 | ![Optimizer tab: six-axis dimension radar, the legend naming what each axis measures and which rules feed it, per-rule batch actions, and the component table scored worst-first](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/optimizer-panel.png) | |
@@ -31,9 +35,12 @@ Harness Dashboard reads your workspace and renders an interactive graph of your 
 - **Edges** — `manages`, `uses`, `suggested`, `discovered` relationships with semantic coloring
 - **Semantic suggestions** — TF-IDF cosine similarity recommends missing skill connections
 - **Detail panel** — click any node to read its description and Markdown file inline
-- **Timeline** — SDD progress milestones in a git-style view
+- **Advisory** — maturity and suggestions derived from evidence each provider actually supplies
+- **Optimizer** — every component scored only against the rules its format supports, with coverage instead of false scores
+- **Context cost** — what each harness costs per session, from the load modes its owner declares
+- **Specs Manager** — feature and spec progress, shown whenever a provider supplies feature or spec data
 
-Works out of the box with **Harness SDD**, and ships with **universal adapters** for Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCode and Kiro (see the [Supported project structures](#supported-project-structures) table below).
+Built-in providers read Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCode, Kiro and Harness SDD; any other layout is read through a declared **harness profile**, and other extensions can register providers through the companion API (see [Supported project structures](#supported-project-structures)).
 
 ---
 
@@ -50,48 +57,54 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | 🔍 **Idoneity scoring** | Shows best semantic owner per skill, highlights mismatches |
 | ⏸ **Toggle connections** | Disable/enable skill connections persistently |
 | 🚫 **Dismiss suggestions** | Permanently hide unwanted suggestions (persisted across reloads) |
-| 📅 **Progress timeline** | Visualize SDD feature lifecycle (pending → done) |
+| 📅 **Progress timeline** | Feature lifecycle (pending → done) for providers that supply feature data |
 | 🧭 **Steering & Hooks nodes** | Visualise steering files and hook scripts on the whiteboard, with relationship edges to subagents and agents |
-| 📐 **SDD Management Panel** | Browse and edit spec files (requirements, design, tasks) per feature, with AI-assisted spec generation |
+| 📐 **Specs Manager** | Browse and edit spec files (requirements, design, tasks) per feature, with AI-assisted generation; shown when a provider supplies feature or spec data |
 | 🔄 **Cross-framework discovery** | Find hooks and steering files from any agentic framework (Harness, Kiro, Claude Code, etc.) |
 | 🤖 **Universal AI Provider** | Provider chain (`vscode.lm` → OpenAI-compatible API fallback) works in any IDE without Copilot |
 | 🔍 **Agentic Architecture Detection** | Scans any workspace for agentic signals (prompts, rules, MCP, frameworks, tools, skills, memory, context), classifies maturity L0–L5, identifies architectural patterns, and generates actionable improvement suggestions |
 | 🧩 **Discovered Node Visualization** | Detected CLI installs, agent implementations, Harness SDD, and methodology elements appear on the whiteboard with layer badges (`[CLI]`, `[IMPL]`, `[HARNESS]`, `[SDD]`) and dashed/solid borders |
 | 📊 **SVG Signal Bar Chart** | See signal strength across 9 categories at a glance in the Advisory tab |
-| 🚀 **One-click Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals |
+| 🚀 **Optional adoption** | Scaffold a Harness SDD layout from detected signals — offered, never required |
 | 🩺 **Component Optimizer** | Scores every agent, subagent, skill, steering and hook 0–100 across six dimensions — 19 deterministic rules, thresholds calibrated against your own corpus, no LLM — with a dimension radar and quick fixes previewed in a diff |
 | 🤖 **Assisted fixes** | For findings with no mechanical fix: AI Refine proposes a rewrite through your editor's model where the host exposes one (`vscode.lm`), or a configured API; Delegate hands a scoped task to an installed terminal agent |
-| 🔗 **Supply-Chain Health** | Deterministic dependency scan (`package.json`, lockfile, bot config) wired into the advisory loop: flags a missing Dependabot/Renovate config with a one-click `dependabot.yml` scaffold, stale security `overrides` vs patched versions, and prod-vs-dev audit findings — remediation commands included *(new in 0.8.1)* |
+| 🧳 **Bring Your Own Harness** | Declare any folder layout as a harness profile (`.harness-dashboard/config.json`) and it is read, scored and priced like a built-in format; companion extensions register providers through a read-only API *(new in 0.9.0)* |
+| 💸 **Context cost** | Per-session token cost per provider (baseline, skill catalog, on-demand), offline money estimates from your own price table, the Dashboard's own model usage, and a comparison with git HEAD *(new in 0.9.0)* |
+| 🗂 **Native Sources & Findings views** | Type icons, per-provider session cost, load mode, tokens and score per resource, findings coloured like the Problems view, and an Open Dashboard entry *(new in 0.9.0)* |
 | 🔲 **Editor Dashboard** | The Dashboard is one editor tab, restored after a reload on the tab you left; the Activity Bar keeps light native Sources and Findings views |
 
 ---
 
-## What's new in 0.8.2
+## What's new in 0.9.0
 
-A **dependency and CI maintenance release** incorporating every commit since `v0.8.1`. No new commands, settings, or intended whiteboard behavior changes.
+**Bring Your Own Harness.** Every capability reads, evaluates and prices the harness a workspace already has, with no framework assumed.
 
-- **Runtime dependencies refreshed** — `@xyflow/react` 12.12.0, React and React DOM 19.3.0, and YAML 2.9.1 (#21).
-- **Development tooling refreshed** — Vitest/coverage 5.0.2 and Mocha 12.0.2 (#21).
-- **VS Code compatibility preserved** — `@types/vscode` is pinned to 1.85.0, matching `engines.vscode`; the 1.138.0 update proposed in #21 made `vsce package` reject the extension.
-- **CI actions updated and still SHA-pinned** — `actions/setup-node` 7.1.0 (#22) and `codecov/codecov-action` 7.1.1 (#19).
-- **Security evidence captured** — `npm audit --omit=dev` reports **0 production vulnerabilities**. The full audit separately records 18 development-tree findings at the release date; they are explicitly tracked rather than presented as fixed. See the [0.8.2 security snapshot](docs/security/0.8.2.md).
-- **Verified before packaging** — all 819 unit tests and the repository checks pass; the VSIX size and content gate remains mandatory.
+- **Sources and ownership** — each resource keeps its provider, native path and load mode; one host decision says which operations each owner supports. Custom layouts are declared as profiles; companion extensions add providers through a read-only API.
+- **Advisory and maturity** — findings and maturity come from attributed evidence and capabilities, not from which framework is installed.
+- **Optimizer** — only applicable rules per owner and format; components nothing could evaluate show coverage instead of a score.
+- **Context cost** — per-session tokens from owner-declared load modes, unknown modes left unpriced, money estimates from your own price table, and a git HEAD comparison.
+- **Fast, quiet startup** — activation registers only (about 50 ms); nothing is scanned until you open a Harness view or the Dashboard. The Activity Bar has native **Sources** and **Findings** views with type icons and an **Open Dashboard** entry; the Dashboard is one editor tab restored on its last tab, whose tabs load on first display. A five-step walkthrough covers the basics.
+- **Smaller package** — 347 KB, down from 390 KB: the deprecated webview UI toolkit is replaced by native themed controls, the icon is palettised, and the npm supply-chain audit (outside the harness scope) is removed.
 
-For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet features introduced in 0.8.1, plus full release details, see the [CHANGELOG](./CHANGELOG.md).
+See the [CHANGELOG](./CHANGELOG.md) and the [v0.9.0 acceptance guide](docs/byoh/v0.9.0.md).
 
 ---
 
 ## Supported project structures
 
-| Framework | Detection file | Status |
+| Format | Detection file | Provider |
 |-----------|---------------|--------|
-| **Harness SDD** | `.agents/agentic.json` | first-class |
-| **Claude Code** | `CLAUDE.md` / `.claude/agents/` | adapter (FEAT-015) |
-| **Gemini CLI** | `GEMINI.md` | adapter (FEAT-015) |
-| **Cursor** | `.cursor/rules/` | adapter (FEAT-015) |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | adapter (FEAT-015) |
-| **OpenCode** | `opencode.json` | adapter (FEAT-015) |
-| **Kiro** | `.kiro/agents/` | adapter (FEAT-023) |
+| **Claude Code** | `CLAUDE.md` / `.claude/agents/` | built-in |
+| **Gemini CLI** | `GEMINI.md` | built-in |
+| **Cursor** | `.cursor/rules/` | built-in |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | built-in |
+| **OpenCode** | `opencode.json` | built-in |
+| **Kiro** | `.kiro/agents/` | built-in |
+| **Harness SDD** | `.agents/agentic.json` | built-in |
+| **Your own layout** | markers you declare | harness profile in `.harness-dashboard/config.json` |
+| **Another extension's format** | its own | companion API v1 (read-only) |
+
+What each provider can do (discovery, editing, runs, validation) is listed in [adapter capabilities](docs/byoh/adapter-capabilities.md).
 
 > **Note on Windsurf:** the `WindsurfAdapter` source file still ships in the extension (the adapter was implemented in FEAT-015 before Windsurf was discontinued), but the table above does not advertise it because new users cannot realistically adopt a discontinued product. The adapter is retained for users with existing Windsurf workspaces. See `progress/decisions.md#adr-003-windsurf-discontinuation` for the rationale.
 
@@ -100,9 +113,9 @@ For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet feature
 ## Getting started
 
 1. **Install** — download the latest VSIX from the [Releases page](https://github.com/marcmassa/harness-manager/releases) and install it via `Extensions: Install from VSIX...`, or install directly from the VS Code Marketplace (*coming soon*).
-2. Open a workspace that uses [Harness SDD](https://github.com/marcmassa/harness-sdd-template.git) or any supported agentic framework  
+2. Open a workspace with any agent configuration — a supported format, or your own layout declared as a profile
 3. Click the **Harness** icon in the Activity Bar: **Sources** lists each detected provider and the files it owns; **Findings** groups Advisory and Optimizer results by owner
-4. Run **Open Dashboard** (view toolbar or Command Palette) for the whiteboard, timeline, Advisory and Optimizer in an editor tab, or follow the *Get started with Harness Dashboard* walkthrough
+4. Select **Open Dashboard** (first item, view toolbar or Command Palette) for the whiteboard, Advisory, Optimizer and, when there is feature data, the Specs Manager in an editor tab — or follow the *Get started with Harness Dashboard* walkthrough
 
 > **No config needed.** Supported formats are detected automatically; for any other layout, declare a harness profile. Nothing is scanned until you open a Harness view or the Dashboard.
 
@@ -111,7 +124,7 @@ For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet feature
 ## Requirements
 
 - VS Code 1.85 or newer
-- A workspace with at least one supported agent config file (see table above)
+- A workspace with agent configuration in a supported format or a declared profile (see table above)
 
 ---
 

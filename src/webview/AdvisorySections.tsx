@@ -1,5 +1,6 @@
 // Advisory panel: CLI installations and architecture patterns sections.
 import * as React from 'react';
+import { Badge } from './controls.js';
 import type { PatternMatch } from '../agentic-detector/types.js';
 import { SPACE, confidenceLabel } from './advisoryParts.js';
 
@@ -34,7 +35,7 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                         {cli.cliName}
                                     </span>
                                     {cli.isActive && (
-                                        <vscode-badge style={{ fontSize: '0.6em' }}>active</vscode-badge>
+                                        <Badge style={{ fontSize: '0.6em' }}>active</Badge>
                                     )}
                                 </div>
                                 {cli.configFiles && cli.configFiles.length > 0 && (
@@ -130,18 +131,13 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                 >
                                     {confidenceLabel(pat.confidence)}
                                 </span>
-                                <vscode-badge
-                                    style={{
-                                        fontSize: '0.6em',
-                                        flexShrink: 0,
-                                        background:
-                                            pat.status === 'detected'
-                                                ? 'color-mix(in srgb, var(--vscode-testing-iconPassed) 25%, transparent)'
-                                                : 'color-mix(in srgb, var(--vscode-testing-iconQueued) 25%, transparent)',
-                                    }}
+                                <Badge
+                                    // The toolkit never rendered a per-status tint here; the solid badge
+                                    // keeps its themed contrast (FEAT-047 pre-review).
+                                    style={{ fontSize: '0.6em', flexShrink: 0 }}
                                 >
                                     {pat.status}
-                                </vscode-badge>
+                                </Badge>
                             </div>
                         ))}
                     </div>

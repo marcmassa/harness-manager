@@ -12,7 +12,8 @@ import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
 import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from './config/harnessConfig.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
-import type { AgenticProfile, GraphContext, ArchitectureSummary } from './agentic-detector/types.js';
+import { buildArchitectureSummary } from './agentic-detector/summary.js';
+import type { AgenticProfile, GraphContext } from './agentic-detector/types.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
 import { OPTIMIZER_DIFF_SCHEME } from './coordinators/OptimizerCoordinator.js';
 import { RunAdapterRegistry } from './run/runAdapterRegistry.js';
@@ -70,7 +71,8 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
                 provider.adoptPanel(panel, (state as { tab?: string } | undefined)?.tab);
             },
         }),
-        vscode.commands.registerCommand('harness-dashboard.openDashboard', () => provider.openFullWindowPanel()),
+        // FEAT-046 R5: the tree entries open it on a tab (Findings → Advisory).
+        vscode.commands.registerCommand('harness-dashboard.openDashboard', (tab?: string) => provider.openFullWindowPanel(typeof tab === 'string' ? tab : undefined)),
     );
 
     // FEAT-026 T3: open or create the local config file
@@ -180,16 +182,6 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         })
     );
 
-    // FEAT-036 R6: user-triggered npm audit — palette counterpart of the
-    // AdvisoryPanel button. Shares the coordinator's in-flight guard and
-    // session cache; NEVER invoked from scan()/activation/watchers (R6).
-    context.subscriptions.push(
-        vscode.commands.registerCommand('harness-dashboard.runSupplyChainAudit', async () => {
-            if (await denied({ op: 'workspace.audit', targets: 'workspace' })) return;
-            await provider.runSupplyChainAudit();
-        })
-    );
-
     // FEAT-034 T41/T43: virtual document backing the quick-fix diff preview,
     // plus the user-facing "Optimize Components" command.
     context.subscriptions.push(
@@ -214,15 +206,6 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
 
     registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan, ensureScanned: () => scheduler.ensureScanned() });
 
-
-    const buildArchitectureSummary = (profile: AgenticProfile): ArchitectureSummary => ({
-        maturityLevel: profile.maturity.level,
-        maturityLabel: profile.maturity.label,
-        maturityColor: profile.maturity.color,
-        activeSuggestions: profile.suggestions.filter(s => !profile.dismissedSuggestionIds.includes(s.id)).length,
-        scanTimestamp: profile.scanTimestamp,
-        isScanning: false,
-    });
 
     // FEAT-031: Forward scan results + architecture summary to the webview
     agenticDetector.on('scanComplete', (profile: AgenticProfile) => {

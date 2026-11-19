@@ -19,7 +19,6 @@ _(cleared — see Completed sections below)_
 
 ## P1 — Important (next sprint)
 
-- [ ] **Verify retirement of the legacy save verifier under FEAT-040** — the historical review found that the legacy verifier did not establish save cancellation. FEAT-040 covers isolation on save, including workspaces with legacy settings. Track its independent review before closing this item. [Historical evidence](spec-review/code-quality-on-save-hooks.md).
 
 - [ ] **Close acceptance-evidence gaps** — writer persistence and webview click flows need tests that exercise the actual paths; canvas overlap prevention needs verification after layout. Restore missing skill-toggle traceability and collect the outstanding manual, CI cancellation and detector benchmark evidence. [Full task-by-task inventory](spec-review/README.md).
 
@@ -64,4 +63,6 @@ _(cleared — see Completed sections below)_
 - ✅ **Development-tree npm audit remediation** — main at `5522ad3`: 9 findings (3 high, 5 moderate, 1 low), production 0. Compatible lockfile updates plus scoped Mocha/vsce overrides reduce both audits to 0. Evidence and override retirement criteria: `docs/security/2026-11-16-maintenance.md`.
 - ✅ **macOS e2e harness** — `@vscode/test-electron@3.1.0` runs current stable VS Code 1.146.0 on darwin-arm64 without `VSCODE_TEST_PATH`; integration test passes before and after the final dependency overrides. The previous Electron/Code ENOENT no longer reproduces.
 
-- FEAT-045: retake README screenshots (`full-window.png` and a new Sources/Findings sidebar capture) for the native views and the editor Dashboard.
+- Retake the older README screenshots (whiteboard, SDD panel, Advisory, full window) for the 0.9 editor Dashboard; `dashboard-0-9-0.png` already shows the native views.
+
+- Upstream the 0.9.0 `check.sh` fix (a failing unit-test run fails the check instead of warning) to the Harness SDD framework template, so a framework update does not revert it.

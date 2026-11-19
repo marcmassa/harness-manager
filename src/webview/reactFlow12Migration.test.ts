@@ -55,7 +55,12 @@ function sourceFiles(root: string, includeTests = false): string[] {
     return out;
 }
 
-const wbSrc = readFileSync(join(WEBVIEW_ROOT, 'WhiteboardCanvas.tsx'), 'utf8');
+// FEAT-048 T5: WhiteboardCanvas.tsx was split by responsibility; the whiteboard
+// source contract is the entry file plus the modules its code moved into.
+const wbSrc = [
+    'WhiteboardCanvas.tsx', 'whiteboardEdgeStyles.ts', 'useWhiteboardGraphData.ts', 'useLinkGestures.ts',
+    'useEdgeActions.ts', 'WhiteboardToolbar.tsx', 'ProviderOverlays.tsx', 'NodeContextMenu.tsx', 'WhiteboardDialogs.tsx',
+].map((f) => readFileSync(join(WEBVIEW_ROOT, f), 'utf8')).join('\n');
 const indexSrc = readFileSync(join(WEBVIEW_ROOT, 'index.tsx'), 'utf8');
 const layoutSrc = readFileSync(join(WEBVIEW_ROOT, 'layoutUtils.ts'), 'utf8');
 const customNodeSrc = readFileSync(join(WEBVIEW_ROOT, 'components', 'CustomNode.tsx'), 'utf8');
@@ -94,18 +99,19 @@ describe('FEAT-037 R2 — zero legacy-package surface, everything on @xyflow/rea
         expect(wbSrc).toMatch(/import\s*\{[\s\S]*?\bReactFlow\b[\s\S]*?\}\s*from\s*'@xyflow\/react'/);
     });
 
-    it('package.json: @xyflow/react ^12.12.1 + React ^19, legacy pkg gone, types in devDeps, version 0.8.2', () => {
+    it('package.json: @xyflow/react ^12.12.1 + React ^19, legacy pkg gone, types in devDeps, version 0.9.0', () => {
         const pkg = JSON.parse(readFileSync(PKG_JSON, 'utf8'));
-        expect(pkg.version).toBe('0.8.2');
+        expect(pkg.version).toBe('0.9.0');
         expect(pkg.dependencies[LEGACY_PKG]).toBeUndefined();
         expect(pkg.dependencies['@xyflow/react']).toBe('^12.12.1');
         expect(pkg.dependencies['react']).toBe('^19.3.1');
         expect(pkg.dependencies['react-dom']).toBe('^19.3.1');
         expect(pkg.devDependencies['@types/react']).toBe('^19');
         expect(pkg.devDependencies['@types/react-dom']).toBe('^19');
-        // R13 / DESIGN §2.4: the ONLY runtime deps are the swap + existing ones.
+        // R13 / DESIGN §2.4: the ONLY runtime deps are the swap + existing ones
+        // (FEAT-047 removed the deprecated webview-ui-toolkit).
         expect(Object.keys(pkg.dependencies).sort()).toEqual(
-            ['@vscode/webview-ui-toolkit', '@xyflow/react', 'react', 'react-dom', 'yaml'].sort(),
+            ['@xyflow/react', 'react', 'react-dom', 'yaml'].sort(),
         );
     });
 });
@@ -138,7 +144,9 @@ describe('FEAT-037 R6 — explicit nodeDragThreshold={1} (design §4)', () => {
     it('pill/handle clicks stopPropagation so the drag machinery never sees them (R6 rationale)', () => {
         const pillHandlers = customNodeSrc.match(/onClick=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/g) ?? [];
         expect(pillHandlers.length).toBeGreaterThanOrEqual(2); // source + target Handle
-        expect(customNodeSrc).toMatch(/onPointerDown=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/); // skill picker
+        // The skill picker moved to NodeLinkPicker.tsx (FEAT-046 split).
+        const pickerSrc = readFileSync(join(WEBVIEW_ROOT, 'components', 'NodeLinkPicker.tsx'), 'utf8');
+        expect(pickerSrc).toMatch(/onPointerDown=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/); // skill picker
     });
 });
 

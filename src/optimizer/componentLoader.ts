@@ -18,14 +18,12 @@
 import matter from '../frontmatter.js';
 import type { HarnessNode, NodeMetadata } from '../types.js';
 import { estimateTokens } from './tokenEstimator.js';
-import type { ComponentSource, OptimizableType, PathKind } from './types.js';
+import { OPTIMIZABLE_TYPES, type ComponentSource, type OptimizableType, type PathKind } from './types.js';
 
-const OPTIMIZABLE_TYPES: ReadonlySet<string> = new Set<OptimizableType>([
-    'agent', 'subagent', 'skill', 'steering', 'hook',
-]);
+const OPTIMIZABLE: ReadonlySet<string> = new Set(OPTIMIZABLE_TYPES);
 
 function isOptimizableType(type: string): type is OptimizableType {
-    return OPTIMIZABLE_TYPES.has(type);
+    return OPTIMIZABLE.has(type);
 }
 
 function readFilePath(metadata: NodeMetadata): string {

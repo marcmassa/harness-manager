@@ -39,7 +39,7 @@ Baseline is extension 0.8.2 at 990470d. Each row classifies the primary responsi
 | FEAT-033 | Run and architecture studio | optional-integration | Separate installed CLI availability from target ownership and scaffold formats (D). |
 | FEAT-034 | Optimizer | optional-integration | Apply rules only when their inputs exist in the detected format (D). |
 | FEAT-035 | Assisted fixes | optional-integration | Route edits to the source owner and delegation to an available runner (C/D). |
-| FEAT-036 | Supply-chain health | optional-integration | Detect package metadata independently of harness identity. Audit remains user-triggered. |
+| FEAT-036 | Supply-chain health | optional-integration | Removed by FEAT-047: it audited npm dependencies, not the agent harness. |
 | FEAT-037 | React Flow migration | shared-core | Keep rendering and stable layout IDs across migration. |
 | FEAT-038 | VSIX size gate | repository-development | Keep the packaged artifact below 400,000 bytes. |
 
@@ -54,6 +54,9 @@ Baseline is extension 0.8.2 at 990470d. Each row classifies the primary responsi
 | FEAT-043 | BYOH Optimizer applicability, scores and assisted fixes | optional-integration | Evaluate native components only against applicable rules and route fixes and delegation by owner and operation. |
 | FEAT-044 | BYOH context cost, optimization and inference usage | shared-core | Price every provider's resources from owner-declared load modes; unknown modes stay unpriced, and findings and actions follow FEAT-041 ownership. |
 | FEAT-045 | Activity Bar redesign and lazy startup | shared-core | Native Sources and Findings views over the shared scan, one restorable editor panel, provider-neutral welcome and walkthrough, no work before the user opens a view. |
+| FEAT-046 | Tree view presentation and Dashboard access | shared-core | Type icons, a visible Dashboard entry and richer item details in the native views, from the shared scan and reports, naming no framework. |
+| FEAT-047 | Package slimming and scope alignment | shared-core | Native themed controls instead of a deprecated toolkit; removes the npm supply-chain audit, which is outside the harness scope; the Specs Manager tab appears only when any provider supplies feature or spec data. |
+| FEAT-048 | Shared abstractions for duplicated code | shared-core | One definition per duplicated helper across adapters, rules, webview and tests; git only through the guarded runner; no behaviour change. |
 
 The [v0.9.0 debugging and acceptance guide](v0.9.0.md) records observed behavior and the proposed release checks.
 

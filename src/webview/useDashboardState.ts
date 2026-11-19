@@ -29,9 +29,6 @@ export function useDashboardState() {
     const [architectureSummary, setArchitectureSummary] = React.useState<any>(null);
     // FEAT-032: per-action button states keyed by `"${suggestionId}::${actionId}"`
     const [actionStates, setActionStates] = React.useState<Record<string, ActionButtonState>>({});
-    // FEAT-036: user-triggered npm audit in-flight flag (button state only —
-    // the audit itself is bounded + guarded host-side).
-    const [isAuditRunning, setIsAuditRunning] = React.useState(false);
     // FEAT-034: Component Optimizer report + scan state
     const [optimizerReport, setOptimizerReport] = React.useState<OptimizerReport | null>(null);
     const [isOptimizerScanning, setIsOptimizerScanning] = React.useState(false);
@@ -180,15 +177,6 @@ export function useDashboardState() {
                     setTimeout(() => setActionStates(prev => ({ ...prev, [key]: 'idle' })), 2500);
                     break;
                 }
-                // FEAT-036: user-triggered npm audit completion (R7). The
-                // refreshed profile arrives separately via 'advisoryProfile'.
-                case 'supplyChainAuditResult': {
-                    setIsAuditRunning(false);
-                    if (!message.ok && message.reason !== undefined) {
-                        console.warn('[SupplyChain] npm audit unavailable:', message.reason);
-                    }
-                    break;
-                }
                 // FEAT-033: Agent Run Panel messages
                 case 'runAdapters':
                     setRunAdapters(message.adapters as { id: string; name: string }[]);
@@ -239,7 +227,7 @@ export function useDashboardState() {
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    return { data, setData, selectedNode, setSelectedNode, ownership, setOwnership, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, setTimelineTargetFeature, advisoryProfile, setAdvisoryProfile, isAdvisoryScanning, setIsAdvisoryScanning, architectureSummary, setArchitectureSummary, actionStates, setActionStates, isAuditRunning, setIsAuditRunning, optimizerReport, setOptimizerReport, isOptimizerScanning, setIsOptimizerScanning, optimizerEnabled, setOptimizerEnabled, assistedEnabled, setAssistedEnabled, assistedMode, setAssistedMode, hasTerminalAgent, setHasTerminalAgent, chatHostName, setChatHostName, aiCapabilities, setAiCapabilities, aiModels, setAiModels, selectedAiModel, setSelectedAiModel, assistStates, setAssistStates, discoveredNodes, setDiscoveredNodes, runningNodeIds, setRunningNodeIds, runHistory, setRunHistory, runAdapters, setRunAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, setRunPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, setNoCliDetected, setTimeTick, wizardOpen, setWizardOpen, wizardInitialType, setWizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, setLmModels, templatePanelOpen, setTemplatePanelOpen, templates, setTemplates, applyingTemplate, setApplyingTemplate, mdContent, setMdContent, mdLoading, setMdLoading, detailTab, setDetailTab, isDetailPanelCollapsed, setIsDetailPanelCollapsed };
+    return { data, setData, selectedNode, setSelectedNode, ownership, setOwnership, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, setTimelineTargetFeature, advisoryProfile, setAdvisoryProfile, isAdvisoryScanning, setIsAdvisoryScanning, architectureSummary, setArchitectureSummary, actionStates, setActionStates,  optimizerReport, setOptimizerReport, isOptimizerScanning, setIsOptimizerScanning, optimizerEnabled, setOptimizerEnabled, assistedEnabled, setAssistedEnabled, assistedMode, setAssistedMode, hasTerminalAgent, setHasTerminalAgent, chatHostName, setChatHostName, aiCapabilities, setAiCapabilities, aiModels, setAiModels, selectedAiModel, setSelectedAiModel, assistStates, setAssistStates, discoveredNodes, setDiscoveredNodes, runningNodeIds, setRunningNodeIds, runHistory, setRunHistory, runAdapters, setRunAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, setRunPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, setNoCliDetected, setTimeTick, wizardOpen, setWizardOpen, wizardInitialType, setWizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, setLmModels, templatePanelOpen, setTemplatePanelOpen, templates, setTemplates, applyingTemplate, setApplyingTemplate, mdContent, setMdContent, mdLoading, setMdLoading, detailTab, setDetailTab, isDetailPanelCollapsed, setIsDetailPanelCollapsed };
 }
 
 export type DashboardState = ReturnType<typeof useDashboardState>;

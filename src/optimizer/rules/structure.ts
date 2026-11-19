@@ -2,26 +2,13 @@
 // OPT-S01 .. OPT-S06
 
 import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { readAppliesTo } from './ruleUtils.js';
+import { readAppliesTo, finding } from './ruleUtils.js';
 
 const TRIGGER_MARKERS = [
     'use when', 'use this when', 'when the user', 'for when',
     'invoke when', 'triggers on', 'apply when',
 ];
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
 function directoryNameOf(filePath: string): string {
     const parts = filePath.replace(/\\/g, '/').split('/').filter(Boolean);

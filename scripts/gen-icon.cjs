@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates media/icon.png (128×128) from the design defined in media/icon-color.svg
-// Runs as a one-off script: node scripts/gen-icon.js
+// Runs as a one-off script: node scripts/gen-icon.cjs
 // Requires: npm install --save-dev canvas (already installed)
 
 const { createCanvas } = require('canvas');
@@ -155,6 +155,11 @@ drawSubagent(95, 96);
 // ── Output ────────────────────────────────────────────────────────────────────
 
 const outPath = path.join(__dirname, '..', 'media', 'icon.png');
-const buf = canvas.toBuffer('image/png');
+// FEAT-047 R3: write an indexed PNG (≤256 colours, ≤8/255 per channel) — about
+// a third of the RGBA size, with no visible difference at 128×128.
+const { decode, encodeIndexed, quantize } = require('./pngCodec.cjs');
+const rgba = decode(canvas.toBuffer('image/png'));
+const { palette, index } = quantize(rgba.rgba, 256);
+const buf = encodeIndexed(rgba.width, rgba.height, palette, index);
 fs.writeFileSync(outPath, buf);
-console.log(`icon.png written → ${outPath} (${buf.length} bytes)`);
+console.log(`icon.png written → ${outPath} (${buf.length} bytes, ${palette.length} colours)`);

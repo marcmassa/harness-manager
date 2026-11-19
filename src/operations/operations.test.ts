@@ -50,7 +50,7 @@ describe('decide (R4)', () => {
     it('requires a trusted workspace for every mutation, not for view data', () => {
         const untrusted = ctx({ 'sdd-agent': 'harness-sdd' }, { trusted: false });
         for (const op of Object.keys(OPERATIONS) as OperationId[]) {
-            const result = decide(op, op.startsWith('adoption') || op === 'workspace.audit' ? 'workspace' : ['sdd-agent'], untrusted, { runnerAvailable: true });
+            const result = decide(op, op.startsWith('adoption') ? 'workspace' : ['sdd-agent'], untrusted, { runnerAvailable: true });
             expect(result.ok).toBe(op === 'view.localRelation');
         }
     });
@@ -118,7 +118,6 @@ describe('operationForMessage (R4)', () => {
             [{ type: 'runAgent', nodeId: 'n', adapterId: 'claude-code' }, { op: 'agentRuns.launch', targets: ['n'], runnerId: 'claude-code' }],
             [{ type: 'applyHarnessSDD' }, { op: 'adoption.scaffold', targets: 'workspace', format: 'harness-sdd' }],
             [{ type: 'delegateFinding', nodeIds: ['a', 'b'] }, { op: 'agentRuns.delegate', targets: ['a', 'b'] }],
-            [{ type: 'runSupplyChainAudit' }, { op: 'workspace.audit', targets: 'workspace' }],
         ];
         for (const [msg, expected] of cases) expect(operationForMessage(msg as never)).toEqual(expected);
         for (const type of ['ready', 'getMarkdownContent', 'generateSpecDraft', 'dismissSuggestion']) {

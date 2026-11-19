@@ -23,17 +23,38 @@ function pruneStaleDistOutputs(expected) {
   }
 }
 
+/** FEAT-046 R3: write dist/icons/<name>-{light,dark}.svg from src/shared/typeIcons.ts. */
+async function writeTreeIcons() {
+  const built = await esbuild.build({
+    entryPoints: ["src/shared/typeIcons.ts"], bundle: true, write: false, format: "esm", platform: "node",
+  });
+  const mod = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString("base64")}`);
+  fs.rmSync(path.join("dist", "icons"), { recursive: true, force: true });
+  fs.mkdirSync(path.join("dist", "icons"), { recursive: true });
+  for (const name of mod.TREE_ICON_NAMES) {
+    for (const theme of ["light", "dark"]) {
+      fs.writeFileSync(path.join("dist", "icons", `${name}-${theme}.svg`), mod.svgFor(name, theme));
+    }
+  }
+}
+
 async function main() {
   // Every file the build legitimately produces. webview.css is emitted by the
   // CSS loader alongside webview.js; sourcemaps only exist in watch mode.
   pruneStaleDistOutputs([
     "extension.cjs", "webview.js", "webview.css",
     "extension.cjs.map", "webview.js.map", "webview.css.map",
+    "icons",
   ]);
   // Chunk names carry a content hash: clear them so stale chunks never ship.
   // (pruneStaleDistOutputs removed the folder above; it is rebuilt from scratch.)
 
+  // FEAT-046 R3: generate the tree icons from their one definition.
+  await writeTreeIcons();
+
   const extensionCtx = await esbuild.context({
+    // FEAT-046: in watch mode, regenerate dist/icons when the icon module changes.
+    plugins: watch ? [{ name: "tree-icons", setup(build) { build.onEnd(() => writeTreeIcons()); } }] : [],
     entryPoints: ["src/extension.ts"],
     bundle: true,
     format: "cjs",

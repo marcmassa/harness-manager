@@ -92,12 +92,6 @@ export class ActionExecutor {
                 await vscode.window.showTextDocument(uri);
                 break;
             }
-            case 'run-command': {
-                const t = vscode.window.createTerminal({ name: 'Harness Action' });
-                t.sendText(payload.command);
-                t.show();
-                break;
-            }
         }
     }
 }

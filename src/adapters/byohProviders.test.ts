@@ -1,59 +1,11 @@
 // FEAT-041 T2 — profile v1 and companion registration contracts (R1, R5, R6, R7).
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ROOT = '/workspace';
-const files = new Map<string, string>();
-const sizes = new Map<string, number>();
+import { ROOT, mockFiles as files, mockSizes as sizes, normalize, seedWorkspace } from '../test/vscodeMock.js';
+
 const links = new Map<string, string>();
 
-const normalize = (input: string) => input.replace(/\\/g, '/').replace(/\/+/g, '/');
-const toUri = (path: string) => {
-    const normalized = normalize(path);
-    return { fsPath: normalized, path: normalized, scheme: 'file', toString: () => 'file://' + normalized };
-};
-const globToRegExp = (glob: string) => new RegExp('^' + glob
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*\//g, '\u0000')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\u0000/g, '(?:.*/)?') + '$');
-
-vi.mock('vscode', () => {
-    class RelativePattern {
-        constructor(public readonly baseUri: { path: string }, public readonly pattern: string) {}
-    }
-    const key = (uri: { path?: string; fsPath?: string }) => normalize(uri.path ?? uri.fsPath ?? '');
-    return {
-        RelativePattern,
-        FileType: { File: 1, Directory: 2, SymbolicLink: 64 },
-        Uri: {
-            file: (p: string) => toUri(p),
-            joinPath: (base: { path: string }, ...parts: string[]) => toUri([base.path, ...parts].join('/')),
-        },
-        workspace: {
-            fs: {
-                stat: vi.fn(async (uri: { path: string }) => {
-                    if (!files.has(key(uri))) throw new Error('ENOENT');
-                    return { type: 1, size: sizes.get(key(uri)) ?? files.get(key(uri))!.length };
-                }),
-                readFile: vi.fn(async (uri: { path: string }) => {
-                    const value = files.get(key(uri));
-                    if (value === undefined) throw new Error('ENOENT');
-                    return Buffer.from(value, 'utf8');
-                }),
-            },
-            findFiles: vi.fn(async (pattern: RelativePattern) => {
-                const base = normalize(pattern.baseUri.path);
-                const re = globToRegExp(pattern.pattern);
-                return [...files.keys()]
-                    .filter(p => p.startsWith(base + '/') && re.test(p.slice(base.length + 1)))
-                    .map(toUri);
-            }),
-            asRelativePath: vi.fn((uri: { path: string }) => key(uri).slice(ROOT.length + 1)),
-            getConfiguration: vi.fn(() => ({ get: (_k: string, fallback: unknown) => fallback })),
-            onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
-        },
-    };
-});
+vi.mock('vscode', async () => (await import('../test/vscodeMock.js')).createVscodeMock());
 
 import * as vscode from 'vscode';
 import { AdapterRegistry } from './AdapterRegistry.js';
@@ -68,8 +20,8 @@ const root = vscode.Uri.file(ROOT);
 const realPath = async (uri: vscode.Uri) => links.get(uri.path) ?? uri.path;
 
 function seed(entries: Record<string, string>): void {
-    files.clear(); sizes.clear(); links.clear();
-    for (const [p, c] of Object.entries(entries)) files.set(normalize(`${ROOT}/${p}`), c);
+    seedWorkspace(entries);
+    links.clear();
 }
 
 const teamProfile = (overrides: Record<string, unknown> = {}) => ({

@@ -1,7 +1,5 @@
 // === Three-layer domain model ===
 
-import type { SupplyChainReport } from '../supply-chain/types.js';
-
 export type AgenticLayer = 1 | 2 | 3;
 
 // === Layer 1: CLI/Install (from adapters) ===
@@ -133,8 +131,7 @@ export type ActionType =
   | 'create-directory'
   | 'create-file'
   | 'scaffold-agent'
-  | 'scaffold-skill'
-  | 'run-command';
+  | 'scaffold-skill';
 
 export interface SuggestionAction {
   id: string;
@@ -152,7 +149,7 @@ export interface Suggestion {
   impact: 'high' | 'medium' | 'low';
   effort: 'high' | 'medium' | 'low';
   layer: AgenticLayer;
-  category: SignalCategory | 'cli' | 'methodology' | 'supply-chain';
+  category: SignalCategory | 'cli' | 'methodology';
   maturityTrigger: MaturityLevel[];
   actionType?: 'scaffold' | 'navigate' | 'link';
   actionPayload?: string;
@@ -209,11 +206,4 @@ export interface AgenticProfile {
   dismissedSuggestionIds: string[];
   acknowledgedNodeIds: string[];
   graphContext?: GraphContext;
-  /**
-   * FEAT-036: deterministic supply-chain report for the workspace.
-   * Absent (undefined) for non-Node workspaces and for profiles built
-   * before the scanner ran. The audit state lives inside the report
-   * (`supplyChain.audit.state`).
-   */
-  supplyChain?: SupplyChainReport;
 }

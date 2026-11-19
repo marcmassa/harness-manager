@@ -7,7 +7,7 @@ import { openFileInEditor } from '../fileUtils.js';
 import { generateText } from '../lmUtils.js';
 import { ARCHITECTURE_TEMPLATES } from '../whiteboard/architectureTemplates.js';
 import type { Decision } from '../operations/operations.js';
-import { removeEdge, removeUsesEdge, upsertEdge, upsertUsesEdge } from './viewRelations.js';
+import { DISABLED_CONNECTIONS_KEY, DISMISSED_SUGGESTIONS_KEY, removeEdge, removeUsesEdge, upsertEdge, upsertUsesEdge } from './viewRelations.js';
 
 /** FEAT-041 T3: re-run the host decision after a modal confirmation (R4). */
 export type AuthorizeFn = (msg: { type: string; [key: string]: unknown }) => Promise<Decision>;
@@ -185,9 +185,9 @@ export class WhiteboardCoordinator {
                 const skId = msg.skillId;
                 if (saId && skId && typeof saId === 'string' && typeof skId === 'string') {
                     const key = `${saId}::${skId}`;
-                    const current = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
+                    const current = this._context.workspaceState.get<string[]>(DISMISSED_SUGGESTIONS_KEY, []);
                     if (!current.includes(key)) {
-                        await this._context.workspaceState.update('harness-dashboard.dismissedSuggestions', [...current, key]);
+                        await this._context.workspaceState.update(DISMISSED_SUGGESTIONS_KEY, [...current, key]);
                     }
                 }
                 await sendData(postMessage);
@@ -210,11 +210,11 @@ export class WhiteboardCoordinator {
                 const disable = msg.disabled;
                 if (src && tgt && typeof src === 'string' && typeof tgt === 'string') {
                     const key = `${src}::${tgt}`;
-                    const current = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
+                    const current = this._context.workspaceState.get<string[]>(DISABLED_CONNECTIONS_KEY, []);
                     const updated = disable
                         ? current.includes(key) ? current : [...current, key]
                         : current.filter(k => k !== key);
-                    await this._context.workspaceState.update('harness-dashboard.disabledConnections', updated);
+                    await this._context.workspaceState.update(DISABLED_CONNECTIONS_KEY, updated);
                 }
                 await sendData(postMessage);
                 this._scheduleScan?.();

@@ -1,6 +1,8 @@
 // Optimizer panel pieces: tokens, pills, tier badge, dimension labels and radar.
 import * as React from 'react';
-import type { OptimizerDimension, OptimizerSeverity, ScoreTier, OptimizableType } from '../optimizer/types.js';
+import { OPTIMIZABLE_TYPES, type OptimizerDimension, type OptimizerSeverity, type ScoreTier, type OptimizableType } from '../optimizer/types.js';
+
+import { TIER_COLORS } from './styles.js';
 
 export const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
 
@@ -18,13 +20,7 @@ export const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
  * genuinely are. Status colour never travels alone here — the score number and
  * the tier letter are always adjacent.
  */
-export const TIER_COLORS: Record<ScoreTier, string> = {
-    A: '#0ca30c', // good
-    B: '#0ca30c', // good
-    C: '#fab219', // warning
-    D: '#ec835a', // serious
-    F: '#d03b3b', // critical
-};
+export { TIER_COLORS };
 
 export const SEVERITY_PALETTE: Record<OptimizerSeverity, { bg: string; fg: string }> = {
     error:   { bg: 'rgba(209, 52, 56, 0.14)',  fg: '#d13438' },
@@ -32,7 +28,7 @@ export const SEVERITY_PALETTE: Record<OptimizerSeverity, { bg: string; fg: strin
     info:    { bg: 'rgba(42, 161, 152, 0.14)', fg: '#2aa198' },
 };
 
-export const ALL_TYPES: OptimizableType[] = ['agent', 'subagent', 'skill', 'steering', 'hook'];
+export const ALL_TYPES: readonly OptimizableType[] = OPTIMIZABLE_TYPES;
 export const ALL_SEVERITIES: OptimizerSeverity[] = ['error', 'warning', 'info'];
 export const ALL_DIMENSIONS: OptimizerDimension[] = [
     'structure', 'clarity', 'budget', 'integration', 'hygiene', 'consistency',

@@ -8,6 +8,7 @@
 // ============================================================================
 
 import type { CSSProperties } from 'react';
+import type { ScoreTier } from '../optimizer/types.js';
 
 // ===== SPACING =====
 
@@ -298,16 +299,89 @@ export function edgeGlowCSS(edgeType: string, rgb: string, dashScroll = false): 
     return css;
 }
 
-// ===== SDD MANAGER STYLE TOKENS (FEAT-025) =====
+// ===== FEAT-048 R6: shared webview constants =====
+// One definition each; every chunk already imports styles.ts, so sharing them
+// here adds no import edge between the whiteboard and Optimizer chunks.
 
-export const SDD_MANAGER = {
-    SIDEBAR_WIDTH: '240px',
-    TAB_STRIP_HEIGHT: '32px',
-    STATUS_BADGE_COLOURS: {
-        pending: '#6c6c8a',
-        spec_ready: '#d4a84a',
-        in_progress: '#4a90d4',
-        done: '#2aa198',
-        blocked: '#c14a4a',
+/**
+ * Optimizer tier palette — validated four-role status steps (see the note on
+ * the tier palette in optimizerParts.tsx). A and B share "good"; the score and
+ * tier letter always sit next to the colour, so colour never carries it alone.
+ */
+export const TIER_COLORS: Record<ScoreTier, string> = {
+    A: '#0ca30c', // good
+    B: '#0ca30c', // good
+    C: '#fab219', // warning
+    D: '#ec835a', // serious
+    F: '#d03b3b', // critical
+};
+
+/** Dropdown context menus (edge + node). Call sites add position and minWidth. */
+export const CONTEXT_MENU: { menu: CSSProperties; header: CSSProperties; item: CSSProperties } = {
+    menu: {
+        background: 'var(--vscode-dropdown-background)',
+        border: '1px solid var(--vscode-dropdown-border)',
+        borderRadius: '8px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        zIndex: 9999,
+        padding: '4px 0',
+        animation: 'pickerFadeIn 0.15s ease-out',
     },
-} as const;
+    header: {
+        padding: '4px 16px 8px',
+        fontSize: '0.65em',
+        textTransform: 'uppercase',
+        opacity: 0.5,
+        letterSpacing: '1px',
+        fontWeight: 700,
+        borderBottom: '1px solid var(--vscode-dropdown-border)',
+    },
+    item: {
+        padding: '8px 16px',
+        cursor: 'pointer',
+        fontSize: '0.85em',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        transition: 'background 0.12s ease',
+        border: 'none',
+        background: 'transparent',
+        color: 'var(--vscode-dropdown-foreground)',
+        width: '100%',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+    },
+};
+
+/** Shared geometry of the Optimizer / "Ask host" button family. */
+export const BUTTON_BASE: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '5px 12px',
+    minHeight: '26px',
+    fontSize: '0.88em',
+    fontWeight: 600,
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
+    lineHeight: 1,
+};
+
+/** Vivid vscode-button action: dashboard header actions and the whiteboard toolbar. */
+export const ACTION_BUTTON: CSSProperties = {
+    padding: '5px 13px',
+    fontSize: '0.78em',
+    fontWeight: 600,
+    background: 'var(--vscode-button-background)',
+    border: 'none',
+    borderRadius: 7,
+    cursor: 'pointer',
+    color: 'var(--vscode-button-foreground)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
+    fontFamily: 'inherit',
+    letterSpacing: '0.2px',
+    whiteSpace: 'nowrap',
+};

@@ -16,6 +16,7 @@ import { scan } from '../../optimizer/optimizerEngine.js';
 import { DEFAULT_OPTIMIZER_CONFIG } from '../../optimizer/types.js';
 import { OperationGate } from '../../operations/operationGate.js';
 import type { DashboardData } from '../../types.js';
+import { snapshot } from './fixtures.js';
 
 const SENTINEL = 'HOOK-EXECUTED';
 const hook = (dir: string) => `#!/bin/sh\ntouch "$(dirname "$0")/${'../'.repeat(dir.split('/').length)}${SENTINEL}"\n`;
@@ -64,17 +65,6 @@ const ROOTS: Record<string, Record<string, string>> = {
         'notes/ideas.md': 'Just notes.',
     },
 };
-
-async function snapshot(dir: string): Promise<Record<string, string>> {
-    const out: Record<string, string> = {};
-    for (const entry of await nodeFs.readdir(dir, { recursive: true, withFileTypes: true })) {
-        if (entry.isFile()) {
-            const file = path.join(entry.parentPath, entry.name);
-            out[path.relative(dir, file)] = await nodeFs.readFile(file, 'utf8');
-        }
-    }
-    return out;
-}
 
 const identity = (data: DashboardData) => data.graph.nodes
     .map(n => [n.id, n.source?.providerId, n.source?.nativeId, n.source?.sourceUri].join('|')).sort();

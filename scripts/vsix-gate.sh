@@ -93,6 +93,12 @@ for entry in $REQUIRED; do
 		missing="$missing$entry\n"
 	fi
 done
+# FEAT-046: the generated tree and title icons.
+for icon in dashboard-light dashboard-dark provider-dark skill-dark; do
+	if ! echo "$LISTING" | grep -q "extension/dist/icons/$icon.svg\$"; then
+		missing="${missing}extension/dist/icons/$icon.svg\n"
+	fi
+done
 # FEAT-045: the webview's lazily loaded tabs ship as chunks next to it.
 if ! echo "$LISTING" | grep -q "extension/dist/webview-chunks/.*\.js\$"; then
 	missing="${missing}extension/dist/webview-chunks/*.js\n"

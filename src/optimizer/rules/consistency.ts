@@ -16,8 +16,9 @@
 // invented constant to defend. They stay silent on a corpus too small for a
 // majority to mean anything.
 
-import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
+import { type OptimizerFinding, type OptimizerRule, type RuleContext, OPTIMIZABLE_TYPES } from '../types.js';
 import { headingsOf, cohortKey, MIN_SAMPLE_FOR_CONVENTION } from '../corpusStats.js';
+import { finding } from './ruleUtils.js';
 
 function uncalibrated(ctx: RuleContext): string | null {
     const n = ctx.corpus.sampleSizeByType.get(cohortKey(ctx.source)) ?? 0;
@@ -26,21 +27,7 @@ function uncalibrated(ctx: RuleContext): string | null {
         : null;
 }
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
-const ALL_OPTIMIZABLE = ['agent', 'subagent', 'skill', 'steering', 'hook'] as const;
 
 // ─── OPT-C01 — missing a frontmatter key the rest of the corpus uses ────────
 
@@ -48,7 +35,7 @@ export const optC01: OptimizerRule = {
     id: 'OPT-C01',
     /** FEAT-043 R2: an owner::type cohort below the convention minimum cannot be compared. */
     cannotEvaluate: ctx => uncalibrated(ctx),
-    appliesTo: ALL_OPTIMIZABLE,
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'consistency',
     defaultSeverity: 'info',
     /** The convention is derived from the corpus, but "most files do X" is not proof X is required. */
@@ -88,7 +75,7 @@ export const optC02: OptimizerRule = {
     id: 'OPT-C02',
     /** FEAT-043 R2: an owner::type cohort below the convention minimum cannot be compared. */
     cannotEvaluate: ctx => uncalibrated(ctx),
-    appliesTo: ALL_OPTIMIZABLE,
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'consistency',
     defaultSeverity: 'info',
     /** Section conventions are real signal but a component may legitimately differ. */

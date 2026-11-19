@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Badge } from './controls.js';
 import { MDViewer } from './components/MDViewer.js';
 import { SourceOwnershipSection, canPerform } from './components/SourceOwnershipSection.js';
 import { SPACE } from './styles.js';
@@ -39,7 +40,7 @@ export const NodeDetailPanel = ({ ctx }: { ctx: DashboardContext }) => {
                                 <h3 style={{ margin: 0, fontSize: '1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {selectedNode.data.label}
                                 </h3>
-                                <vscode-badge style={{ flexShrink: 0 }}>{selectedNode.type.toUpperCase()}</vscode-badge>
+                                <Badge style={{ flexShrink: 0 }}>{selectedNode.type.toUpperCase()}</Badge>
                             </div>
                         )}
                         <div style={{ display: 'flex', gap: SPACE.xs, alignItems: 'center', justifyContent: isDetailPanelCollapsed ? 'center' : 'flex-end', flex: isDetailPanelCollapsed ? 1 : undefined }}>

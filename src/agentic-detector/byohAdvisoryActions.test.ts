@@ -45,7 +45,6 @@ describe('the host decides each resolved action (R6)', () => {
         expect(requestForAction({ type: 'create-file', payload: { relPath: 'CLAUDE.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace', adoptFormat: 'claude-code' });
         expect(requestForAction({ type: 'create-file', payload: { relPath: 'AGENTS.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace' });
         expect(requestForAction({ type: 'scaffold-skill', payload: {} })).toEqual({ op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' });
-        expect(requestForAction({ type: 'run-command', payload: { command: 'npm audit fix' } })).toEqual({ op: 'workspace.command', targets: 'workspace' });
     });
 
     it('allows a native Harness SDD scaffold and refuses it in a foreign harness', () => {
@@ -64,11 +63,5 @@ describe('the host decides each resolved action (R6)', () => {
         expect(run([])).toMatchObject({ ok: true });
         expect(run(['cursor'])).toMatchObject({ ok: false, reason: expect.stringContaining('Adopt Claude Code explicitly first') });
         expect(run([], false)).toMatchObject({ ok: false, reason: 'This workspace is not trusted.' });
-    });
-
-    it('keeps the explicit supply-chain audit available in any harness', () => {
-        for (const detected of [[], ['claude-code'], ['harness-sdd', 'cursor']]) {
-            expect(decide('workspace.audit', 'workspace', gate(detected))).toMatchObject({ ok: true });
-        }
     });
 });

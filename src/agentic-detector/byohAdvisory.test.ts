@@ -13,7 +13,7 @@ import { migrateLegacyDismissals } from './dismissals.js';
 import { evidenceFromGraph, sharedCategories } from './evidence.js';
 import { CORE_RULES } from './advisoryRules.js';
 import { METHODOLOGY_RULES } from './methodologyRules.js';
-import { RULE_CLASSIFICATION, classifyRule } from './ruleScopes.js';
+import { RULE_CLASSIFICATION } from './ruleScopes.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import type { HarnessNode } from '../types.js';
 
@@ -119,7 +119,6 @@ describe('rule classification (R2)', () => {
             if (entry.scope.kind === 'provider') expect(providers.has(entry.scope.providerId), rule.id).toBe(true);
         }
         expect(Object.keys(RULE_CLASSIFICATION).sort()).toEqual([...CORE_RULES, ...METHODOLOGY_RULES].map(r => r.id).sort());
-        expect(classifyRule('sc-stale-override-lodash').scope).toEqual({ kind: 'optional' });
     });
 });
 
