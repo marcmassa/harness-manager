@@ -73,7 +73,7 @@ export function compareWithHead(sources: readonly ComponentSource[], head: HeadV
 }
 
 /** Runs `git` with arguments only (no shell); resolves stdout and the exit code. */
-export type GitRunner = (args: string[]) => Promise<{ code: number; stdout: string }>;
+export type GitRunner = (args: string[]) => Promise<{ code: number; stdout: string; timedOut?: boolean; truncated?: boolean }>;
 
 export async function readHeadVersions(paths: readonly string[], git: GitRunner): Promise<HeadVersions> {
     const repo = await git(['rev-parse', '--is-inside-work-tree']).catch(() => ({ code: 1, stdout: '' }));
@@ -84,7 +84,10 @@ export async function readHeadVersions(paths: readonly string[], git: GitRunner)
     for (const path of new Set(paths)) {
         // One `HEAD:<path>` argument (it starts with HEAD, so it is never read as an option);
         // no shell is involved. Untracked or new paths exit non-zero.
-        const shown = await git(['show', `HEAD:${path}`]).catch(() => ({ code: 1, stdout: '' }));
+        // `HEAD:./path` resolves from the workspace folder, which may be a repository subfolder.
+        const shown = await git(['show', `HEAD:./${path}`]).catch(() => ({ code: 1, stdout: '' } as Awaited<ReturnType<GitRunner>>));
+        if (shown.timedOut) return { available: false, reason: `git timed out reading ${path} at HEAD.` };
+        if (shown.truncated) return { available: false, reason: `${path} at HEAD is too large to compare.` };
         files.set(path, shown.code === 0 ? shown.stdout : null);
     }
     return { available: true, files };

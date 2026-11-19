@@ -306,6 +306,10 @@ export class OptimizerCoordinator {
 
             case 'compareCostWithHead': {
                 // FEAT-044 R13–R15: read-only; a failure degrades to "unavailable", never an error.
+                if (!vscode.workspace.isTrusted) {
+                    postMessage({ type: 'costComparison', comparison: { available: false, reason: 'Trust this workspace to compare with git HEAD.' } });
+                    return true;
+                }
                 const paths = this._cachedSources.map(s => s.filePath).filter(Boolean);
                 const head = await readHeadVersions(paths, createGitRunner(this._workspaceRoot.fsPath))
                     .catch(() => ({ available: false as const, reason: 'git could not be run in this workspace.' }));

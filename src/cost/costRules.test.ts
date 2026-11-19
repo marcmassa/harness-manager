@@ -72,6 +72,20 @@ describe('cost section (R7, R10)', () => {
             'cost.prices': { date: '2026-11-01', models: { m: { inputPerMTok: 2, family: 'f' } } },
             'cost.calibration': { f: 1.5 },
         }));
-        expect(cost.money).toEqual([{ model: 'm', priceDate: '2026-11-01', factor: 1.5, calibrated: true, sessionTokens: 1500, perSession: 0.003 }]);
+        expect(cost.money).toEqual([{ owner: 'claude-code', model: 'm', priceDate: '2026-11-01', factor: 1.5, calibrated: true, sessionTokens: 1500, perSession: 0.003 }]);
+    });
+});
+
+describe('cost findings never move a score (FEAT-044 review)', () => {
+    it('reports K findings as informational and leaves the component score unchanged', () => {
+        const cursor = comp('cursor', 'cursor::global', '.cursor/rules/global.mdc', 'Rules.', 'always');
+        const report = scan([cursor], [], new Set([cursor.nodeId]), new Set([cursor.filePath]), DEFAULT_OPTIMIZER_CONFIG);
+        const k03 = report.findings.find(f => f.ruleId === 'OPT-K03');
+        expect(k03?.informational).toBe(true);
+        const scoredFindings = report.findings.filter(f => !f.informational);
+        expect(report.components[0].score).toBe(scoredFindings.length === 0 ? 100 : report.components[0].score);
+        const withoutCost = scan([cursor], [], new Set([cursor.nodeId]), new Set([cursor.filePath]), { ...DEFAULT_OPTIMIZER_CONFIG, disabledRules: ['OPT-K01', 'OPT-K02', 'OPT-K03'] });
+        expect(report.components[0].score).toBe(withoutCost.components[0].score);
+        expect(report.components[0].coverage.evaluated).toEqual(withoutCost.components[0].coverage.evaluated);
     });
 });

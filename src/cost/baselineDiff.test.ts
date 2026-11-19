@@ -68,3 +68,30 @@ describe('readHeadVersions (R14, R15)', () => {
         }
     });
 });
+
+describe('HEAD edge cases (FEAT-044 review)', () => {
+    it('resolves paths from a workspace folder inside a larger repository', async () => {
+        const repo = mkdtempSync(join(tmpdir(), 'cost-mono-'));
+        try {
+            const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, stdio: 'pipe' });
+            git('init', '-q'); git('config', 'user.email', 't@example.invalid'); git('config', 'user.name', 't');
+            mkdirSync(join(repo, 'packages/app'), { recursive: true });
+            writeFileSync(join(repo, 'packages/app/CLAUDE.md'), OLD);
+            git('add', '-A'); git('commit', '-q', '-m', 'init');
+            const head = await readHeadVersions(['CLAUDE.md'], createGitRunner(join(repo, 'packages/app')));
+            expect(head.available && head.files.get('CLAUDE.md')).toBe(OLD);
+        } finally {
+            rmSync(repo, { recursive: true, force: true });
+        }
+    });
+
+    it('reports a timeout or an oversized file as unavailable rather than as a new file', async () => {
+        const base: Record<string, { code: number; stdout: string; timedOut?: boolean; truncated?: boolean }> = {
+            'rev-parse --is-inside-work-tree': { code: 0, stdout: 'true' }, 'rev-parse --verify HEAD': { code: 0, stdout: 'abc' },
+        };
+        const run = (show: { code: number; stdout: string; timedOut?: boolean; truncated?: boolean }) =>
+            readHeadVersions(['a.md'], async args => base[args.join(' ')] ?? show);
+        expect(await run({ code: 1, stdout: '', timedOut: true })).toMatchObject({ available: false, reason: expect.stringContaining('timed out') });
+        expect(await run({ code: 0, stdout: 'x', truncated: true })).toMatchObject({ available: false, reason: expect.stringContaining('too large') });
+    });
+});

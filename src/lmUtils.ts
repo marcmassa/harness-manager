@@ -82,8 +82,12 @@ async function recordLmUsage(model: vscode.LanguageModelChat, prompt: string, ou
     let reported = false;
     if (typeof count === 'function') {
         try {
-            [input, out] = await Promise.all([count.call(model, prompt), count.call(model, output)]);
-            reported = true;
+            // Bounded: metering must never hold back the AI result.
+            const counted = await Promise.race([
+                Promise.all([count.call(model, prompt), count.call(model, output)]),
+                new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
+            ]);
+            if (counted) { [input, out] = counted; reported = true; }
         } catch { /* keep the local estimate */ }
     }
     recordInference({ provider: model.vendor ?? 'vscode.lm', model: model.family ?? model.id ?? 'unknown', inputTokens: input, outputTokens: out, reported });

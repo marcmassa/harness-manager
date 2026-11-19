@@ -69,6 +69,8 @@ export interface QuickFix {
 export interface OptimizerFinding {
     /** FEAT-043 R4: native source and owner of the component. */
     source?: import('../types.js').SourceIdentity;
+    /** FEAT-044: shown, but excluded from scores (cost is its own section, not a dimension). */
+    informational?: true;
     ruleId: string;            // OPT-<F><NN>
     nodeId: string;
     nodeType: OptimizableType;
@@ -152,6 +154,11 @@ export interface OptimizerRule {
      * skipped and does not mark its dimension evaluated.
      */
     cannotEvaluate?(ctx: RuleContext): string | null;
+    /**
+     * FEAT-044: false for informational rules (context cost) whose findings are
+     * shown but never change a score or a dimension's coverage.
+     */
+    scored?: false;
     evaluate(ctx: RuleContext): OptimizerFinding[];
 }
 

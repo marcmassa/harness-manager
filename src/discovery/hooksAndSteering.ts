@@ -186,6 +186,8 @@ export async function discover(
                 applies_to: appliesTo,
                 _discovery: 'discovered',
             };
+            // FEAT-044: Kiro declares when steering loads (`inclusion`); keep it for the load mode.
+            if (typeof frontmatter.inclusion === 'string') metadata.inclusion = frontmatter.inclusion;
             if (content !== null) {
                 metadata._body = content;
             } else {

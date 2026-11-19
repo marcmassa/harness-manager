@@ -85,6 +85,7 @@ export function scoreComponent(
     ) as Record<OptimizerDimension, number | null>;
 
     for (const f of findings) {
+        if (f.informational) continue; // FEAT-044: cost findings never move a score
         const current = dimensions[f.dimension] ?? 100; // a finding proves its dimension was evaluated
         dimensions[f.dimension] = Math.max(0, current - SEVERITY_WEIGHT[f.severity]);
     }

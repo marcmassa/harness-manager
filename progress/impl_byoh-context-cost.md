@@ -173,3 +173,25 @@ The run exposed a defect, now fixed: the HEAD comparison re-derived Harness SDD 
 | R15 | Unchanged files and no hook execution. |
 
 Verified: 978 unit tests; fifteen Extension Host runs (critical path, save isolation, FEAT-041 ×4, FEAT-042, FEAT-043 ×4, FEAT-044 ×4); build; 35 project checks.
+
+## Agent pre-review and fixes
+
+An agent code review of 9d91873..7de26f2 ran before the human closing review. It does not replace that review. The review's main finding: the load-mode tests used hand-made metadata rather than what the adapters emit. `adapterLoadModes.test.ts` now runs the real Kiro, Cursor and Copilot adapters, and a deliberate regression of the Kiro fix makes it fail.
+
+Fixed:
+1. **Kiro steering always resolved to `always`.** Discovered steering now carries `inclusion` from its frontmatter, so `fileMatch` and `manual` are honoured.
+2. **A Cursor `.mdc` without frontmatter never resolved to `manual`.** The adapter's display description ("Global Cursor rule") hid that no description was declared. The adapter now records `_declaredDescription`, and the table reads it.
+3. **Copilot `*.instructions.md` without `applyTo` was priced `always`.** It is attached by hand, so it is now `manual`.
+4. **Harness SDD steering without `applies_to` was `delegated`.** It governs nothing, so it is now `unknown` (R2).
+5. **The cost rules moved FEAT-043 scores.** `OPT-K01`–`K03` are now `scored: false`: their findings are informational, never deduct and never mark a dimension evaluated (design.md: cost is its own section).
+6. **The HEAD comparison failed when the workspace is a repository subfolder.** It now reads `HEAD:./<path>`. A git timeout or a file over 512 KB makes the comparison unavailable instead of reading as "new" or "changed".
+7. **Money estimated the sum of every provider's baseline.** One session loads one provider's harness, so estimates are now per evaluated owner.
+8. **Safety.** git runs with `-c core.fsmonitor=false`. The HEAD comparison requires a trusted workspace. `countTokens` is bounded to 2 s, so metering never holds back an AI result.
+
+Limits, stated rather than fixed:
+- **Deleted resources.** A deleted resource is detected only while its declaration remains (Harness SDD manifest entries). A deleted Cursor or Copilot file produces no node, so it does not appear in the comparison (R13 compares the same sources).
+- **Chat handoffs.** A handoff to the editor's chat is not metered: the host chat runs it. AI refine is metered through the `vscode.lm` and OpenAI-compatible providers.
+
+The workspace-trust check on the HEAD comparison has no unit test; the code path is three lines in the coordinator.
+
+Verified after the fixes: 997 unit tests.
