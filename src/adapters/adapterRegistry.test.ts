@@ -288,7 +288,7 @@ describe('AdapterRegistry behavior', () => {
             for (const providerId of order) {
                 const node = first.graph.nodes.find(n => n.label === providerId)!;
                 expect(node.id).toBe('byoh:' + encodeURIComponent(JSON.stringify([providerId, 'agent'])));
-                expect(node.source).toEqual({ workspaceUri: 'file:///workspace', providerId, nativeId: 'agent', sourceUri: 'file:///workspace/team.md' });
+                expect(node.source).toEqual({ workspaceUri: 'file:///workspace', providerId, nativeId: 'agent', sourceUri: 'file:///workspace/team.md', loadMode: 'unknown' });
                 expect(first.graph.edges).toContainEqual(expect.objectContaining({ source: node.id, target: providerId + '-skill' }));
             }
         }

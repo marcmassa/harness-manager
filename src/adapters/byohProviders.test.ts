@@ -148,7 +148,7 @@ describe('profile discovery (R1, R5)', () => {
         ]);
         expect(result.graph.nodes[1].source).toEqual({
             workspaceUri: 'file:///workspace', providerId: 'team-guides', nativeId: 'reviewer',
-            sourceUri: 'file:///workspace/team/agents/reviewer.md',
+            sourceUri: 'file:///workspace/team/agents/reviewer.md', loadMode: 'unknown',
         });
         expect(result.graph.nodes[1].metadata._filePath).toBe('team/agents/reviewer.md');
         expect(result.graph.edges).toEqual([expect.objectContaining({ source: 'team-guides::reviewer', target: 'team-guides::lint', label: 'uses' })]);
@@ -214,6 +214,16 @@ describe('profile discovery (R1, R5)', () => {
         const result = await registry.parse(root);
         expect(result.graph.nodes.map(n => n.id).sort()).toEqual(['kit::format', 'kit::lint']);
         expect(result.errors).toEqual([]);
+    });
+
+    it('carries a profile entity\'s declared load mode into the source record (FEAT-044 R3)', async () => {
+        const registry = new AdapterRegistry([], undefined, realPath);
+        const declared = teamProfile();
+        (declared.entities as Array<Record<string, unknown>>)[1].loadMode = 'on-trigger';
+        registry.setProfiles([declared]);
+        const nodes = (await registry.parse(root)).graph.nodes;
+        expect(nodes.find(n => n.id === 'team-guides::lint')?.source?.loadMode).toBe('on-trigger');
+        expect(nodes.find(n => n.id === 'team-guides::reviewer')?.source?.loadMode).toBe('unknown');
     });
 
     it('reports detected providers even when they own no node', async () => {
