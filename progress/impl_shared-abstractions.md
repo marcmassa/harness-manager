@@ -63,3 +63,26 @@ No fixture or assertion changed. The two suites that used a simplified glob (byo
 | Requirement | Verification |
 |---|---|
 | R2 | vscodeMockUsage.test.ts: no test file defines its own `globToRegExp` or `normalize`. The seven suites pass on the shared mock with their assertions unchanged. |
+
+## T4 — Adapter helpers (cherry-picked from 21f3348)
+
+`adapterUtils.ts` adds four helpers:
+- `discoveryFlags(configKey)`: the old `_getBool` semantics. Each setting defaults to true, and a read that throws counts as true.
+- `appendDiscovery(result, adapterId, configKey, root, rootNodeId, harnessConfig?)`.
+- `BODY_PREVIEW_CHARS = 500` and `bodyMetadata(text)`.
+- `rootAgentNode(...)`.
+
+Adoption across the adapters:
+- **All six file-based adapters** (Claude Code, Copilot, Cursor, Gemini CLI, Kiro, Windsurf) use `appendDiscovery`. Their discovery blocks were identical, so no extra parameter was needed. `setHarnessConfig` is unchanged, so the public API is the same.
+- **`bodyMetadata`** replaces every `slice(0, 500)` in `src/adapters`, OpenCode and Profile included.
+- **`rootAgentNode`** builds the Claude Code, Copilot and Gemini CLI roots; three labels differ between them and are parameters.
+- **Windsurf and Kiro** keep their own root nodes, because their label and description logic differs.
+
+The diff is +151 −314 without the new test file.
+
+`adapterUtils.ts` and `discovery/hooksAndSteering.ts` now import each other. Only functions cross at runtime, so it is safe in the bundle and in Vitest. A later move of `appendDiscovery` into the discovery module would remove the cycle.
+
+| Requirement | Verification |
+|---|---|
+| R1 | adapterHelpers.test.ts: flag combinations, per-adapter keys and a throwing configuration; a source scan finds no private flag reader in any `*Adapter.ts`. The existing adapter suites pass unchanged. |
+| R4 | adapterHelpers.test.ts: preview length; root node with the file absent, present and without a heading; no `slice(0, 500)` remains. |
