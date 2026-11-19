@@ -22,7 +22,7 @@
   - Test that both views carry the title action.
   - Test that every item has an accessibility label and that tooltips are not trusted.
   - _(R4, R5, R10)_
-- [ ] **T5** — Run the package gate and the Extension Host suites. Record the size of the icon set and the VSIX in the progress file. _(R12)_
+- [x] **T5** — Run the package gate and the Extension Host suites. Record the size of the icon set and the VSIX in the progress file. _(R12)_
 
 ## Traceability
 
