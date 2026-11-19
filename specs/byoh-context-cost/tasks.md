@@ -5,7 +5,7 @@
 - [x] **T3** — Implement OPT-K01–K03 under FEAT-043 applicability and render the cost section with money estimates. Test cross-owner duplication between CLAUDE.md, AGENTS.md and copilot-instructions, the baseline share, an on-trigger candidate, attribution of all affected owners, unauthorized actions hidden, and the factor and price date shown with every money figure and no network call. _(R7, R8, R9, R10)_
 - [x] **T4** — Implement the inference ledger and wire AI-assisted callers. Test reported OpenAI-compatible usage, `countTokens` present and absent, the 500-entry cap, and absence of prompt or response content in stored entries. _(R11, R12)_
 - [x] **T5** — Implement the git HEAD comparison. Test changed, new and deleted sources, a non-git folder, and an untracked file without analysis failure. _(R13, R14)_
-- [ ] **T6** — Exercise SDD-only, foreign-only, custom-profile and mixed folders in the Extension Host. Compare workspace contents and script sentinels before and after cost analysis and the baseline diff. _(R1, R4, R5, R8, R10, R13, R15)_
+- [x] **T6** — Exercise SDD-only, foreign-only, custom-profile and mixed folders in the Extension Host. Compare workspace contents and script sentinels before and after cost analysis and the baseline diff. _(R1, R4, R5, R8, R10, R13, R15)_
 
 Record the R-to-test results before independent review. Run build, unit tests, integration, packaging and project checks on the implementation candidate.
 

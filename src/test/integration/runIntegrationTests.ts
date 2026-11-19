@@ -110,6 +110,19 @@ async function main(): Promise<void> {
                 await fs.rm(dir, { recursive: true, force: true });
             }
         }
+        // FEAT-044 T6: one host per layout for context cost.
+        for (const layout of ['sdd', 'claude', 'custom', 'mixed']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-cost-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'costMatrix.cjs'),
+                    extensionTestsEnv: { ...process.env, COST_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
         // FEAT-041 T4: opt-in real-workspace results (needs local copies of the
         // sources in docs/byoh/adapter-capabilities.md; never part of CI).
         const fieldRoot = process.env.HARNESS_FIELD_ROOT;

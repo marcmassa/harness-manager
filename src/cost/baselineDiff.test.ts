@@ -12,7 +12,7 @@ const NOW = '# Team\n\n' + 'Run the tests before every commit. '.repeat(10);
 const OLD = '# Team\n\nShort.';
 const comp = (nodeId: string, filePath: string, raw: string, exists = true, providerId = 'claude-code'): ComponentSource => ({
     nodeId, nodeType: 'agent', label: nodeId, filePath, raw, body: raw, frontmatter: {}, exists, pathKind: exists ? 'file' : 'missing', tokenEstimate: 0,
-    source: { workspaceUri: 'w', providerId, nativeId: nodeId },
+    source: { workspaceUri: 'w', providerId, nativeId: nodeId, loadMode: 'always' },
 });
 
 describe('compareWithHead (R13)', () => {
