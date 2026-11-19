@@ -86,3 +86,13 @@ The diff is +151 −314 without the new test file.
 |---|---|
 | R1 | adapterHelpers.test.ts: flag combinations, per-adapter keys and a throwing configuration; a source scan finds no private flag reader in any `*Adapter.ts`. The existing adapter suites pass unchanged. |
 | R4 | adapterHelpers.test.ts: preview length; root node with the file absent, present and without a heading; no `slice(0, 500)` remains. |
+
+## T7 — Honest project check
+
+`check.sh` piped `npm test` and `npm run build` into `tail` and judged `tail`'s exit status, so both always passed. A test failure was also only a warning. Both steps now capture their output and use the command's own status. A failing build or test run marks the check failed, shows the tail of the output and reports the failing count.
+
+Check: a scratch copy of the repository with one deliberately failing test (not committed) printed `❌ npm test: 1 test(s) failed` and exited 1. The real repository passes.
+
+| Requirement | Verification |
+|---|---|
+| R9 | The scratch-copy run above: exit 1 with the count. The current tree: PASS. |

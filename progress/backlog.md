@@ -65,3 +65,5 @@ _(cleared — see Completed sections below)_
 - ✅ **macOS e2e harness** — `@vscode/test-electron@3.1.0` runs current stable VS Code 1.146.0 on darwin-arm64 without `VSCODE_TEST_PATH`; integration test passes before and after the final dependency overrides. The previous Electron/Code ENOENT no longer reproduces.
 
 - FEAT-045: retake README screenshots (`full-window.png` and a new Sources/Findings sidebar capture) for the native views and the editor Dashboard.
+
+- FEAT-048 R9: upstream the `check.sh` fix (judge `npm test`/`npm run build` exit status, fail on test failures) to the Harness SDD framework template, so a framework update does not revert it. The Go block (`go test … | tail -5`) has the same pipe issue.
