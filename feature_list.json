@@ -557,7 +557,7 @@
       "title": "BYOH Optimizer applicability, scores and assisted fixes",
       "description": "Evaluate native components only against applicable rules and route fixes and delegation by owner and operation.",
       "type": "feat",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -568,7 +568,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     },
     {
       "id": "FEAT-044",
@@ -576,7 +577,7 @@
       "title": "BYOH context cost, optimization and inference usage",
       "description": "Price any harness on one scale from owner-declared load modes: per-session baseline, skill catalog and on-demand bodies per provider; unknown load modes listed as unpriced; optional calibration and user price table without network; deterministic cross-owner cost findings; a local inference ledger for the Dashboard own AI actions; cost diff against git HEAD.",
       "type": "feat",
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",

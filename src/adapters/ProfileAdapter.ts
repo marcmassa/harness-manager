@@ -133,7 +133,11 @@ export class ProfileAdapter implements IAgentAdapter {
                     id: nodeId,
                     type: entity.type,
                     label,
-                    metadata: { ...data, description, body: body.slice(0, 500), _fullBody: body },
+                    metadata: {
+                        ...data, description, body: body.slice(0, 500), _fullBody: body,
+                        // FEAT-044: the profile declares the load mode, never the file's own frontmatter.
+                        _loadMode: entity.loadMode ?? 'unknown',
+                    },
                 }, providerId, providerLabel, relativePath));
             }
         }

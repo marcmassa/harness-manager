@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import type { ParserResult } from '../types.js';
+import { resolveLoadMode } from '../cost/loadMode.js';
 
 export interface ProviderResult {
     providerId: string;
@@ -48,7 +49,8 @@ export function attributeSources(root: vscode.Uri, providers: ProviderResult[]):
             const sourceUri = resolveSourceUri(root, path)?.toString();
             const prefix = providerId + '::';
             const nativeId = node.id.startsWith(prefix) ? node.id.slice(prefix.length) : node.id;
-            return { ...node, id, source: { workspaceUri, providerId, nativeId, sourceUri } };
+            const loadMode = resolveLoadMode(providerId, node);
+            return { ...node, id, source: { workspaceUri, providerId, nativeId, sourceUri, loadMode } };
         });
         const edges = result.graph.edges.map(edge => ({
             ...edge,

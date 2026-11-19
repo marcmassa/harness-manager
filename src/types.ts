@@ -30,6 +30,8 @@ export interface SourceIdentity {
     providerId: string;
     nativeId: string;
     sourceUri?: string;
+    /** FEAT-044: when the resource enters a model's context, as declared by its owner. */
+    loadMode?: import('./cost/loadMode.js').LoadMode;
 }
 
 export interface HarnessNode {

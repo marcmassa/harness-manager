@@ -37,6 +37,8 @@ An optional entry in .harness-dashboard/config.json describes a native Markdown 
   "relationships":[{"fromType":"agent","field":"skills","toType":"skill","label":"uses"}]}]}
 ```
 
+An entity may also declare `loadMode` (`always`, `on-trigger`, `delegated`, `on-event`, `manual`); omitting it keeps the profile valid and the resources `unknown` (FEAT-044). A companion declares the same per node as `metadata._loadMode`.
+
 Match a marker under the current workspace folder, parse frontmatter with the existing reader, then resolve references within that profile. Reject paths outside the root, including resolved symlink targets. Report duplicate native IDs, unknown versions and unresolved references with their source URI. Skip the affected entry and keep other providers available. The profile only describes reads. Scans must be cancellable and bounded. Existing adapters and extraPaths fields retain their meanings.
 
 ## Companion extension API v1 proposal

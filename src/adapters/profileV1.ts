@@ -3,6 +3,7 @@
 // never name code to load.
 
 import type { EdgeLabel, NodeType, ParserError } from '../types.js';
+import { isLoadMode, type LoadMode } from '../cost/loadMode.js';
 
 export const PROFILE_SOURCE = '.harness-dashboard/config.json';
 
@@ -16,6 +17,8 @@ export interface ProfileEntity {
     type: ProfileEntityType;
     idField?: string;
     labelField?: string;
+    /** FEAT-044: optional within version 1; omitted means `unknown`. */
+    loadMode?: LoadMode;
 }
 
 export interface ProfileRelationship {
@@ -89,11 +92,13 @@ export function validateProfiles(raw: unknown, reservedIds: ReadonlySet<string>)
             if (!isContainedPattern(entity.glob)) return report(`${eat}.glob`, 'missing or escapes the workspace root; skipped');
             if (typeof entity.type !== 'string' || !ENTITY_TYPES.has(entity.type)) return report(`${eat}.type`, `unknown type ${JSON.stringify(entity.type)}; skipped`);
             if (!optionalString(entity.idField) || !optionalString(entity.labelField)) return report(eat, 'idField and labelField must be non-empty strings; skipped');
+            if (entity.loadMode !== undefined && !isLoadMode(entity.loadMode)) return report(`${eat}.loadMode`, `unknown load mode ${JSON.stringify(entity.loadMode)}; skipped`);
             entities.push({
                 glob: entity.glob as string,
                 type: entity.type as ProfileEntityType,
                 idField: entity.idField as string | undefined,
                 labelField: entity.labelField as string | undefined,
+                ...(entity.loadMode !== undefined ? { loadMode: entity.loadMode as LoadMode } : {}),
             });
         });
         if (entities.length === 0) return report(`${at}.entities`, 'no valid entity; skipped');
