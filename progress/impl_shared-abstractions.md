@@ -96,3 +96,44 @@ Check: a scratch copy of the repository with one deliberately failing test (not 
 | Requirement | Verification |
 |---|---|
 | R9 | The scratch-copy run above: exit 1 with the count. The current tree: PASS. |
+
+## T5 — Webview helpers (cherry-picked from 748daa0 and 06d14e9)
+
+The commit hook limits authored files to 20,000 bytes, so two files had to be split before they could be edited. The code was moved verbatim:
+- `WhiteboardCanvas.tsx` went from 78 KB to 19.7 KB. It now has:
+  - `whiteboardEdgeStyles.ts`;
+  - `useWhiteboardGraphData.ts`, `useLinkGestures.ts` and `useEdgeActions.ts`;
+  - `WhiteboardToolbar.tsx`, `ProviderOverlays.tsx`, `NodeContextMenu.tsx` and `WhiteboardDialogs.tsx`.
+- `SpecWizard.tsx` went from 26.8 KB to 12.8 KB, with the steps moved to `SpecWizardSteps.tsx`.
+
+One definition each:
+- `components/AiIconButton.tsx` replaces six inline AI buttons. Their disabled behaviour is kept per kind.
+- In `styles.ts`:
+  - `CONTEXT_MENU`, used by the edge and node menus;
+  - `TIER_COLORS`, used by CustomNode, with `optimizerParts` re-exporting it;
+  - `BUTTON_BASE` and `ACTION_BUTTON`, with the old names kept as aliases;
+  - `KEYFRAMES`, interpolated into `dashboardStyles.ts`. All 16 keyframe bodies were identical, and the three that exist only in `dashboardStyles.ts` stay there.
+
+Webview output: 658,162 → 654,572 B (−3.6 KB). The whiteboard and Optimizer chunks still do not import each other.
+
+Still duplicated, outside the brief: AskHostButton's primary and secondary styles match `btnPrimary` and `btnSubtle` in `optimizerControls.tsx`. This is recorded as a follow-up.
+
+| Requirement | Verification |
+|---|---|
+| R6 | sharedWebviewHelpers.test.ts: both AiIconButton kinds and their disabled states; one tier colour table; one context-menu style; the button aliases are identical; `KEYFRAMES` is used once; the AI icon SVGs appear only in `AiIconButton.tsx`. webviewChunks (Extension Host): each tab still loads on first display. reactFlow12Migration.test.ts reads the moved modules too, with its assertions unchanged. |
+
+## T8 — Verification
+
+| Measure | Before FEAT-048 | After |
+|---|---|---|
+| Unit tests | 985 | 1024 |
+| Extension Host | 19 passed | 19 passed |
+| VSIX | 345,151 B | 345,145 B |
+| `src` lines, non-test | — | +1,976 / −2,190, net −214, with splits counting on both sides |
+| `src` lines, tests | — | +569 / −772, net −203, after adding eight guard tests |
+
+`./check.sh` (now honest, per T7) passes.
+
+| Requirement | Verification |
+|---|---|
+| R8 | The table above. Existing assertions are unchanged, except tests that read moved source files or that now run on the shared mock. |
