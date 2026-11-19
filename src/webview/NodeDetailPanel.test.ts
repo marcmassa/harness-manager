@@ -51,13 +51,13 @@ describe('NodeDetailPanel (R3)', () => {
         expect(html).toContain('Claude Code resources are read-only for &quot;Delete&quot;.');
         expect(html).toContain('(view only, not written to files)');
         expect(html).toMatch(/<button[^>]*title="Delete is not available for this resource"[^>]*disabled=""/);
-        expect(html).toMatch(/<vscode-text-area[^>]*readonly=""/);
+        expect(html).toMatch(/<textarea[^>]*readonly=""/i);
     });
 
     it('enables Delete and editing when the host allows them', () => {
         const html = render(ownership(true));
         expect(html).toMatch(/<button[^>]*title="Delete"(?![^>]*disabled)[^>]*>/);
-        expect(html).not.toMatch(/<vscode-text-area[^>]*readonly=""/);
+        expect(html).not.toMatch(/<textarea[^>]*readonly=""/i);
     });
 
     it('treats unknown ownership as not allowed', () => {

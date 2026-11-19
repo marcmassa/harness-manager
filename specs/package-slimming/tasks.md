@@ -1,6 +1,6 @@
 # Tasks — Package slimming and scope alignment
 
-- [ ] **T1** — Add `controls.tsx` and its CSS, replace the 12 `<vscode-*>` tags, and drop the toolkit (registration, JSX declarations, dependency).
+- [x] **T1** — Add `controls.tsx` and its CSS, replace the 12 `<vscode-*>` tags, and drop the toolkit (registration, JSX declarations, dependency).
   - Test with `react-dom/server` that each control renders its native element, label, `disabled` and `aria-*` attributes.
   - Test that no source contains `<vscode-`.
   - Test that the manifest lists neither the toolkit nor `@microsoft/fast-*`.

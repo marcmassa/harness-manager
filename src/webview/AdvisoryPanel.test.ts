@@ -31,7 +31,7 @@ function render(profile: AgenticProfile | null, onDismiss?: () => void) {
 describe('AdvisoryPanel — loading state', () => {
     it('renders loading state when profile is null', () => {
         const html = render(null);
-        expect(html).toContain('progress-ring');
+        expect(html).toContain('role="progressbar"'); // FEAT-047: native spinner
         expect(html).toContain('Run a scan');
     });
 });
