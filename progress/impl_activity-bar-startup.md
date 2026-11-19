@@ -126,3 +126,17 @@ VSIX budget: with T1–T5 the package reached 397,659 bytes (99 % of 400,000). R
 | R11 | onboarding.test.ts: no source file opens a walkthrough. activation.test.ts: no webview, walkthrough or notification on activation. |
 
 Verified: 1017 unit tests; package gate 385,374 bytes; 35 project checks.
+
+## T6 — Tabs load on first display
+
+- `lazyTabs.tsx` wraps each tab in `React.lazy`: whiteboard (React Flow, via `WhiteboardTab.tsx`), timeline, Advisory and Optimizer. The overlays (run agent, templates, wizard) are lazy too. `TabBoundary` mounts a tab the first time it is shown and keeps it mounted, so its state survives tab switches.
+- esbuild builds the webview with `splitting: true`; chunks go to `dist/webview-chunks/`. The shell is 445675 bytes unminified-equivalent output (`dist/webview.js`); every tab is a separate chunk.
+- CSP: `script-src` adds `webview.cspSource` so chunks load from the extension's own resource root; inline script still needs the nonce.
+- A mounted tab posts `tabReady`; the host keeps the set as `readyTabs` for Extension Host evidence only.
+- VSIX: 389,365 bytes (97 % of 400,000).
+
+| Requirement | Verification |
+|---|---|
+| R19 | lazyTabs.test.ts: an unseen tab renders nothing; App.tsx imports no tab or React Flow; splitting is on. webviewChunks (Extension Host): in a real panel the whiteboard chunk loads first; Optimizer and Advisory load only when shown, under the CSP. |
+
+Verified: 1019 unit tests; sixteen Extension Host runs; package gate 389,365 bytes.

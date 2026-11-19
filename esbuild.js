@@ -29,6 +29,7 @@ async function main() {
   pruneStaleDistOutputs([
     "extension.cjs", "webview.js", "webview.css",
     "extension.cjs.map", "webview.js.map", "webview.css.map",
+    "webview-chunks",
   ]);
 
   const extensionCtx = await esbuild.context({
@@ -55,7 +56,11 @@ async function main() {
         minify: !watch,
         sourcemap: watch,
         platform: "browser",
-        outfile: `dist/${ep.out}`,
+        // FEAT-045 R19: each lazily loaded tab is its own chunk.
+        splitting: true,
+        outdir: "dist",
+        entryNames: ep.out.replace(/\.js$/, ""),
+        chunkNames: "webview-chunks/[name]-[hash]",
         loader: { ".css": "css" },
       })
     )
@@ -95,6 +100,11 @@ async function main() {
     {
       in: "src/test/integration/fieldValidation.ts",
       out: "fieldValidation.cjs",
+      external: ["vscode"],
+    },
+    {
+      in: "src/test/integration/webviewChunks.ts",
+      out: "webviewChunks.cjs",
       external: ["vscode"],
     },
     {

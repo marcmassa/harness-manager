@@ -1,14 +1,7 @@
 import * as React from 'react';
 import { canPerform } from './components/SourceOwnershipSection.js';
-import { ReactFlowProvider } from '@xyflow/react';
-import { WhiteboardCanvas } from './WhiteboardCanvas.js';
-import { FeatureSpecPanel } from './FeatureSpecPanel.js';
-import { AdvisoryPanel } from './AdvisoryPanel.js';
-import { RunAgentPanel } from './RunAgentPanel.js';
-import { AgentBuilderWizard } from './AgentBuilderWizard.js';
-import { ArchitectureTemplatePanel } from './ArchitectureTemplatePanel.js';
-import { OptimizerPanel } from './OptimizerPanel.js';
 import { SPACE } from './styles.js';
+import { AdvisoryTab, OptimizerTab, RunAgentOverlay, TabBoundary, TemplateOverlay, TimelineTab, useVisitedTabs, WhiteboardTab, WizardOverlay } from './lazyTabs.js';
 import { IconGear, IconExpand } from './panelChrome.js';
 import { SkeletonLoading, harnessActionBtnStyle, FrameworkBadge, MaturityBadge, EmptyState } from './dashboardChrome.js';
 import { vscode } from './vscodeApi.js';
@@ -22,6 +15,8 @@ export const App = () => {
     const a = useDashboardActions(s);
     const ctx = { ...s, ...a };
     const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, isAuditRunning, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunSupplyChainAudit, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList, ownership } = ctx;
+    // FEAT-045 R19: a tab mounts (and its chunk loads) on first display.
+    const visited = useVisitedTabs(activeTab);
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -132,8 +127,8 @@ export const App = () => {
                 {shouldShowEmptyState ? (
                     <EmptyState />
                 ) : (
-                    <ReactFlowProvider>
-                        <WhiteboardCanvas
+                    <TabBoundary tab="whiteboard" visited={visited}>
+                        <WhiteboardTab
                             graph={filteredGraph}
                             onNodeSelect={handleNodeSelect}
                             selectedNodeId={selectedNode?.id}
@@ -145,16 +140,16 @@ export const App = () => {
                             onOpenTemplates={handleOpenTemplates}
                             scoresByNodeId={optimizerScoresByNodeId}
                         />
-                    </ReactFlowProvider>
+                    </TabBoundary>
                 )}
                 {/* FEAT-033 Phase 2: Architecture Template Panel (slide from left) */}
                 {!shouldShowEmptyState && templatePanelOpen && (
-                    <ArchitectureTemplatePanel
+                    <React.Suspense fallback={null}><TemplateOverlay
                         templates={templates}
                         onApply={handleApplyTemplate}
                         onClose={() => setTemplatePanelOpen(false)}
                         applying={applyingTemplate}
-                    />
+                    /></React.Suspense>
                 )}
                 {/* FEAT-033: Run Agent Panel overlay (R9) */}
                 {runPanelNodeId && runPanelNode && (
@@ -171,7 +166,7 @@ export const App = () => {
                         boxShadow: '-6px 0 24px rgba(0,0,0,0.35)',
                         animation: 'slideInRight 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}>
-                        <RunAgentPanel
+                        <React.Suspense fallback={null}><RunAgentOverlay
                             nodeId={runPanelNode.id}
                             nodeName={runPanelNode.name}
                             nodeFilePath={runPanelNode.filePath}
@@ -184,7 +179,7 @@ export const App = () => {
                             onClose={() => setRunPanelNodeId(null)}
                             isRunning={runningNodeIds.has(runPanelNode.id)}
                             noCliDetected={noCliDetected}
-                        />
+                        /></React.Suspense>
                     </div>
                 )}
             </section>
@@ -197,7 +192,9 @@ export const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'timeline' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <FeatureSpecPanel milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} aiCapabilities={aiCapabilities} />
+                <TabBoundary tab="timeline" visited={visited}>
+                    <TimelineTab milestones={data.milestones} startWizard={startWizard} targetFeature={timelineTargetFeature} aiCapabilities={aiCapabilities} />
+                </TabBoundary>
             </section>
 
             <section style={{ 
@@ -208,7 +205,7 @@ export const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <AdvisoryPanel profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} onRunSupplyChainAudit={handleRunSupplyChainAudit} isAuditRunning={isAuditRunning} />
+                <TabBoundary tab="advisory" visited={visited}><AdvisoryTab profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} onRunSupplyChainAudit={handleRunSupplyChainAudit} isAuditRunning={isAuditRunning} /></TabBoundary>
             </section>
 
             {/* FEAT-034: Component Optimizer */}
@@ -220,7 +217,7 @@ export const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'optimizer' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <OptimizerPanel
+                <TabBoundary tab="optimizer" visited={visited}><OptimizerTab
                     canEdit={nodeId => canPerform(ownership[nodeId], 'editing.reviewedTextEdit')}
                     report={optimizerReport}
                     isScanning={isOptimizerScanning}
@@ -243,7 +240,7 @@ export const App = () => {
                     onAiRefine={handleAiRefine}
                     onDelegate={handleDelegate}
                     onSelectAiModel={handleSelectAiModel}
-                />
+                /></TabBoundary>
             </section>
             </div>{/* end left column */}
 
@@ -253,7 +250,7 @@ export const App = () => {
 
             {/* ── Wizard — rendered at root so it works from any tab ── */}
             {wizardOpen && data && (
-                <AgentBuilderWizard
+                <React.Suspense fallback={null}><WizardOverlay
                     existingNodeIds={data.graph.nodes.map(n => n.id)}
                     existingSkills={data.graph.nodes
                         .filter(n => n.type === 'skill')
@@ -269,7 +266,7 @@ export const App = () => {
                     pendingAiCapabilities={wizardAiCapabilities}
                     onClearAiCapabilities={() => setWizardAiCapabilities(null)}
                     lmModels={lmModels}
-                />
+                /></React.Suspense>
             )}
 
             {/* ── Floating expand button — only shown in sidebar mode ── */}
