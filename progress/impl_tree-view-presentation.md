@@ -43,3 +43,41 @@ Changing `CustomNode.tsx` meant splitting it, because the staged-file limit is 2
 - `nodeParts.tsx`: `FeatureNode` and `RoundNodeButton`. The Run and link (+) buttons had duplicated their whole style and hover logic; they now share `RoundNodeButton`.
 
 The last-run badge now shows ▶ instead of ⚡, which now means skill.
+
+## T3 — Item data and text
+
+`treeModels.ts` now carries structured data instead of a ready-made tooltip string:
+- resources: name, type, path, load mode, tokens, score, tier, finding count, owner, capabilities, denied operations;
+- providers: the FEAT-044 session cost;
+- findings: rule id, dimension and path.
+
+It also sorts:
+- Sources resources by type (agent, subagent, skill, steering, hook, then others), then by name;
+- Findings resources by their most severe finding, and findings by severity, then by title.
+
+`treeText.ts` formats all text:
+- descriptions, which leave out unknown or unscored parts;
+- token estimates: `~640 tok`, `~1.2k tok`, `~12k tok`;
+- Markdown tooltips, with every user-derived string escaped by `md()`.
+
+## T4 — Rendering
+
+`harnessTrees.ts` renders:
+- **Open Dashboard** as the first item of a view with data. From Findings it opens the Advisory tab, through the new optional tab argument of `openDashboard`.
+- Provider and type icons from `dist/icons`.
+- Severity product icons coloured with the `problems*Icon.foreground` theme colours.
+- Untrusted `MarkdownString` tooltips, which allow theme icons only.
+- An accessibility label on every item.
+
+The Open Dashboard title action is on both views, with the generated dashboard icon.
+
+| Requirement | Verification |
+|---|---|
+| R4 | harnessTrees.test.ts: provider icon; severity icons and colours. |
+| R5 | harnessTrees.test.ts: the first item in each view opens the Dashboard (on Advisory from Findings); absent without data; title action on both views with the icon. |
+| R6 | treeText.test.ts: description order with unknown and unscored parts left out; token format table; tooltip content. |
+| R7 | treeText.test.ts: per-session cost and breakdown; not evaluated; count only without a report. |
+| R8 | treeText.test.ts and harnessTrees.test.ts: resource type, name and count; finding title as label, rule id as description; tooltip with rule, severity, dimension, detail and path:line. |
+| R9 | treeText.test.ts and treeModels.test.ts: type order, then name; most severe first. |
+| R10 | treeText.test.ts: hostile names and labels are escaped, with no link injection. harnessTrees.test.ts: accessibility label on every item; no trusted tooltip. |
+| R11 | treeText.test.ts: no framework name unless a provider label supplies it. |

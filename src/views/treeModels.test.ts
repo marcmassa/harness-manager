@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { buildFindings, buildSources, errorCount } from './treeModels.js';
+import { md, resourceTooltip } from './treeText.js';
 import type { DashboardData } from '../types.js';
 import type { OptimizerReport } from '../optimizer/types.js';
 import type { AgenticProfile } from '../agentic-detector/types.js';
@@ -20,18 +21,20 @@ describe('Sources (R2, R4)', () => {
 
     it('lists each provider with its resources, native path, type and load mode', () => {
         const groups = buildSources(data, describe_, label);
+        // FEAT-046 R9: by type (agent before subagent), then name.
         expect(groups.map(g => [g.label, g.resources.map(r => r.nativePath)])).toEqual([
-            ['Claude Code', ['.claude/agents/r.md', 'CLAUDE.md']],
+            ['Claude Code', ['CLAUDE.md', '.claude/agents/r.md']],
             ['Harness', ['.agents/skills/x/SKILL.md']],
         ]);
-        expect(groups[0].resources[0]).toMatchObject({ type: 'subagent', loadMode: 'always', sourceUri: 'file:///w/.claude/agents/r.md' });
+        expect(groups[0].resources[1]).toMatchObject({ type: 'subagent', loadMode: 'always', sourceUri: 'file:///w/.claude/agents/r.md' });
     });
 
     it('puts capability levels and denied operations with their reasons in the tooltip', () => {
-        const tip = buildSources(data, describe_, label)[0].resources[0].tooltip;
-        expect(tip).toContain('Claude Code — .claude/agents/r.md');
+        const tip = resourceTooltip(buildSources(data, describe_, label)[0].resources[1]);
+        expect(tip).toContain('Owner: Claude Code');
+        expect(tip).toContain(md('.claude/agents/r.md'));
         expect(tip).toContain('Editing partial · Agent runs partial');
-        expect(tip).toContain('Delete: Claude Code resources are read-only for "Delete".');
+        expect(tip).toContain(`Not available — Delete: ${md('Claude Code resources are read-only for "Delete".')}`);
     });
 });
 
@@ -59,7 +62,8 @@ describe('Findings (R3)', () => {
         ] } as unknown as AgenticProfile;
         const [harness] = buildFindings(report, evidenced, label);
         expect(harness.resources.map(r => r.label)).toEqual(['a.md', 'agents/b.md']);
-        expect(harness.resources[0].findings.map(f => f.label)).toEqual(['OPT-S01 No frontmatter', 'OPT-H01 Path', 'Describe the skill']);
+        // FEAT-046 R8, R9: title as label, rule id kept; most severe first, then by title.
+        expect(harness.resources[0].findings.map(f => [f.label, f.ruleId])).toEqual([['No frontmatter', 'OPT-S01'], ['Describe the skill', 's1'], ['Path', 'OPT-H01']]);
     });
 
     it('counts error findings for the badge, and none at zero', () => {
