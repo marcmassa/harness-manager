@@ -5,19 +5,19 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
-    extractMarkdownTitle,
     fileExists,
     findFiles,
     prefixedNodeId,
     readTextFromUri,
     readTextIfExists,
+    rootAgentNode,
     toRelativePath,
-    workspaceName,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 function describeApplyTo(applyTo: unknown): string {
     if (Array.isArray(applyTo)) return applyTo.join(', ');
@@ -77,29 +77,10 @@ export class CopilotAdapter implements IAgentAdapter {
         const promptFiles = await findFiles(root, '.vscode/prompts/**/*.prompt.md');
 
         const rootNodeId = `${adapterId}::root`;
-        const rootLabel = rootInstructions
-            ? extractMarkdownTitle(rootInstructions, 'GitHub Copilot')
-            : `${workspaceName(root)} Copilot`;
-
-        result.graph.nodes.push(
-            withFrameworkMetadata(
-                {
-                    id: rootNodeId,
-                    type: 'agent',
-                    label: rootLabel,
-                    metadata: {
-                        description: rootInstructions
-                            ? rootInstructions.split(/\r?\n/).slice(0, 6).join(' ').trim()
-                            : 'GitHub Copilot workspace',
-                        body: rootInstructions ? rootInstructions.slice(0, 500) : '',
-                        _fullBody: rootInstructions ?? '',
-                    },
-                },
-                adapterId,
-                adapterLabel,
-                rootInstructions ? `${path}/copilot-instructions.md` : undefined
-            )
-        );
+        result.graph.nodes.push(rootAgentNode(
+            root, adapterId, adapterLabel, rootInstructions, `${path}/copilot-instructions.md`,
+            { title: 'GitHub Copilot', workspaceSuffix: 'Copilot', description: 'GitHub Copilot workspace' },
+        ));
 
         const sortedInstructionFiles = [...instructionFiles].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
         for (const file of sortedInstructionFiles) {
@@ -120,8 +101,7 @@ export class CopilotAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description: describeApplyTo(data.applyTo) || String(data.description ?? ''),
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -157,8 +137,7 @@ export class CopilotAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description: String(data.description ?? body.split(/\r?\n/).find(Boolean) ?? ''),
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -178,23 +157,7 @@ export class CopilotAdapter implements IAgentAdapter {
         // FEAT-026 T7: append hook/steering nodes discovered under
         // `.github/hooks/`, `.github/steering/`, and (when enabled)
         // the project root.
-        const localConfig = this._harnessConfig
-            ? await this._harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, CopilotAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -207,21 +170,4 @@ export class CopilotAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        return this._getBool(`adapters.${CopilotAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }
