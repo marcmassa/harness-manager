@@ -8,7 +8,7 @@ import type { DashboardState } from './useDashboardState.js';
 
 /** Derived data, effects and handlers of the Dashboard webview. */
 export function useDashboardActions(s: DashboardState) {
-    const { data, selectedNode, setSelectedNode, activeTab, setActiveTab, setTimelineTargetFeature, setIsAdvisoryScanning, setActionStates, setIsAuditRunning, optimizerReport, setIsOptimizerScanning, optimizerEnabled, setSelectedAiModel, setAssistStates, runHistory, runPanelNodeId, setRunPanelNodeId, runPanelNode, setRunPanelNode, setTimeTick, setWizardOpen, setWizardInitialType, setTemplatePanelOpen, templates, setApplyingTemplate, setMdContent, setMdLoading, setDetailTab, setIsDetailPanelCollapsed } = s;
+    const { data, selectedNode, setSelectedNode, activeTab, setActiveTab, setTimelineTargetFeature, setIsAdvisoryScanning, setActionStates, optimizerReport, setIsOptimizerScanning, optimizerEnabled, setSelectedAiModel, setAssistStates, runHistory, runPanelNodeId, setRunPanelNodeId, runPanelNode, setRunPanelNode, setTimeTick, setWizardOpen, setWizardInitialType, setTemplatePanelOpen, templates, setApplyingTemplate, setMdContent, setMdLoading, setDetailTab, setIsDetailPanelCollapsed } = s;
 
     // FEAT-033: Tick every 60 s to update "last run" relative timestamps (R15)
     React.useEffect(() => {
@@ -203,12 +203,6 @@ export function useDashboardActions(s: DashboardState) {
         vscode.postMessage({ type: 'applyHarnessSDD' });
     }, []);
 
-    // FEAT-036 R6/R12: user-triggered npm audit (explicit click only).
-    const handleRunSupplyChainAudit = React.useCallback(() => {
-        setIsAuditRunning(true);
-        vscode.postMessage({ type: 'runSupplyChainAudit' });
-    }, []);
-
     // FEAT-033: Open Run Agent Panel from whiteboard node toolbar
     const handleRunNode = React.useCallback((nodeId: string) => {
         setRunPanelNodeId(nodeId);
@@ -299,7 +293,7 @@ export function useDashboardActions(s: DashboardState) {
     }, [data]);
 
 
-    return { filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunSupplyChainAudit, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList };
+    return { filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList };
 }
 
 export type DashboardActions = ReturnType<typeof useDashboardActions>;

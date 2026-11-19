@@ -180,16 +180,6 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         })
     );
 
-    // FEAT-036 R6: user-triggered npm audit — palette counterpart of the
-    // AdvisoryPanel button. Shares the coordinator's in-flight guard and
-    // session cache; NEVER invoked from scan()/activation/watchers (R6).
-    context.subscriptions.push(
-        vscode.commands.registerCommand('harness-dashboard.runSupplyChainAudit', async () => {
-            if (await denied({ op: 'workspace.audit', targets: 'workspace' })) return;
-            await provider.runSupplyChainAudit();
-        })
-    );
-
     // FEAT-034 T41/T43: virtual document backing the quick-fix diff preview,
     // plus the user-facing "Optimize Components" command.
     context.subscriptions.push(

@@ -35,3 +35,32 @@ The two images were compared side by side with no visible difference. The 0.8 im
 | Requirement | Verification |
 |---|---|
 | R3 | iconImage.test.ts: 128×128, at most 8 KB, and at most 8/255 on every channel against the 0.8 fixture. |
+
+## T3 — Supply-chain removal
+
+Deleted:
+- `src/supply-chain/**` and its fixtures;
+- `supplyChainRules.ts`;
+- `SupplyChainSection.tsx`.
+
+Also removed:
+- the `runSupplyChainAudit` command and its palette entry;
+- the `workspace.audit` operation and its message mapping;
+- the two audit message types;
+- the detector's audit state and payload, and the `supplyChain` profile field and category;
+- the Advisory section and its webview state.
+
+Moved: `IconRefresh` goes to `advisoryParts.tsx`, because the re-scan button still uses it.
+
+Kept:
+- **`run-command` / `workspace.command`:** no rule produces it any more, but `ActionExecutor` still implements it under its own tests. Removing it is not clearly safe.
+- **The `optional` scope fallback** for unclassified rules.
+- **`yaml`:** `frontmatter.ts` still uses it.
+
+README: the feature row is gone, and the 0.8.1 sentence is reworded with the CHANGELOG link kept.
+
+| Requirement | Verification |
+|---|---|
+| R4 | supplyChainRemoval.test.ts covers four things: no audit or supply command in the manifest; no `workspace.audit` in the catalog; no `sc-` rule or `supply-chain` category; stored dismissals `sc-missing-bot-config@workspace`, `sc-add-update-bot` and `sc-stale-override:undici` ignored without error. |
+
+The change removes 2,443 lines and 87 tests that belonged to the removed modules. Verified: 942 unit tests; build.

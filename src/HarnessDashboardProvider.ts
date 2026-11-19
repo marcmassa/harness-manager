@@ -194,11 +194,6 @@ export class HarnessDashboardProvider {
         this.postToWebview({ type: 'advisoryProfile', profile });
     }
 
-    /** FEAT-036 R6/R7: palette entry point for the user-triggered npm audit. */
-    public async runSupplyChainAudit(): Promise<void> {
-        await this._advisoryCoordinator.runAuditAndRescan(msg => this.postToWebview(msg));
-    }
-
     public setAgenticDetector(detector: AgenticDetector, scheduleScan: () => void): void {
         this._agenticDetector = detector;
         this._advisoryCoordinator.setAgenticDetector(detector);

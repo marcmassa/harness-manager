@@ -9,7 +9,7 @@
 - [x] **T2** — Quantise `media/icon.png` in `scripts/gen-icon.cjs`.
   - Test the size, the dimensions, and the per-channel difference against the current image (kept as a test fixture).
   - _(R3)_
-- [ ] **T3** — Remove the supply-chain feature: modules, rules, Advisory section, command, operation, message types and fixtures.
+- [x] **T3** — Remove the supply-chain feature: modules, rules, Advisory section, command, operation, message types and fixtures.
   - Test that the manifest has no audit command.
   - Test that the operation catalog has no `workspace.audit`.
   - Test that the Advisory engine has no supply-chain rule.
