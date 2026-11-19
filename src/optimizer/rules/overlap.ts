@@ -9,22 +9,9 @@
 
 import { tokenize, computeIdf, buildTfidfVectors, cosineSimilarity } from '../../semanticMatcher.js';
 import { computeIdoneityMatrix, detectMismatches } from '../../idoneity.js';
-import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { matchesAnyGlob, readAppliesTo, toEntityInput } from './ruleUtils.js';
+import { type OptimizerFinding, type OptimizerRule, type RuleContext, OPTIMIZABLE_TYPES } from '../types.js';
+import { matchesAnyGlob, readAppliesTo, toEntityInput, finding } from './ruleUtils.js';
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
 function descriptionText(source: RuleContext['source']): string {
     return typeof source.frontmatter.description === 'string' ? source.frontmatter.description : '';
@@ -34,7 +21,7 @@ function descriptionText(source: RuleContext['source']): string {
 
 export const optO01: OptimizerRule = {
     id: 'OPT-O01',
-    appliesTo: ['agent', 'subagent', 'skill', 'steering', 'hook'],
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'integration',
     defaultSeverity: 'warning',
     /** The 0.8 cosine cutoff is an invented constant. */
