@@ -6,7 +6,7 @@
   - Test that the manifest lists neither the toolkit nor `@microsoft/fast-*`.
   - Check light, dark and high-contrast themes by hand.
   - _(R1, R2)_
-- [ ] **T2** — Quantise `media/icon.png` in `scripts/gen-icon.cjs`.
+- [x] **T2** — Quantise `media/icon.png` in `scripts/gen-icon.cjs`.
   - Test the size, the dimensions, and the per-channel difference against the current image (kept as a test fixture).
   - _(R3)_
 - [ ] **T3** — Remove the supply-chain feature: modules, rules, Advisory section, command, operation, message types and fixtures.
