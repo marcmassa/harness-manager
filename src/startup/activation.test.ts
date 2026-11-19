@@ -12,7 +12,7 @@ vi.mock('vscode', () => {
     const recorded = (name: string) => (..._args: unknown[]) => { effects.push(name); return disposable(); };
     function disposable(): unknown {
         return new Proxy(function () { /* noop */ }, {
-            get: (_t, p) => (p === 'then' ? undefined : p === 'dispose' ? () => undefined : disposable()),
+            get: (_t, p) => (p === 'then' ? undefined : p === 'dispose' ? () => undefined : p === 'visible' ? false : disposable()),
             apply: () => disposable(),
             construct: () => disposable() as object,
         });
@@ -35,6 +35,8 @@ vi.mock('vscode', () => {
             const next = `${path}.${String(p)}`;
             if (next === 'workspace.workspaceFolders') return [{ uri: { fsPath: '/w', path: '/w', scheme: 'file', toString: () => 'file:///w' } }];
             if (next === 'workspace.isTrusted') return true;
+            // Views start hidden: activation without a visible surface must not scan (R14).
+            if (String(p) === 'visible') return false;
             if (spied[next]) return spied[next];
             if (next === 'commands.executeCommand') return (cmd: string) => { effects.push(`command:${cmd}`); return Promise.resolve(); };
             return node(next);

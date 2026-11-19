@@ -46,3 +46,27 @@ Refresh scans immediately, visible or not, through the scheduler.
 | R18 | commands.test.ts: category and unprefixed title on every command; provider-specific commands name Harness SDD. scanScheduler.test.ts: explicit refresh. |
 
 Verified: 1002 unit tests, build.
+
+## T3 — Sources and Findings views
+
+Two native tree views join the Harness container. They are built from pure models in `src/views/treeModels.ts` and rendered by `src/views/harnessTrees.ts`.
+
+- **Sources** lists each provider with its resource count, then each resource with its native path, type and load mode (when known). The tooltip carries the FEAT-041 owner, path, capability levels and every denied operation with its reason.
+- **Findings** groups Optimizer findings and Advisory suggestions by owner (workspace-wide last) and resource, without dismissed suggestions. Its badge counts error findings, with no badge at zero.
+- Selecting a resource or finding opens the native source at the reported line (`harness-dashboard.openSource`).
+- Item operations are menu actions: one inline "Open Dashboard" on resources. The view toolbar offers Refresh and Open Dashboard, with Open Local Configuration in the overflow.
+- Both views report their visibility to the scan scheduler, and refresh after every scan and every Advisory scan. Progress now shows on the Sources view.
+
+The unregistered `AgenticDetectorProvider` (579 lines) is deleted.
+
+The Dashboard webview view stays in the container until T4 moves the Dashboard into the editor panel.
+
+| Requirement | Verification |
+|---|---|
+| R1 | treeModels.test.ts: the manifest contributes both tree views with icons. The webview view's removal is T4. |
+| R2 | treeModels.test.ts: providers, resources, native paths, type and load mode. |
+| R3 | treeModels.test.ts: grouping by owner and resource; error badge count and zero. |
+| R4 | treeModels.test.ts: denied operations with reasons in the tooltip; at most three item actions. |
+| R7 | treeModels.test.ts: at most three title actions per view. |
+
+Verified: 1008 unit tests; fifteen Extension Host runs; build.
