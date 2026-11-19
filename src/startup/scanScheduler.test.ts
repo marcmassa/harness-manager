@@ -80,3 +80,12 @@ describe('ScanScheduler', () => {
         expect(effects.scan).not.toHaveBeenCalled();
     });
 });
+
+describe('explicit refresh', () => {
+    it('scans now even when nothing is visible', async () => {
+        const { scheduler, effects } = make();
+        await scheduler.refresh();
+        await scheduler.refresh();
+        expect(effects.scan).toHaveBeenCalledTimes(2);
+    });
+});

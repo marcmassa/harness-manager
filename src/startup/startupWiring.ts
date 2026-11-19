@@ -26,6 +26,7 @@ export interface StartupDeps {
 
 export interface Startup {
     ensureScanned(): Promise<void>;
+    refresh(): Promise<void>;
     onChange(): void;
     /** Providers registered or disposed: rebuild watchers, then treat as a change. */
     onProvidersChanged(): void;
@@ -76,6 +77,7 @@ export function createStartup(deps: StartupDeps): Startup {
     return {
         scheduler,
         ensureScanned: () => scheduler.ensureScanned(),
+        refresh: () => scheduler.refresh(),
         onChange: () => scheduler.onChange(),
         onProvidersChanged: () => {
             if (watching) startWatchers();

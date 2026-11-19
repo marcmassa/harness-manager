@@ -65,41 +65,50 @@
     "commands": [
       {
         "command": "harness-dashboard.openDashboard",
-        "title": "Harness: Open Dashboard"
+        "title": "Open Dashboard",
+        "category": "Harness Dashboard",
+        "icon": "$(window)"
+      },
+      {
+        "command": "harness-dashboard.refresh",
+        "title": "Refresh",
+        "category": "Harness Dashboard",
+        "icon": "$(refresh)"
       },
       {
         "command": "harness-dashboard.openLocalConfig",
-        "title": "Harness Dashboard: Open Local Configuration",
-        "category": "Harness Dashboard"
+        "title": "Open Local Configuration",
+        "category": "Harness Dashboard",
+        "icon": "$(gear)"
       },
       {
         "command": "harness-dashboard.checkLM",
-        "title": "Harness Dashboard: Check AI Provider Status",
+        "title": "Check AI Provider Status",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.rescanAgentic",
-        "title": "Harness Dashboard: Re-scan Agentic Architecture",
+        "title": "Re-scan Agentic Architecture",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.scaffoldMissing",
-        "title": "Harness: Scaffold Missing Agent Files",
+        "title": "Scaffold Missing Harness SDD Files",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.syncFromFilesystem",
-        "title": "Harness: Sync Agents from Filesystem",
+        "title": "Sync Harness SDD Agents from Filesystem",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.optimizeComponents",
-        "title": "Harness: Optimize Components",
+        "title": "Optimize Components",
         "category": "Harness Dashboard"
       },
       {
         "command": "harness-dashboard.runSupplyChainAudit",
-        "title": "Harness Dashboard: Run npm audit (Supply Chain)",
+        "title": "Run npm Audit (Supply Chain)",
         "category": "Harness Dashboard"
       }
     ],
@@ -268,15 +277,41 @@
           "default": {},
           "markdownDescription": "Optional price table for context cost estimates, for example `{ \"date\": \"2026-11-01\", \"models\": { \"my-model\": { \"inputPerMTok\": 3, \"family\": \"my-family\" } } }`. No prices ship with the extension and none are fetched; estimates show this date.",
           "properties": {
-            "date": { "type": "string" },
-            "models": { "type": "object", "additionalProperties": { "type": "object", "properties": { "inputPerMTok": { "type": "number", "minimum": 0 }, "outputPerMTok": { "type": "number", "minimum": 0 }, "family": { "type": "string" } }, "required": ["inputPerMTok"] } }
+            "date": {
+              "type": "string"
+            },
+            "models": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "inputPerMTok": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "outputPerMTok": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "family": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "inputPerMTok"
+                ]
+              }
+            }
           }
         },
         "harness-dashboard.cost.calibration": {
           "type": "object",
           "scope": "resource",
           "default": {},
-          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
           "markdownDescription": "Optional tokenizer calibration per model family (for example `{ \"my-family\": 1.15 }`). Token figures stay local estimates; a factor applies only to money estimates for that family."
         },
         "harness-dashboard.optimizer.assistedFixes.mode": {
@@ -296,6 +331,42 @@
           "description": "Which assisted fix modes to offer."
         }
       }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "harness-dashboard.openDashboard",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.refresh",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.openLocalConfig",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.rescanAgentic",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.scaffoldMissing",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.syncFromFilesystem",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.optimizeComponents",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "harness-dashboard.runSupplyChainAudit",
+          "when": "workspaceFolderCount > 0"
+        }
+      ]
     }
   },
   "scripts": {
