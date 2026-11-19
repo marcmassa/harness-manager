@@ -13,7 +13,8 @@ export type ConventionKey =
     | 'triggerMarkers'       // the description must say when to load the component
     | 'requiredSections'     // named `##` sections are required
     | 'hookContract'         // hooks declare an event and a script; steering declares its scope
-    | 'explicitSkillLinks';  // skills, roles and steering connect only through declared links
+    | 'explicitSkillLinks'   // skills, roles and steering connect only through declared links
+    | 'onTriggerAlternative'; // FEAT-044: the format can load an always resource on demand
 
 export type RuleRequirement = { kind: 'shared' } | { kind: 'convention'; convention: ConventionKey };
 
@@ -37,6 +38,11 @@ export const RULE_REQUIREMENTS: Readonly<Record<string, RuleRequirement>> = {
     'OPT-O03': { kind: 'shared' },
     'OPT-C01': { kind: 'shared' },
     'OPT-C02': { kind: 'shared' },
+    // FEAT-044: cost rules read owner-declared load modes, so they need no format convention,
+    // except K03, which only formats that offer an on-trigger form can act on.
+    'OPT-K01': { kind: 'shared' },
+    'OPT-K02': { kind: 'shared' },
+    'OPT-K03': { kind: 'convention', convention: 'onTriggerAlternative' },
 };
 
 type Conventions = Partial<Record<ConventionKey, readonly OptimizableType[]>>;
@@ -63,7 +69,10 @@ export const PROVIDER_CONVENTIONS: Readonly<Record<string, Conventions>> = {
         requiredSections: ['skill', 'subagent'],
         hookContract: ['hook', 'steering'],
         explicitSkillLinks: ['skill', 'subagent', 'steering'],
+        onTriggerAlternative: ['steering'],
     },
+    cursor: { onTriggerAlternative: ['agent', 'subagent'] },
+    copilot: { onTriggerAlternative: ['agent', 'subagent'] },
     'claude-code': {
         frontmatter: ['subagent', 'skill'],
         nameMatchesDirectory: ['skill'],
@@ -71,6 +80,7 @@ export const PROVIDER_CONVENTIONS: Readonly<Record<string, Conventions>> = {
         triggerMarkers: ['skill'],
     },
     kiro: {
+        onTriggerAlternative: ['steering'],
         frontmatter: ['skill'],
         nameMatchesDirectory: ['skill'],
         description: ['skill'],

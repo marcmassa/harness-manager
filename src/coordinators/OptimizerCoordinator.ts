@@ -13,6 +13,7 @@ import { computeFix } from '../optimizer/quickFix.js';
 import { buildRefinePrompt, normalizeRefineResponse } from '../optimizer/aiRefine.js';
 import { delegateFindings } from './optimizerDelegation.js';
 import { handoffToChat, requestRefine } from './optimizerRefine.js';
+import { buildCostSection } from '../cost/costSection.js';
 import { previewAndWrite, type PreviewWriteOptions } from './optimizerWrite.js';
 import { detectChatHost } from '../chatHandoffHost.js';
 import type { RunAdapterRegistry } from '../run/runAdapterRegistry.js';
@@ -173,8 +174,9 @@ export class OptimizerCoordinator {
                 this._dismissed(),
             );
             this._cachedSources = sources;
-            this._cachedReport = report;
-            return report;
+            // FEAT-044: context cost travels with the report, read from user settings only.
+            this._cachedReport = { ...report, cost: buildCostSection(sources, vscode.workspace.getConfiguration('harness-dashboard')) };
+            return this._cachedReport;
         } catch (e: unknown) {
             const error = e instanceof Error ? e.message : String(e);
             this._log.error(`[Optimizer] Scan failed: ${error}`);

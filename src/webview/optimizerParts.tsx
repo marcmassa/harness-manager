@@ -117,7 +117,7 @@ export const DIMENSION_LABEL: Record<OptimizerDimension, string> = {
 export const DIMENSION_DETAIL: Record<OptimizerDimension, { question: string; rules: string }> = {
     structure:   { question: 'Does it parse, is it named right, are the required parts present?', rules: 'OPT-S01, S02, S03, S05, S06' },
     clarity:     { question: 'Can a model act on the prose — does the description say when to use it?', rules: 'OPT-S04, H03' },
-    budget:      { question: 'What does it cost to load into context?', rules: 'OPT-B01, B02, B03' },
+    budget:      { question: 'What does it cost to load into context?', rules: 'OPT-B01, B02, B03, K01, K02, K03' },
     integration: { question: 'How does it relate to the rest of the architecture?', rules: 'OPT-O01, O02, O03, D01, D02' },
     hygiene:     { question: 'Is it safe and portable — no machine paths, no secrets?', rules: 'OPT-H01, H02' },
     consistency: { question: 'Does it look like your other components of the same type?', rules: 'OPT-C01, C02' },
