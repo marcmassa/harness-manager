@@ -7,89 +7,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ROOT = '/workspace';
-const mockFiles = new Map<string, string>();
-const mockWatchers: Array<{
-    pattern: { baseUri: { fsPath: string; path: string }; pattern: string };
-    onDidChange: (cb: () => void) => void;
-    onDidCreate: (cb: () => void) => void;
-    onDidDelete: (cb: () => void) => void;
-    fire: (event: 'change' | 'create' | 'delete') => void;
-}> = [];
+import { ROOT, mockWatchers, seedWorkspace } from '../test/vscodeMock.js';
 
-const normalize = (input: string) => input.replace(/\\/g, '/').replace(/\/+/g, '/');
-const toUri = (path: string) => {
-    const normalized = normalize(path);
-    return { fsPath: normalized, path: normalized };
-};
-
-function seedWorkspace(files: Record<string, string>): void {
-    mockFiles.clear();
-    for (const [filePath, content] of Object.entries(files)) {
-        const absolute = filePath.startsWith('/') ? filePath : `${ROOT}/${filePath}`;
-        mockFiles.set(normalize(absolute), content);
-    }
-}
-
-vi.mock('vscode', () => {
-    class RelativePattern {
-        constructor(
-            public readonly baseUri: { fsPath: string; path: string },
-            public readonly pattern: string
-        ) {}
-    }
-
-    class Disposable {
-        constructor(private readonly _callOnDispose: () => void) {}
-        public dispose(): void { this._callOnDispose(); }
-    }
-
-    const workspace = {
-        fs: {
-            readFile: vi.fn(async (uri: { fsPath?: string; path?: string }) => {
-                const key = normalize(uri.fsPath ?? uri.path ?? '');
-                const value = mockFiles.get(key);
-                if (value === undefined) throw new Error(`ENOENT: ${key}`);
-                return Buffer.from(value, 'utf8');
-            }),
-        },
-        createFileSystemWatcher: vi.fn((pattern: { baseUri: { fsPath: string; path: string }; pattern: string }) => {
-            const watcher = {
-                pattern,
-                onDidChange: (cb: () => void) => { watcher._changeCb = cb; },
-                onDidCreate: (cb: () => void) => { watcher._createCb = cb; },
-                onDidDelete: (cb: () => void) => { watcher._deleteCb = cb; },
-                fire: (event: 'change' | 'create' | 'delete') => {
-                    if (event === 'change') watcher._changeCb?.();
-                    if (event === 'create') watcher._createCb?.();
-                    if (event === 'delete') watcher._deleteCb?.();
-                },
-                _changeCb: undefined as (() => void) | undefined,
-                _createCb: undefined as (() => void) | undefined,
-                _deleteCb: undefined as (() => void) | undefined,
-                dispose: vi.fn(),
-            };
-            mockWatchers.push(watcher);
-            return watcher;
-        }),
-    };
-
-    const Uri = {
-        file: (path: string) => toUri(path),
-        joinPath: (base: { fsPath?: string; path?: string }, ...parts: string[]) => {
-            const basePath = normalize(base.fsPath ?? base.path ?? '');
-            const joined = normalize([basePath, ...parts].join('/'));
-            return toUri(joined);
-        },
-    };
-
-    return {
-        Uri,
-        RelativePattern,
-        Disposable,
-        workspace,
-    };
-});
+vi.mock('vscode', async () => (await import('../test/vscodeMock.js')).createVscodeMock());
 
 import * as vscode from 'vscode';
 import { HarnessConfig, EMPTY_HARNESS_CONFIG } from './harnessConfig.js';

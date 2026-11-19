@@ -19,142 +19,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ROOT = '/workspace';
-const mockFiles = new Map<string, string>();
-const configurationStore = new Map<string, string>();
+import { ROOT, mockConfiguration, seedWorkspace } from '../test/vscodeMock.js';
 
-const normalize = (input: string) => input.replace(/\\/g, '/').replace(/\/+/g, '/');
-const toUri = (path: string) => {
-    const normalized = normalize(path);
-    return { fsPath: normalized, path: normalized };
-};
-
-function seedWorkspace(files: Record<string, string>): void {
-    mockFiles.clear();
-    for (const [filePath, content] of Object.entries(files)) {
-        const absolute = filePath.startsWith('/') ? filePath : `${ROOT}/${filePath}`;
-        mockFiles.set(normalize(absolute), content);
-    }
-}
-
-function globToRegExp(glob: string): RegExp {
-    // Expand brace lists to sentinels, then escape everything else,
-    // then replace the sentinels with regex alternations. This way
-    // brace groups become real alternations and other characters
-    // are still safely escaped.
-    const expanded = expandBraces(glob);
-    const pattern = '^' + expanded
-        // escape regex specials first
-        .replace(/[.+^$()|[\]\\]/g, '\\$&')
-        // restore the sentinels as real regex alternations
-        .replace(/@@OPEN@@/g, '(')
-        .replace(/@@PIPE@@/g, '|')
-        .replace(/@@CLOSE@@/g, ')')
-        .replace(/@@STAR@@/g, '[^/]*')
-        .replace(/@@DSTAR_SLASH@@/g, '(?:.*/)?')
-        .replace(/@@DSTAR@@/g, '.*')
-        .replace(/@@QMARK@@/g, '.')
-        + '$';
-    return new RegExp(pattern);
-}
-
-function expandBraces(glob: string): string {
-    // First, expand `**/`, `**`, `*`, `?` to sentinels so they aren't
-    // touched by brace expansion. Then expand `{a,b,c}` to sentinels.
-    let result = '';
-    for (let i = 0; i < glob.length; i += 1) {
-        const current = glob[i];
-        const next = glob[i + 1];
-        const nextAfter = glob[i + 2];
-        if (current === '*' && next === '*') {
-            if (nextAfter === '/') {
-                result += '@@DSTAR_SLASH@@';
-                i += 2;
-                continue;
-            }
-            result += '@@DSTAR@@';
-            i += 1;
-            continue;
-        }
-        if (current === '*') {
-            result += '@@STAR@@';
-            continue;
-        }
-        if (current === '?') {
-            result += '@@QMARK@@';
-            continue;
-        }
-        result += current;
-    }
-    // Recursively expand brace groups.
-    const match = result.match(/\{([^{}]+)\}/);
-    if (!match) return result;
-    const [whole, body] = match;
-    const alternatives = body.split(',');
-    return expandBraces(result.replace(whole, '@@OPEN@@' + alternatives.join('@@PIPE@@') + '@@CLOSE@@'));
-}
-
-vi.mock('vscode', () => {
-    class RelativePattern {
-        constructor(
-            public readonly baseUri: { fsPath: string; path: string },
-            public readonly pattern: string
-        ) {}
-    }
-
-    const workspace = {
-        fs: {
-            readFile: vi.fn(async (uri: { fsPath?: string; path?: string }) => {
-                const key = normalize(uri.fsPath ?? uri.path ?? '');
-                const value = mockFiles.get(key);
-                if (value === undefined) throw new Error(`ENOENT: ${key}`);
-                return Buffer.from(value, 'utf8');
-            }),
-        },
-        findFiles: vi.fn(async (pattern: RelativePattern | string) => {
-            const base = typeof pattern === 'string'
-                ? ROOT
-                : normalize(pattern.baseUri.fsPath ?? pattern.baseUri.path ?? ROOT);
-            const glob = typeof pattern === 'string' ? pattern : pattern.pattern;
-            const regexp = globToRegExp(glob);
-            const matches: Array<{ fsPath: string; path: string }> = [];
-            for (const filePath of mockFiles.keys()) {
-                if (!filePath.startsWith(`${base}/`)) continue;
-                const relativePath = filePath.slice(base.length + 1);
-                if (regexp.test(relativePath)) {
-                    matches.push(toUri(filePath));
-                }
-            }
-            return matches;
-        }),
-        asRelativePath: vi.fn((file: { fsPath?: string; path?: string } | string) => {
-            const full = normalize(typeof file === 'string' ? file : (file.fsPath ?? file.path ?? ''));
-            if (full.startsWith(`${ROOT}/`)) return full.slice(ROOT.length + 1);
-            return full;
-        }),
-        onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
-        getConfiguration: vi.fn((_section: string) => ({
-            get: (key: string, fallback: unknown) => {
-                return configurationStore.has(key) ? configurationStore.get(key) : fallback;
-            },
-        })),
-    };
-
-    const Uri = {
-        file: (path: string) => toUri(path),
-        joinPath: (base: { fsPath?: string; path?: string }, ...parts: string[]) => {
-            const basePath = normalize(base.fsPath ?? base.path ?? '');
-            const joined = normalize([basePath, ...parts].join('/'));
-            return toUri(joined);
-        },
-    };
-
-    return {
-        Uri,
-        RelativePattern,
-        workspace,
-    };
-});
+vi.mock('vscode', async () => (await import('../test/vscodeMock.js')).createVscodeMock());
 
 import * as vscode from 'vscode';
 import { discover } from './hooksAndSteering.js';
@@ -171,7 +38,7 @@ function emptyConfig(): HarnessDashboardConfig {
 
 beforeEach(() => {
     seedWorkspace({});
-    configurationStore.clear();
+    mockConfiguration.clear();
     ConfigurationRegistry.resetInstance();
     // Eagerly resolve the registry so the default '.kiro' path is cached.
     ConfigurationRegistry.getInstance();
