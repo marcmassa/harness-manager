@@ -40,3 +40,26 @@ The webview's own suggestion filter also applies dismissals made in the panel it
 | Requirement | Verification |
 |---|---|
 | R7 | sharedHostHelpers.test.ts: the summary maths; one definition each for the summary, the state keys and the ownership map; `snapshot` and `fakeContext` exist only in `fixtures.ts`. panel.test.ts (FEAT-045 R20) still checks the key values, now in `viewRelations.ts`. |
+
+## T2 — One test mock (cherry-picked from 8ab6007)
+
+`src/test/vscodeMock.ts` is now the one in-memory workspace. It holds:
+- the single `normalize`;
+- the single `globToRegExp`, which handles `**/`, `**`, `*`, `?` and nested `{a,b}`;
+- `stat`, which derives directories from the seeded files;
+- configuration, recordable watchers, and `Disposable`, `FileType`, `ThemeIcon`, `TreeItem` and `EventEmitter`.
+
+It is one superset, and no test needed an override. `detectorTestHarness.ts` re-exports it.
+
+Seven test files switched to it:
+- KiroAdapter, adapterRegistry, ConfigurationRegistry;
+- byohProviders, adapterLoadModes;
+- hooksAndSteering, harnessConfig.
+
+The change removes 820 lines and adds 183.
+
+No fixture or assertion changed. The two suites that used a simplified glob (byohProviders, adapterLoadModes) pass under the full one, so they did not depend on its gaps.
+
+| Requirement | Verification |
+|---|---|
+| R2 | vscodeMockUsage.test.ts: no test file defines its own `globToRegExp` or `normalize`. The seven suites pass on the shared mock with their assertions unchanged. |
