@@ -20,10 +20,13 @@ export const App = () => {
     // FEAT-045 R19: a tab mounts (and its chunk loads) on first display.
     const visited = useVisitedTabs(activeTab);
     // FEAT-047 R5: an unavailable tab (restored, requested, or gone after a rescan) shows the whiteboard.
+    // "Generate spec" opens the tab even before the first feature exists; leaving it ends the request.
+    const [specsRequested, setSpecsRequested] = React.useState(false);
+    React.useEffect(() => { if (activeTab !== 'timeline') setSpecsRequested(false); }, [activeTab]);
     React.useEffect(() => {
-        const shown = resolveTab(activeTab, data);
+        const shown = resolveTab(activeTab, data, specsRequested);
         if (shown !== activeTab) setActiveTab(shown);
-    }, [activeTab, data, setActiveTab]);
+    }, [activeTab, data, specsRequested, setActiveTab]);
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -75,7 +78,7 @@ export const App = () => {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {availableTabs(data).map(tab => {
+                    {availableTabs(data, specsRequested).map(tab => {
                         const label = tab === 'timeline' ? 'Specs Manager'
                             : tab === 'advisory' ? 'Advisory'
                             : tab === 'optimizer' ? 'Optimizer'
@@ -266,6 +269,7 @@ export const App = () => {
                     onCreated={handleWizardCreated}
                     onGenerateSpec={() => {
                         setWizardOpen(false);
+                        setSpecsRequested(true);
                         setActiveTab('timeline');
                         setStartWizard(n => n + 1);
                     }}

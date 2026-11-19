@@ -4,7 +4,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { Badge, Button, CONTROLS_CSS, Spinner, TextArea } from './controls.js';
+import { Badge, Button, CONTROLS_CSS, Spinner, SyncedTextArea, TextArea } from './controls.js';
 
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
@@ -24,6 +24,11 @@ describe('native controls (FEAT-047 R1, R2)', () => {
         const spin = html(React.createElement(Spinner, { label: 'Scanning' }));
         expect(spin).toContain('role="progressbar"');
         expect(spin).toContain('aria-label="Scanning"');
+    });
+
+    it('keeps a synced text area native and labelled, showing the host value', () => {
+        const area = html(React.createElement(SyncedTextArea, { 'aria-label': 'Mission', value: 'from host', onChange: () => undefined }));
+        expect(area).toMatch(/^<textarea class="hd-textarea" aria-label="Mission">from host<\/textarea>$/);
     });
 
     it('styles focus from the theme focus border and respects reduced motion', () => {

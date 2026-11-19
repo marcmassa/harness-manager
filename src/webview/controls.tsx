@@ -27,6 +27,26 @@ export const TextArea = ({ className, ...rest }: TextAreaProps) => (
     <textarea className={['hd-textarea', className].filter(Boolean).join(' ')} {...rest} />
 );
 
+/**
+ * A text area that follows `value` from the host while it is not being edited,
+ * and keeps the user's text while it has focus, as the toolkit's web component
+ * did. Typing never remounts it, so focus and caret survive host echoes.
+ */
+export const SyncedTextArea = ({ value, onChange, onBlur, ...rest }: Omit<TextAreaProps, 'defaultValue'> & { value: string }) => {
+    const [text, setText] = React.useState(value);
+    const focused = React.useRef(false);
+    React.useEffect(() => { if (!focused.current) setText(value); }, [value]);
+    return (
+        <TextArea
+            {...rest}
+            value={text}
+            onFocus={() => { focused.current = true; }}
+            onBlur={e => { focused.current = false; onBlur?.(e); }}
+            onChange={e => { setText(e.target.value); onChange?.(e); }}
+        />
+    );
+};
+
 export const Spinner = ({ label, size = 'medium', style }: { label: string; size?: 'small' | 'medium'; style?: React.CSSProperties }) => (
     <span role="progressbar" aria-label={label} aria-busy="true" className={`hd-spinner hd-spinner-${size}`} style={style} />
 );

@@ -9,7 +9,7 @@ export type OperationId =
     | 'editing.linkSkill' | 'editing.unlinkSkill' | 'editing.relabelEdge'
     | 'editing.lifecycle' | 'editing.reviewedTextEdit'
     | 'agentRuns.launch' | 'agentRuns.delegate'
-    | 'adoption.scaffold' | 'workspace.command' | 'view.localRelation';
+    | 'adoption.scaffold' | 'view.localRelation';
 
 interface OperationInfo {
     label: string;
@@ -33,7 +33,6 @@ export const OPERATIONS: Readonly<Record<OperationId, OperationInfo>> = {
     'agentRuns.launch': { label: 'Run with its agent CLI', capability: 'agentRuns', needsTrust: true },
     'agentRuns.delegate': { label: 'Delegate to an agent CLI', needsTrust: true },
     'adoption.scaffold': { label: 'Scaffold a harness', needsTrust: true },
-    'workspace.command': { label: 'Run a command in a terminal', needsTrust: true },
     'view.localRelation': { label: 'Edit view-only relationships', needsTrust: false },
 };
 
@@ -262,8 +261,6 @@ export function requestForAction(action: { type: string; payload: Record<string,
         case 'scaffold-agent': case 'scaffold-skill':
             // Writes `.agents/**`: a Harness SDD entity, or an explicit adoption in an empty workspace.
             return { op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' };
-        case 'run-command':
-            return { op: 'workspace.command', targets: 'workspace' };
         default:
             return { op: 'adoption.scaffold', targets: 'workspace' };
     }

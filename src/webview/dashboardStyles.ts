@@ -179,12 +179,7 @@ export const DASHBOARD_CSS = `
                 }
 
                 /* ===== DESCRIPTION TEXTAREA — fills right panel ===== */
-                vscode-text-area {
-                    display: flex !important;
-                    flex-direction: column;
-                    min-height: 0;
-                }
-                vscode-text-area::part(control) {
+                .hd-textarea.hd-description {
                     flex: 1;
                     min-height: 100px;
                     resize: vertical;
@@ -344,7 +339,4 @@ export const DASHBOARD_CSS = `
                 }
                 .react-flow__node.selected { outline: none; }
 
-                vscode-panel-tab { transition: opacity 0.2s var(--ease-smooth); }
-                vscode-panel-tab:hover { opacity: 0.8; }
-                vscode-badge { transition: opacity 0.2s var(--ease-smooth); }
 `;

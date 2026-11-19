@@ -132,14 +132,9 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                     {confidenceLabel(pat.confidence)}
                                 </span>
                                 <Badge
-                                    style={{
-                                        fontSize: '0.6em',
-                                        flexShrink: 0,
-                                        background:
-                                            pat.status === 'detected'
-                                                ? 'color-mix(in srgb, var(--vscode-testing-iconPassed) 25%, transparent)'
-                                                : 'color-mix(in srgb, var(--vscode-testing-iconQueued) 25%, transparent)',
-                                    }}
+                                    // The toolkit never rendered a per-status tint here; the solid badge
+                                    // keeps its themed contrast (FEAT-047 pre-review).
+                                    style={{ fontSize: '0.6em', flexShrink: 0 }}
                                 >
                                     {pat.status}
                                 </Badge>
