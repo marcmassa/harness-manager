@@ -97,3 +97,25 @@ VSIX: 334,084 bytes (83 %), down from 390,247.
 | Requirement | Verification |
 |---|---|
 | R5 | tabs.test.ts: the tab is hidden without data and shown with milestones or feature nodes; fallback for restored, requested and unknown tabs; a restored tab is kept before data. webviewChunks (Extension Host): in a Claude-only fixture the Specs Manager never mounts. |
+
+## T6 — Package, Extension Host and docs
+
+| Measure | 0.9 BYOH (`main` 8c0a784) | FEAT-047 |
+|---|---|---|
+| VSIX | 390,247 B (97 %) | 334,437 B (84 %) |
+| Unit tests | 1028 | 949 (87 removed with the supply-chain modules; new tests for R1–R6) |
+
+Extension Host: all 19 runs pass, including the startup, chunk and cost suites.
+
+The first-scan time after Sources is shown rose in this run (Claude-only 2.7 s, against 0.6 s before). Activation stayed under 125 ms. The run happened while other builds were active on the machine; a re-measure is noted below.
+
+Docs:
+- **README:** the supply-chain row is gone.
+- **CHANGELOG:** an Unreleased entry (Changed: smaller package and conditional Specs Manager; Removed: supply-chain audit).
+- **DESIGN.md:** webview stack and package size.
+- **Compatibility matrix:** FEAT-036 is marked removed.
+
+| Requirement | Verification |
+|---|---|
+| R7 | Package gate: 334,437 B ≤ 350,000 B, under the 400,000 B budget. |
+| R8 | README, CHANGELOG, DESIGN.md and the matrix are updated as above. |
