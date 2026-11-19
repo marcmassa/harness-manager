@@ -58,17 +58,14 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     // T1 (R1, R4): pass context so provider can access workspaceState
     const provider = new HarnessDashboardProvider(context.extensionUri, root, context, log, registry);
 
+    // FEAT-045 R5, R6: the Dashboard is one editor panel, restored after a reload with its tab.
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(
-            HarnessDashboardProvider.viewType,
-            provider
-        )
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('harness-dashboard.openDashboard', () => {
-            vscode.commands.executeCommand('workbench.view.extension.harness-dashboard');
-        })
+        vscode.window.registerWebviewPanelSerializer(HarnessDashboardProvider.panelType, {
+            deserializeWebviewPanel: async (panel: vscode.WebviewPanel, state: unknown) => {
+                provider.adoptPanel(panel, (state as { tab?: string } | undefined)?.tab);
+            },
+        }),
+        vscode.commands.registerCommand('harness-dashboard.openDashboard', () => provider.openFullWindowPanel()),
     );
 
     // FEAT-026 T3: open or create the local config file
@@ -191,8 +188,7 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
             provider.optimizerCoordinator.diffProvider,
         ),
         vscode.commands.registerCommand('harness-dashboard.optimizeComponents', async () => {
-            await vscode.commands.executeCommand('harness-dashboard.dashboard.focus');
-            provider.postToWebview({ type: 'activateTab', tab: 'optimizer' });
+            await provider.openFullWindowPanel('optimizer');
             await scheduler.ensureScanned();
             const report = await provider.optimizerCoordinator.runScan();
             provider.postToWebview({ type: 'optimizerReport', report });
