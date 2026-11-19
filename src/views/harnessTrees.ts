@@ -25,9 +25,9 @@ const SEVERITY_ICON: Record<string, [string, string]> = {
     info: ['info', 'problemsInfoIcon.foreground'],
 };
 
-/** R10: Markdown, never trusted, so no command link runs; theme icons only. */
+/** R10: Markdown, never trusted, so no command link runs; no theme icons, so `$(…)` in a file name stays text. */
 function tooltip(text: string): vscode.MarkdownString {
-    const m = new vscode.MarkdownString(text, true);
+    const m = new vscode.MarkdownString(text, false);
     m.isTrusted = false;
     return m;
 }
@@ -133,8 +133,9 @@ export function registerHarnessViews(deps: HarnessViewsDeps): HarnessViews {
         return node ? { name: node.label, type: node.type } : undefined;
     };
     const sources = new Tree(() => sourcesNodes(buildSources(deps.getData(), deps.describe, deps.providerLabel, deps.getReport()), icon));
+    // The badge needs the groups now, not when VS Code next asks for the children (FEAT-045 R3).
     let findingGroups: FindingGroup[] = [];
-    const findings = new Tree(() => findingNodes(findingGroups = buildFindings(deps.getReport(), deps.getProfile(), deps.providerLabel, lookup), icon));
+    const findings = new Tree(() => findingNodes(findingGroups, icon));
     const sourcesView = vscode.window.createTreeView(SOURCES_VIEW_ID, { treeDataProvider: sources });
     const findingsView = vscode.window.createTreeView(FINDINGS_VIEW_ID, { treeDataProvider: findings });
     for (const [id, view] of [[SOURCES_VIEW_ID, sourcesView], [FINDINGS_VIEW_ID, findingsView]] as const) {
@@ -147,6 +148,7 @@ export function registerHarnessViews(deps: HarnessViewsDeps): HarnessViews {
     }));
     return {
         refresh: () => {
+            findingGroups = buildFindings(deps.getReport(), deps.getProfile(), deps.providerLabel, lookup);
             sources.refresh();
             findings.refresh();
             const errors = errorCount(findingGroups);

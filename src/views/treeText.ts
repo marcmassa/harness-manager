@@ -9,8 +9,11 @@ export function md(text: string): string {
 
 /** R6: `~640 tok`, `~1.2k tok`, `~12k tok`. */
 export function formatTokens(n: number): string {
-    if (n < 1000) return `~${Math.round(n)} tok`;
-    if (n < 10_000) return `~${(Math.round(n / 100) / 10).toFixed(1)}k tok`;
+    if (!Number.isFinite(n)) return '~? tok';
+    // Round first, then pick the form, so 999.6 is ~1.0k and 9,960 is ~10k.
+    if (Math.round(n) < 1000) return `~${Math.round(n)} tok`;
+    const tenths = Math.round(n / 100) / 10;
+    if (tenths < 10) return `~${tenths.toFixed(1)}k tok`;
     return `~${Math.round(n / 1000)}k tok`;
 }
 

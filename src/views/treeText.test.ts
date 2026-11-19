@@ -20,7 +20,7 @@ const label = (id: string) => ({ team: 'Team guides' } as Record<string, string>
 const nobody = () => undefined;
 
 describe('token format (R6)', () => {
-    it.each([[640, '~640 tok'], [999, '~999 tok'], [1234, '~1.2k tok'], [9_960, '~10.0k tok'], [12_400, '~12k tok']])('%d → %s', (n, s) => {
+    it.each([[640, '~640 tok'], [999, '~999 tok'], [999.6, '~1.0k tok'], [1234, '~1.2k tok'], [9_949, '~9.9k tok'], [9_960, '~10k tok'], [12_400, '~12k tok'], [NaN, '~? tok']])('%d → %s', (n, s) => {
         expect(formatTokens(n)).toBe(s);
     });
 });

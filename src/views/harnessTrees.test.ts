@@ -86,3 +86,23 @@ describe('accessibility and safety (R10)', () => {
         expect((group.children![1].item.accessibilityInformation as { label: string }).label).toMatch(/^subagent reviewer/);
     });
 });
+
+describe('Findings badge (FEAT-045 R3, pre-review)', () => {
+    it('counts errors on the first refresh, before VS Code ever asks for the children', async () => {
+        const badges: unknown[] = [];
+        const vscode = await import('vscode');
+        Object.assign(vscode, {
+            window: { createTreeView: () => ({ visible: false, onDidChangeVisibility: () => ({ dispose() {} }), set badge(v: unknown) { badges.push(v); }, dispose() {} }) },
+            commands: { registerCommand: () => ({ dispose() {} }) },
+        });
+        const { registerHarnessViews } = await import('./harnessTrees.js');
+        const report = { ok: true, components: [], findings: [{ ruleId: 'OPT-S01', nodeId: 'a', nodeType: 'skill', filePath: 'a.md', severity: 'error', dimension: 'structure', title: 't', detail: 'd', source: { providerId: 'p' } }] };
+        const views = registerHarnessViews({
+            context: { subscriptions: [], extensionUri: { path: '/ext' } } as never,
+            getData: () => null, describe: () => undefined, providerLabel: id => id,
+            getReport: () => report as never, getProfile: () => null, onVisible: () => undefined,
+        });
+        views.refresh();
+        expect(badges.at(-1)).toMatchObject({ value: 1 });
+    });
+});
