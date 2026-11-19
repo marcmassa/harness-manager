@@ -8,6 +8,7 @@ import { vscode } from './vscodeApi.js';
 import { NodeDetailPanel } from './NodeDetailPanel.js';
 import { DASHBOARD_CSS } from './dashboardStyles.js';
 import { CONTROLS_CSS } from './controls.js';
+import { availableTabs, resolveTab } from './tabs.js';
 import { useDashboardState } from './useDashboardState.js';
 import { useDashboardActions } from './useDashboardActions.js';
 
@@ -18,6 +19,11 @@ export const App = () => {
     const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList, ownership } = ctx;
     // FEAT-045 R19: a tab mounts (and its chunk loads) on first display.
     const visited = useVisitedTabs(activeTab);
+    // FEAT-047 R5: an unavailable tab (restored, requested, or gone after a rescan) shows the whiteboard.
+    React.useEffect(() => {
+        const shown = resolveTab(activeTab, data);
+        if (shown !== activeTab) setActiveTab(shown);
+    }, [activeTab, data, setActiveTab]);
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -69,7 +75,7 @@ export const App = () => {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {(['whiteboard', 'timeline', 'advisory', 'optimizer'] as const).map(tab => {
+                    {availableTabs(data).map(tab => {
                         const label = tab === 'timeline' ? 'Specs Manager'
                             : tab === 'advisory' ? 'Advisory'
                             : tab === 'optimizer' ? 'Optimizer'
