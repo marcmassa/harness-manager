@@ -650,6 +650,18 @@
         "assurance": "declared-unmanaged-no-roles"
       },
       "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-048",
+      "name": "shared-abstractions",
+      "title": "Shared abstractions for duplicated code",
+      "type": "refactor",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P2",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "description": "Give each duplicated piece of logic one definition: adapter discovery wiring and node helpers, one in-memory vscode test mock, Optimizer finding() and type list, webview button/menu/colour constants, integration snapshot, summary, state keys and ownership map. Route git through createGitRunner and make check.sh fail on failing tests. No behaviour change."
     }
   ]
 }
