@@ -1,11 +1,17 @@
 # Current session state
 
-FEAT-041 is in progress on spec/byoh-0.9-advisory-optimizer. T1 wires the configured registry into the parser and detector, preserves source ownership and legacy layout keys, and carries identity through the analysis results. Evidence is in progress/impl_byoh-source-capabilities.md.
+Version 0.9.0 (Bring Your Own Harness) is declared: `package.json`, CHANGELOG and README describe the release.
 
-T2 is implemented: profile v1 providers, the apiVersion 1 companion registration returned by activate(), and one registry change event that refreshes watchers and both panels. T3 is implemented: one operation decision in the host for webview messages, commands and post-modal rechecks, with owner, path and operation availability shown for the selected resource. Next is T4, the workspace matrix in the Extension Host. FEAT-042 and FEAT-043 have approvals and depend on this contract.
+The branches are stacked: `spec/tree-view-presentation` (FEAT-046, FEAT-047), then `spec/shared-abstractions` (FEAT-048) on top. They are not yet pushed. FEAT-039 to FEAT-045 are already on `main` (PR #32).
 
-FEAT-040 is blocked on independent closing review on PR #31. FEAT-039 awaits architecture review. Real-workspace checks for the seven advertised adapters remain outstanding.
+FEAT-039 to FEAT-048 are `blocked`, waiting for the maintainer's closing reviews; agents cannot record their own closing review. Each feature's evidence is in `progress/impl_<name>.md`.
 
-FEAT-044 (byoh-context-cost: load modes, session token cost, unpriced unknowns, cost findings, inference ledger, git HEAD diff) was approved by the maintainer on 2026-11-18 and stays at spec_ready until FEAT-041 closes (one feature in progress). It depends on the FEAT-041 source record.
+Release checks on the 0.9.0 candidate:
+- 1024 unit tests;
+- 19 Extension Host runs;
+- `check.sh`, which now fails when tests fail;
+- VSIX gate, under the 400,000-byte budget.
 
-FEAT-045 (activity-bar-startup: native Sources/Findings views, one restorable editor panel, neutral welcome and walkthrough, lazy first scan, code-split webview, measured activation) is at spec_ready and awaits maintainer approval.
+Open follow-ups are in `progress/backlog.md`:
+- retake the README screenshots;
+- upstream the `check.sh` fix to the framework template.
