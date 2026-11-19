@@ -2,6 +2,7 @@
 // subagent suggestion + idoneity entries (FEAT-048 split; moved verbatim).
 import * as React from 'react';
 import type { HarnessGraph } from '../types.js';
+import { CONTEXT_MENU } from './styles.js';
 import type { WhiteboardIdoneityData } from './useWhiteboardGraphData.js';
 import type { SuggestionDialogState, IdoneityDialogState } from './WhiteboardDialogs.js';
 
@@ -24,27 +25,13 @@ export function NodeContextMenu({ nodeContextMenu, setNodeContextMenu, idoneityD
                 onClick={() => setNodeContextMenu(null)}
             />
             <div style={{
+                ...CONTEXT_MENU.menu,
                 position: 'fixed',
                 left: `${nodeContextMenu.position.x}px`,
                 top: `${nodeContextMenu.position.y}px`,
-                background: 'var(--vscode-dropdown-background)',
-                border: '1px solid var(--vscode-dropdown-border)',
-                borderRadius: '8px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                zIndex: 9999,
                 minWidth: '200px',
-                padding: '4px 0',
-                animation: 'pickerFadeIn 0.15s ease-out',
             }}>
-            <div style={{
-                padding: '4px 16px 8px',
-                fontSize: '0.65em',
-                textTransform: 'uppercase',
-                opacity: 0.5,
-                letterSpacing: '1px',
-                fontWeight: 700,
-                borderBottom: '1px solid var(--vscode-dropdown-border)',
-            }}>
+            <div style={CONTEXT_MENU.header}>
                 {nodeContextMenu.node.label} ({nodeContextMenu.node.type})
             </div>
 
@@ -79,22 +66,7 @@ export function NodeContextMenu({ nodeContextMenu, setNodeContextMenu, idoneityD
                             )}
                             {skillInfo?.mismatch && skillInfo.mismatchBestOwner && (
                                 <button
-                                    style={{
-                                        padding: '8px 16px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.85em',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        transition: 'background 0.12s ease',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        color: '#e86f4a',
-                                        width: '100%',
-                                        textAlign: 'left',
-                                        fontFamily: 'inherit',
-                                        fontWeight: 600,
-                                    }}
+                                    style={{ ...CONTEXT_MENU.item, color: '#e86f4a', fontWeight: 600 }}
                                     onClick={() => {
                                         // Trigger re-assignment: move uses edge to bestOwner
                                         const vscode = (window as any).__harness_vscode_api;
@@ -171,21 +143,7 @@ export function NodeContextMenu({ nodeContextMenu, setNodeContextMenu, idoneityD
 
                 return items.map((item, idx) => (
                     <button key={idx}
-                        style={{
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: '0.85em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            transition: 'background 0.12s ease',
-                            border: 'none',
-                            background: 'transparent',
-                            color: 'var(--vscode-dropdown-foreground)',
-                            width: '100%',
-                            textAlign: 'left',
-                            fontFamily: 'inherit',
-                        }}
+                        style={CONTEXT_MENU.item}
                         onClick={item.onClick}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}

@@ -2,6 +2,8 @@
 import * as React from 'react';
 import { OPTIMIZABLE_TYPES, type OptimizerDimension, type OptimizerSeverity, type ScoreTier, type OptimizableType } from '../optimizer/types.js';
 
+import { TIER_COLORS } from './styles.js';
+
 export const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
 
 /**
@@ -18,13 +20,7 @@ export const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
  * genuinely are. Status colour never travels alone here — the score number and
  * the tier letter are always adjacent.
  */
-export const TIER_COLORS: Record<ScoreTier, string> = {
-    A: '#0ca30c', // good
-    B: '#0ca30c', // good
-    C: '#fab219', // warning
-    D: '#ec835a', // serious
-    F: '#d03b3b', // critical
-};
+export { TIER_COLORS };
 
 export const SEVERITY_PALETTE: Record<OptimizerSeverity, { bg: string; fg: string }> = {
     error:   { bg: 'rgba(209, 52, 56, 0.14)',  fg: '#d13438' },

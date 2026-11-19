@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { BUTTON_BASE } from '../styles.js';
 
 /**
  * "Ask <host>" — hands a prompt to the editor's own chat agent.
@@ -27,21 +28,7 @@ export interface AskHostButtonProps {
 }
 
 /** Shared geometry so every button in this family reads as one control set. */
-export const askHostBase: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    padding: '5px 12px',
-    minHeight: '26px',
-    fontSize: '0.88em',
-    fontWeight: 600,
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
-    lineHeight: 1,
-};
+export const askHostBase: React.CSSProperties = BUTTON_BASE;
 
 const primaryStyle: React.CSSProperties = {
     ...askHostBase,

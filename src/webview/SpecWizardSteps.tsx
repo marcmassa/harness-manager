@@ -3,17 +3,10 @@
 import * as React from 'react';
 import { SPACE } from './styles.js';
 import type { FeatureEntry } from './FeatureList.js';
+import { AiIconButton } from './components/AiIconButton.js';
 
 export type WizardStep = 'create_feature' | 'prompt' | 'review_requirements' | 'review_design' | 'review_tasks' | 'complete';
 type VscodeApi = { postMessage?: (msg: unknown) => void };
-
-export const aiButtonStyle = (disabled: boolean): React.CSSProperties => ({
-    width: '20px', height: '20px', padding: 0, border: 'none', borderRadius: '3px',
-    background: disabled ? 'var(--vscode-button-secondaryBackground, rgba(128,128,128,0.3))' : 'var(--vscode-button-background)',
-    color: 'var(--vscode-button-foreground)', cursor: disabled ? 'default' : 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    opacity: disabled ? 0.5 : 0.7, transition: 'opacity 0.15s ease',
-});
 
 interface CreateFeatureStepProps {
     vscode: VscodeApi;
@@ -59,36 +52,20 @@ export function CreateFeatureStep({
                             style={{ width: '100%', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--vscode-panel-border)', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', fontSize: '0.85em', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
                         />
                         <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '2px' }}>
-                            <button type="button" title="Auto-generate description from title"
+                            <AiIconButton kind="generate" title="Auto-generate description from title" disabled={descriptionGenerating || !createTitle.trim()}
                                 onClick={() => {
                                     if (!createTitle.trim() || descriptionGenerating) return;
                                     setDescriptionGenerating(true);
                                     vscode.postMessage?.({ type: 'generateFeatureDescription', title: createTitle.trim() });
                                 }}
-                                style={aiButtonStyle(descriptionGenerating || !createTitle.trim())}
-                                onMouseEnter={(e) => { if (!descriptionGenerating && createTitle.trim()) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                            >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
-                                    <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
-                                </svg>
-                            </button>
-                            <button type="button" title="Refine description with AI"
-                                disabled={!createDescription.trim() || descriptionGenerating}
+                            />
+                            <AiIconButton kind="refine" title="Refine description with AI" disabled={!createDescription.trim() || descriptionGenerating}
                                 onClick={() => {
                                     if (!createDescription.trim() || descriptionGenerating) return;
                                     setDescriptionGenerating(true);
                                     vscode.postMessage?.({ type: 'generateFeatureDescription', mode: 'refine', title: createTitle.trim(), currentDescription: createDescription.trim() });
                                 }}
-                                style={{ ...aiButtonStyle(!createDescription.trim() || descriptionGenerating), opacity: !createDescription.trim() || descriptionGenerating ? 0.3 : 0.7 }}
-                                onMouseEnter={(e) => { if (createDescription.trim() && !descriptionGenerating) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                            >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                </svg>
-                            </button>
+                            />
                         </div>
                     </div>
                 </div>

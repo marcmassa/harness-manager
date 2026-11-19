@@ -1,6 +1,7 @@
 // FEAT-033 Phase 2 — Architecture Studio toolbar (top-left of the whiteboard)
 // with its gear menu (FEAT-048 split; moved verbatim from WhiteboardCanvas.tsx).
 import * as React from 'react';
+import { ACTION_BUTTON } from './styles.js';
 
 export function WhiteboardToolbar({ onCreateNode, onOpenTemplates }: { onCreateNode?: () => void; onOpenTemplates?: () => void }) {
     // FEAT-033 Phase 2: Gear menu open state
@@ -11,7 +12,7 @@ export function WhiteboardToolbar({ onCreateNode, onOpenTemplates }: { onCreateN
                 <button
                     onClick={onCreateNode}
                     title="New Node (Agent Builder Wizard)"
-                    style={toolbarBtnStyle}
+                    style={ACTION_BUTTON}
                 >
                     + New
                 </button>
@@ -85,22 +86,7 @@ export function WhiteboardToolbar({ onCreateNode, onOpenTemplates }: { onCreateN
 }
 
 // ── FEAT-033 Phase 2: Shared toolbar button styles ────────────────────────────
-// Primary: same vivid color as vscode-button (consistent with header action buttons)
-const toolbarBtnStyle: React.CSSProperties = {
-    padding: '5px 13px',
-    fontSize: '0.78em',
-    fontWeight: 600,
-    background: 'var(--vscode-button-background)',
-    border: 'none',
-    borderRadius: 7,
-    cursor: 'pointer',
-    color: 'var(--vscode-button-foreground)',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
-};
-
+// Primary: ACTION_BUTTON from styles.ts (same as the header action buttons).
 // Secondary: neutral widget color for ancillary actions
 const toolbarBtnSecondaryStyle: React.CSSProperties = {
     padding: '5px 10px',
