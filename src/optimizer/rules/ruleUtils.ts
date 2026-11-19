@@ -2,7 +2,16 @@
 // No I/O, no vscode, no clock, no randomness — every rule stays a pure
 // function of its RuleContext.
 
-import type { ComponentSource } from '../types.js';
+import type { ComponentSource, OptimizerFinding, RuleContext } from '../types.js';
+
+/** FEAT-048 R3: a finding for the component a rule is evaluating. */
+export function finding(
+    ruleId: string,
+    ctx: RuleContext,
+    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
+): OptimizerFinding {
+    return { ruleId, nodeId: ctx.source.nodeId, nodeType: ctx.source.nodeType, filePath: ctx.source.filePath, ...partial };
+}
 
 /** 1-based line number of a character offset within `text`. */
 export function lineOfIndex(text: string, index: number): number {

@@ -1,22 +1,9 @@
 // FEAT-034 — Component Optimizer — drift rule pack (design.md §D, R25, R26)
 // OPT-D01, OPT-D02
 
-import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { lineOfIndex, normalizeRelativePath, resolveRelativeLink } from './ruleUtils.js';
+import { type OptimizerFinding, type OptimizerRule, type RuleContext, OPTIMIZABLE_TYPES } from '../types.js';
+import { lineOfIndex, normalizeRelativePath, resolveRelativeLink, finding } from './ruleUtils.js';
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
 // ─── OPT-D01 — manifest / filesystem drift (R25) ───────────────────────────
 //
@@ -33,7 +20,7 @@ function finding(
 
 export const optD01: OptimizerRule = {
     id: 'OPT-D01',
-    appliesTo: ['agent', 'subagent', 'skill', 'steering', 'hook'],
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'integration',
     defaultSeverity: 'error',
     /** A declared file is present on disk or absent. */
@@ -150,7 +137,7 @@ function nodeIdCandidates(link: LinkCandidate): string[] {
 
 export const optD02: OptimizerRule = {
     id: 'OPT-D02',
-    appliesTo: ['agent', 'subagent', 'skill', 'steering', 'hook'],
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'integration',
     defaultSeverity: 'warning',
     /** A link target resolves or it does not. */

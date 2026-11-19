@@ -26,6 +26,9 @@ export type ScoreTier = 'A' | 'B' | 'C' | 'D' | 'F';
 
 export type OptimizableType = 'agent' | 'subagent' | 'skill' | 'steering' | 'hook';
 
+/** FEAT-048 R3: the one list of optimizable types. */
+export const OPTIMIZABLE_TYPES: readonly OptimizableType[] = ['agent', 'subagent', 'skill', 'steering', 'hook'];
+
 /**
  * What `_filePath` actually points at.
  *

@@ -1,6 +1,6 @@
 // Optimizer panel pieces: tokens, pills, tier badge, dimension labels and radar.
 import * as React from 'react';
-import type { OptimizerDimension, OptimizerSeverity, ScoreTier, OptimizableType } from '../optimizer/types.js';
+import { OPTIMIZABLE_TYPES, type OptimizerDimension, type OptimizerSeverity, type ScoreTier, type OptimizableType } from '../optimizer/types.js';
 
 export const SPACE = { xs: '4px', sm: '8px', md: '16px', lg: '24px' };
 
@@ -32,7 +32,7 @@ export const SEVERITY_PALETTE: Record<OptimizerSeverity, { bg: string; fg: strin
     info:    { bg: 'rgba(42, 161, 152, 0.14)', fg: '#2aa198' },
 };
 
-export const ALL_TYPES: OptimizableType[] = ['agent', 'subagent', 'skill', 'steering', 'hook'];
+export const ALL_TYPES: readonly OptimizableType[] = OPTIMIZABLE_TYPES;
 export const ALL_SEVERITIES: OptimizerSeverity[] = ['error', 'warning', 'info'];
 export const ALL_DIMENSIONS: OptimizerDimension[] = [
     'structure', 'clarity', 'budget', 'integration', 'hygiene', 'consistency',

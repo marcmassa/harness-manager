@@ -6,24 +6,10 @@
 // pattern name and the line number. See the hygiene.test.ts assertion that
 // scans every finding string for the matched substring.
 
-import type { OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
-import { lineOfIndex } from './ruleUtils.js';
+import { type OptimizerFinding, type OptimizerRule, type RuleContext, OPTIMIZABLE_TYPES } from '../types.js';
+import { lineOfIndex, finding } from './ruleUtils.js';
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
-const ALL_OPTIMIZABLE = ['agent', 'subagent', 'skill', 'steering', 'hook'] as const;
 
 // ─── OPT-H01 — absolute paths and machine-specific values (R27) ───────────
 
@@ -39,7 +25,7 @@ function findWorkspaceRelative(absPath: string, existingPaths: Set<string>): str
 
 export const optH01: OptimizerRule = {
     id: 'OPT-H01',
-    appliesTo: ALL_OPTIMIZABLE,
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'hygiene',
     defaultSeverity: 'warning',
     /** An absolute machine path is present or absent. */
@@ -89,7 +75,7 @@ const CREDENTIAL_PATTERNS: readonly { name: string; re: RegExp }[] = [
 
 export const optH02: OptimizerRule = {
     id: 'OPT-H02',
-    appliesTo: ALL_OPTIMIZABLE,
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'hygiene',
     defaultSeverity: 'error',
     /** A documented credential prefix matches or it does not. */
@@ -148,7 +134,7 @@ function countVagueQuantifiers(body: string): number {
 
 export const optH03: OptimizerRule = {
     id: 'OPT-H03',
-    appliesTo: ALL_OPTIMIZABLE,
+    appliesTo: OPTIMIZABLE_TYPES,
     dimension: 'clarity',
     defaultSeverity: 'info',
     /** The 1-per-150-tokens density is an invented constant. */
