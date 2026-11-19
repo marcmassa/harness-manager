@@ -44,3 +44,30 @@
 | R3 | loadMode.test.ts: a v1 profile is valid with or without the field, and an invalid value is reported; profile and companion declarations apply; a v1 companion without the field validates. |
 
 Verified: 944 unit tests.
+
+## T2 — Session cost per provider
+
+`computeSessionCost` (src/cost/sessionCost.ts, pure) groups resources by owner:
+
+| Load mode | Counted as |
+|---|---|
+| `always` | session baseline |
+| `on-trigger` | its description in the session catalog, its body on demand |
+| `delegated`, `manual` | on demand |
+| `on-event` | nothing (hooks run scripts, not context) |
+| `unknown` | listed as unpriced with its estimate, never counted as zero in any total |
+
+A provider with no declared mode is unevaluated: it shows the missing evidence and is excluded from the workspace total.
+
+A calibration factor scales every figure only when the user configures one for the selected model family (`calibrationFor`), and the report then names the factor.
+
+`costSourcesFrom` builds the inputs from the components the Optimizer already loaded, reusing the local token estimator. Synthetic and missing nodes have no content to load and are excluded.
+
+| Requirement | Verification |
+|---|---|
+| R4 | sessionCost.test.ts: baseline, catalog and on-demand sums per owner, including `on-event` and `manual`. |
+| R5 | sessionCost.test.ts: unknown resources are listed with their tokens and kept out of every total. |
+| R6 | sessionCost.test.ts: the factor applies only when configured for the family; invalid factors are ignored; inputs come from the local estimator. |
+| R10 | sessionCost.test.ts: a provider with no declared mode is unevaluated and excluded from the total. |
+
+Verified: 36 cost tests in the full suite.
