@@ -98,6 +98,11 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/costMatrix.ts",
+      out: "costMatrix.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/optimizerMatrix.ts",
       out: "optimizerMatrix.cjs",
       external: ["vscode"],

@@ -144,3 +144,32 @@ Each resource is reported as changed, new (not in HEAD or untracked) or deleted,
 | R15 | baselineDiff.test.ts: the working tree status is identical after reading HEAD. Extension Host check is T6. |
 
 Verified: 978 unit tests, build.
+
+## T6 — Extension Host
+
+`src/test/integration/costMatrix.ts` runs once per layout, each as its own workspace folder. Each run goes through the provider, registry, gate, `runScan()` and the `compareCostWithHead` message. The SDD and Claude layouts carry hook scripts that would create a sentinel file if executed. The SDD layout is a real git repository: committed, then its always-loaded steering is extended.
+
+Observed on VS Code 1.147.0:
+
+| Layout | Session total | Owners (baseline, evaluated, unpriced) | `OPT-K01` | HEAD comparison |
+|---|---|---|---|---|
+| Harness SDD | 196 | harness-sdd (196, yes, 0) | none | available: `team.md` changed, 35 → 196 tokens (+161) |
+| Claude-only | 35 | claude-code (35, yes, 0) | none | unavailable: not a git repository |
+| Custom profile | 36 | team-guides (36, yes, 1 undeclared entity) | none | unavailable |
+| Mixed | 71 | claude-code (36), harness-sdd (35) | on both owners, for the paragraph shared by `CLAUDE.md` and the `applies_to: *` steering | unavailable |
+
+In every layout, file contents (outside `.git`) are identical after the cost analysis and the HEAD comparison, and no hook ran.
+
+The run exposed a defect, now fixed: the HEAD comparison re-derived Harness SDD steering's mode from the file alone and lost `applies_to`, which lives in the manifest. HEAD modes are now derived from the HEAD file merged over the current metadata. Profile and companion modes stay as their owner declared them.
+
+| Requirement | T6 evidence |
+|---|---|
+| R1 | Owner-declared modes produce the baselines above. |
+| R4 | Per-owner session totals. |
+| R5 | The custom layout's undeclared entity is unpriced and outside the total. |
+| R8 | Cross-owner duplication in the mixed layout. |
+| R10 | Every owner with a declaration is evaluated. |
+| R13 | The SDD growth since HEAD. |
+| R15 | Unchanged files and no hook execution. |
+
+Verified: 978 unit tests; fifteen Extension Host runs (critical path, save isolation, FEAT-041 ×4, FEAT-042, FEAT-043 ×4, FEAT-044 ×4); build; 35 project checks.

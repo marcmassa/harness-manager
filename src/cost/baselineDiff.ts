@@ -5,7 +5,7 @@
 import matter from '../frontmatter.js';
 import type { ComponentSource } from '../optimizer/types.js';
 import { estimateTokens } from '../optimizer/tokenEstimator.js';
-import { resolveLoadMode } from './loadMode.js';
+import { BUILTIN_LOAD_PROVIDERS, resolveLoadMode, type LoadMode } from './loadMode.js';
 
 /** HEAD content per path: a string, null when the path is not in HEAD (new or untracked). */
 export type HeadVersions = { available: false; reason: string } | { available: true; files: ReadonlyMap<string, string | null> };
@@ -25,13 +25,27 @@ export type CostComparison =
     | { available: false; reason: string }
     | { available: true; owners: Array<{ owner: string; sessionNow: number; sessionAtHead: number; delta: number }>; resources: ResourceChange[] };
 
-/** What one resource costs every session: its body when always, its description when on-trigger. */
-function sessionCost(owner: string, source: Pick<ComponentSource, 'nodeType' | 'filePath'>, raw: string): number {
-    const { data } = matter(raw);
-    const mode = resolveLoadMode(owner, { type: source.nodeType, metadata: { ...data, _filePath: source.filePath } });
+/** What one resource costs every session under `mode`: its body when always, its description when on-trigger. */
+function sessionCost(mode: LoadMode, raw: string): number {
     if (mode === 'always') return estimateTokens(raw);
-    if (mode === 'on-trigger') return estimateTokens(typeof data.description === 'string' ? data.description : '');
+    if (mode === 'on-trigger') {
+        const { data } = matter(raw);
+        return estimateTokens(typeof data.description === 'string' ? data.description : '');
+    }
     return 0;
+}
+
+/**
+ * The load mode at HEAD. Built-in formats re-derive it from the HEAD file
+ * merged over the current metadata, so manifest-held semantics (Harness SDD
+ * `applies_to`) survive and in-file ones (Cursor `alwaysApply`) are read at
+ * HEAD. Profile and companion modes are declared by their owner, not the file.
+ */
+function modeAtHead(owner: string, s: ComponentSource, raw: string): LoadMode {
+    const now = s.source?.loadMode ?? 'unknown';
+    if (!BUILTIN_LOAD_PROVIDERS.has(owner)) return now;
+    const { data } = matter(raw);
+    return resolveLoadMode(owner, { type: s.nodeType, metadata: { ...s.frontmatter, ...data, _filePath: s.filePath } });
 }
 
 export function compareWithHead(sources: readonly ComponentSource[], head: HeadVersions): CostComparison {
@@ -41,8 +55,8 @@ export function compareWithHead(sources: readonly ComponentSource[], head: HeadV
         const owner = s.source?.providerId;
         if (!owner || !s.filePath || s.pathKind === 'directory') continue;
         const previous = head.files.get(s.filePath) ?? null;
-        const now = s.exists ? sessionCost(owner, s, s.raw) : 0;
-        const before = previous === null ? 0 : sessionCost(owner, s, previous);
+        const now = s.exists ? sessionCost(s.source?.loadMode ?? 'unknown', s.raw) : 0;
+        const before = previous === null ? 0 : sessionCost(modeAtHead(owner, s, previous), previous);
         const status: ResourceChange['status'] = !s.exists && previous !== null ? 'deleted'
             : previous === null ? 'new'
             : previous === s.raw ? 'unchanged' : 'changed';
