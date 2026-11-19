@@ -5,6 +5,8 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
     fileExists,
     findFiles,
@@ -14,8 +16,7 @@ import {
     toRelativePath,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 function hasGlobs(value: unknown): boolean {
     if (Array.isArray(value)) return value.length > 0;
@@ -74,8 +75,7 @@ export class CursorAdapter implements IAgentAdapter {
                         label: 'Cursor Rules',
                         metadata: {
                             description: cursorRulesFile.split(/\r?\n/).find((line) => line.trim().length > 0) || '',
-                            body: cursorRulesFile.slice(0, 500),
-                            _fullBody: cursorRulesFile,
+                            ...bodyMetadata(cursorRulesFile),
                         },
                     },
                     adapterId,
@@ -113,8 +113,7 @@ export class CursorAdapter implements IAgentAdapter {
                             description: String(data.description ?? (hasGlobs(globs) ? `Applies to ${JSON.stringify(globs)}` : 'Global Cursor rule')),
                             // FEAT-044: an agent-requested rule declares a description; the fallback above is display text.
                             _declaredDescription: typeof data.description === 'string' ? data.description : '',
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -128,23 +127,7 @@ export class CursorAdapter implements IAgentAdapter {
         // `.cursor/hooks/`, `.cursor/steering/`, and (when enabled)
         // the project root.
         const rootNodeId = `${adapterId}::root`;
-        const localConfig = this._harnessConfig
-            ? await this._harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, CursorAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -157,21 +140,4 @@ export class CursorAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        return this._getBool(`adapters.${CursorAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }

@@ -4,6 +4,7 @@ import { frameworkLabel } from '../frameworks.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import type { HarnessConfig } from '../config/harnessConfig.js';
 import {
+    bodyMetadata,
     createEmptyResult,
     fileExists,
     parseJsonWithComments,
@@ -61,8 +62,7 @@ export class OpenCodeAdapter implements IAgentAdapter {
                     label: String(projectName),
                     metadata: {
                         description: String(parsed.description ?? parsed.project?.description ?? 'OpenCode workspace'),
-                        body: content.slice(0, 500),
-                        _fullBody: content,
+                        ...bodyMetadata(content),
                     },
                 },
                 adapterId,

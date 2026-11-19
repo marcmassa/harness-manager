@@ -5,6 +5,8 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
     extractMarkdownTitle,
     fileExists,
@@ -14,8 +16,7 @@ import {
     toRelativePath,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 /**
  * Extract skill names from a markdown body's `## Skills`
@@ -106,8 +107,7 @@ export class KiroAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description: String(data.description ?? ''),
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -163,8 +163,7 @@ export class KiroAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description,
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -197,24 +196,7 @@ export class KiroAdapter implements IAgentAdapter {
         // `.kiro/hooks/`, `.kiro/steering/`, and (when enabled) the
         // project root. Honours the local config overrides/extras
         // and the kill switches.
-        const harnessConfig = this._harnessConfig;
-        const localConfig = harnessConfig
-            ? await harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, KiroAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -227,23 +209,4 @@ export class KiroAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        // Per-adapter kill switch (R9). Default = true.
-        return this._getBool(`adapters.${KiroAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        // Global project-root kill switch (R10). Default = true.
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }

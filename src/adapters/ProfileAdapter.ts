@@ -7,7 +7,7 @@ import type { HarnessEdge, ParserResult } from '../types.js';
 import type { IAgentAdapter } from './IAgentAdapter.js';
 import { DISCOVERY_ONLY, type HarnessCapabilities } from './capabilities.js';
 import { PROFILE_SOURCE, type ProfileV1 } from './profileV1.js';
-import { createEmptyResult, normalizePath, withFrameworkMetadata } from './adapterUtils.js';
+import { bodyMetadata, createEmptyResult, normalizePath, withFrameworkMetadata } from './adapterUtils.js';
 
 export const MAX_PROFILE_FILES = 2000;
 export const MAX_PROFILE_FILE_BYTES = 256 * 1024;
@@ -134,7 +134,7 @@ export class ProfileAdapter implements IAgentAdapter {
                     type: entity.type,
                     label,
                     metadata: {
-                        ...data, description, body: body.slice(0, 500), _fullBody: body,
+                        ...data, description, ...bodyMetadata(body),
                         // FEAT-044: the profile declares the load mode, never the file's own frontmatter.
                         _loadMode: entity.loadMode ?? 'unknown',
                     },
