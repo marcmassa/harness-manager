@@ -10,6 +10,7 @@ import { OVERLAP_RULES } from './overlap.js';
 import { DRIFT_RULES } from './drift.js';
 import { HYGIENE_RULES } from './hygiene.js';
 import { CONSISTENCY_RULES } from './consistency.js';
+import { COST_RULES } from './cost.js';
 
 export const ALL_RULES: readonly OptimizerRule[] = [
     ...STRUCTURE_RULES,
@@ -18,12 +19,13 @@ export const ALL_RULES: readonly OptimizerRule[] = [
     ...DRIFT_RULES,
     ...HYGIENE_RULES,
     ...CONSISTENCY_RULES,
+    ...COST_RULES,
 ];
 
 // R7: stable rule identifiers, form OPT-<F><NN>, never reused for a
 // different rule. Asserted at module load so a violation fails immediately
 // (in tests, and at extension activation) rather than silently miscounting.
-const RULE_ID_RE = /^OPT-[SBODHC]\d{2}$/;
+const RULE_ID_RE = /^OPT-[SBODHCK]\d{2}$/;
 
 (function assertRuleRegistryInvariants(): void {
     const seen = new Set<string>();

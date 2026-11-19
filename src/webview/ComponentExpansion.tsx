@@ -6,7 +6,9 @@ import { AskHostButton } from './components/AskHostButton.js';
 import { SPACE, TIER_COLORS, SEVERITY_PALETTE, SeverityPill, DimensionRadar } from './optimizerParts.js';
 import { btnPrimary, btnSubtle, btnLink } from './optimizerControls.js';
 
-export const ComponentExpansion = (ctx: { onApplyFix: any; onDismissFinding: any; onOpenFile: any; chatHostName: any; assistStates: any; onAiRefine: any; onDelegate: any; onHandoffToChat: any; showRefine: any; showDelegate: any; showHandoff: any; component: ComponentScore; findings: OptimizerFinding[] }) => {
+export const ComponentExpansion = (ctx: { canEdit?: (nodeId: string) => boolean; onApplyFix: any; onDismissFinding: any; onOpenFile: any; chatHostName: any; assistStates: any; onAiRefine: any; onDelegate: any; onHandoffToChat: any; showRefine: any; showDelegate: any; showHandoff: any; component: ComponentScore; findings: OptimizerFinding[] }) => {
+    // FEAT-044 R9 / FEAT-041: offer edit actions only where the host would authorize them.
+    const editable = (nodeId: string) => ctx.canEdit?.(nodeId) ?? true;
     const { onApplyFix, onDismissFinding, onOpenFile, chatHostName, assistStates, onAiRefine, onDelegate, onHandoffToChat, showRefine, showDelegate, showHandoff, component, findings } = ctx;
     return (
                                 <div style={{ padding: `0 ${SPACE.md} ${SPACE.sm} ${SPACE.lg}`, display: 'flex', gap: SPACE.md, alignItems: 'flex-start' }}>
@@ -58,7 +60,10 @@ export const ComponentExpansion = (ctx: { onApplyFix: any; onDismissFinding: any
                                                         {f.filePath}{f.line ? `:${f.line}` : ''}
                                                     </button>
                                                 )}
-                                                {f.fix && (
+                                                {!editable(f.nodeId) && (
+                                                    <span data-read-only style={{ opacity: 0.7 }}>Read-only for its owner — open the file to change it yourself.</span>
+                                                )}
+                                                {editable(f.nodeId) && f.fix && (
                                                     <button
                                                         type="button"
                                                         onClick={() => onApplyFix(f)}
@@ -68,7 +73,7 @@ export const ComponentExpansion = (ctx: { onApplyFix: any; onDismissFinding: any
                                                         {f.fix.label}…
                                                     </button>
                                                 )}
-                                                {showRefine && (() => {
+                                                {editable(f.nodeId) && showRefine && (() => {
                                                     const key = `${f.ruleId}::${f.nodeId}`;
                                                     const st = assistStates[key];
                                                     const pending = st?.state === 'pending';
@@ -92,7 +97,7 @@ export const ComponentExpansion = (ctx: { onApplyFix: any; onDismissFinding: any
                                                         </button>
                                                     );
                                                 })()}
-                                                {showHandoff && (
+                                                {editable(f.nodeId) && showHandoff && (
                                                     <AskHostButton
                                                         hostName={chatHostName}
                                                         onClick={() => onHandoffToChat?.(f)}
@@ -100,7 +105,7 @@ export const ComponentExpansion = (ctx: { onApplyFix: any; onDismissFinding: any
                                                         subject={`the fix prompt for ${f.ruleId}`}
                                                     />
                                                 )}
-                                                {showDelegate && (
+                                                {editable(f.nodeId) && showDelegate && (
                                                     <button
                                                         type="button"
                                                         onClick={() => onDelegate?.({ kind: 'finding', nodeId: f.nodeId, ruleId: f.ruleId })}

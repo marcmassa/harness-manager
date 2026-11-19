@@ -178,6 +178,8 @@ export interface OptimizerReport {
     architectureScore: number | null;
     /** FEAT-043 R2: how many components the architecture score aggregates. */
     scoredComponents?: number;
+    /** FEAT-044: per-provider session context cost and optional money estimates. */
+    cost?: import('../cost/costSection.js').CostSection;
     totalComponents: number;
     truncated: boolean;
     components: ComponentScore[];

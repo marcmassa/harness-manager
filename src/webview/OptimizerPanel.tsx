@@ -7,6 +7,7 @@ import { SPACE, SEVERITY_PALETTE, ALL_SEVERITIES, formatTime, SeverityPill, Tier
 import { averageDimensions } from './optimizerCoverage.js';
 import { btnPrimary, btnIcon, btnSubtle, RadarLegend } from './optimizerControls.js';
 import { OptimizerFilters, RuleBatches } from './OptimizerFilters.js';
+import { CostSection } from './CostSection.js';
 import { ComponentExpansion } from './ComponentExpansion.js';
 
 export { TIER_COLORS, DIMENSION_DETAIL, tierOf, weakestDimension, DimensionRadar } from './optimizerParts.js';
@@ -38,9 +39,12 @@ export interface OptimizerPanelProps {
     onRestoreFindings: () => void;
     onOpenFile: (finding: OptimizerFinding) => void;
     onOpenSettings: () => void;
+    /** FEAT-044 R9: whether the host authorizes a reviewed edit of this node. */
+    canEdit?: (nodeId: string) => boolean;
 }
 
 export const OptimizerPanel: React.FC<OptimizerPanelProps> = ({
+    canEdit,
     report, isScanning, enabled, onRescan, onApplyFix,
     onDismissFinding, onRestoreFindings, onOpenFile, onOpenSettings,
     assistedEnabled = false, assistedMode = 'both', hasTerminalAgent = false, chatHostName,
@@ -229,6 +233,7 @@ export const OptimizerPanel: React.FC<OptimizerPanelProps> = ({
             )}
 
             {/* ── Filters (R41) ──────────────────────────────────────────── */}
+            <CostSection cost={report?.cost} />
             <OptimizerFilters typeFilter={typeFilter} setTypeFilter={setTypeFilter} sevFilter={sevFilter}
                 setSevFilter={setSevFilter} dimFilter={dimFilter} setDimFilter={setDimFilter} toggle={toggle} />
 
@@ -309,7 +314,7 @@ export const OptimizerPanel: React.FC<OptimizerPanelProps> = ({
                             </div>
 
                             {/* Expansion (R40) */}
-                            {isOpen && <ComponentExpansion onApplyFix={onApplyFix} onDismissFinding={onDismissFinding} onOpenFile={onOpenFile} chatHostName={chatHostName} assistStates={assistStates} onAiRefine={onAiRefine} onDelegate={onDelegate} onHandoffToChat={onHandoffToChat} showRefine={showRefine} showDelegate={showDelegate} showHandoff={showHandoff} component={component} findings={findings} />}
+                            {isOpen && <ComponentExpansion canEdit={canEdit} onApplyFix={onApplyFix} onDismissFinding={onDismissFinding} onOpenFile={onOpenFile} chatHostName={chatHostName} assistStates={assistStates} onAiRefine={onAiRefine} onDelegate={onDelegate} onHandoffToChat={onHandoffToChat} showRefine={showRefine} showDelegate={showDelegate} showHandoff={showHandoff} component={component} findings={findings} />}
                         </div>
                     );
                 })}

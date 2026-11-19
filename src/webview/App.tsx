@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { canPerform } from './components/SourceOwnershipSection.js';
 import { ReactFlowProvider } from '@xyflow/react';
 import { WhiteboardCanvas } from './WhiteboardCanvas.js';
 import { FeatureSpecPanel } from './FeatureSpecPanel.js';
@@ -20,7 +21,7 @@ export const App = () => {
     const s = useDashboardState();
     const a = useDashboardActions(s);
     const ctx = { ...s, ...a };
-    const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, isAuditRunning, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunSupplyChainAudit, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList } = ctx;
+    const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, isAuditRunning, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunSupplyChainAudit, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList, ownership } = ctx;
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -220,6 +221,7 @@ export const App = () => {
                 animation: activeTab === 'optimizer' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
                 <OptimizerPanel
+                    canEdit={nodeId => canPerform(ownership[nodeId], 'editing.reviewedTextEdit')}
                     report={optimizerReport}
                     isScanning={isOptimizerScanning}
                     enabled={optimizerEnabled}

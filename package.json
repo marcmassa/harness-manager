@@ -262,6 +262,23 @@
           "default": true,
           "description": "Offer AI-assisted and delegated fixes on optimizer findings. AI Refine proposes content that you review in a diff before anything is written; Delegate hands a scoped task to an installed terminal agent, which edits files directly with no diff preview."
         },
+        "harness-dashboard.cost.prices": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "markdownDescription": "Optional price table for context cost estimates, for example `{ \"date\": \"2026-11-01\", \"models\": { \"my-model\": { \"inputPerMTok\": 3, \"family\": \"my-family\" } } }`. No prices ship with the extension and none are fetched; estimates show this date.",
+          "properties": {
+            "date": { "type": "string" },
+            "models": { "type": "object", "additionalProperties": { "type": "object", "properties": { "inputPerMTok": { "type": "number", "minimum": 0 }, "outputPerMTok": { "type": "number", "minimum": 0 }, "family": { "type": "string" } }, "required": ["inputPerMTok"] } }
+          }
+        },
+        "harness-dashboard.cost.calibration": {
+          "type": "object",
+          "scope": "resource",
+          "default": {},
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
+          "markdownDescription": "Optional tokenizer calibration per model family (for example `{ \"my-family\": 1.15 }`). Token figures stay local estimates; a factor applies only to money estimates for that family."
+        },
         "harness-dashboard.optimizer.assistedFixes.mode": {
           "type": "string",
           "scope": "resource",

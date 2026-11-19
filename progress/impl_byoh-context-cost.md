@@ -71,3 +71,37 @@ A calibration factor scales every figure only when the user configures one for t
 | R10 | sessionCost.test.ts: a provider with no declared mode is unevaluated and excluded from the total. |
 
 Verified: 36 cost tests in the full suite.
+
+## T3 — Cost findings and the cost section
+
+Three deterministic rules (`src/optimizer/rules/cost.ts`) run under the FEAT-043 applicability table, in the existing budget dimension; they add no seventh score dimension:
+
+| Rule | Fires on | Tier and severity | Applicability |
+|---|---|---|---|
+| `OPT-K01` | normalized paragraphs (≥ 80 characters) shared between `always` resources of different owners | fact, warning | shared |
+| `OPT-K02` | one `always` resource holding ≥ 60 % of its owner's baseline of ≥ 1,500 tokens | opinion, info (unvalidated thresholds) | shared |
+| `OPT-K03` | an `always` resource in a format with an on-trigger form | opinion, info | convention, declared only by Cursor (globs or description), Copilot (`applyTo`), Kiro (`inclusion: fileMatch`) and Harness SDD (`applies_to` roles) |
+
+`OPT-K01` names every other file and owner in its detail and links them through `relatedNodeIds`.
+
+The Optimizer report now carries `cost`:
+- **Session cost** from T2, built from the scanned components.
+- **Money estimates** (`src/cost/money.ts`, pure and offline), only when the user sets `harness-dashboard.cost.prices`. No prices ship. Each estimate shows the price date and the calibration factor from `harness-dashboard.cost.calibration` for the model's family; tokens alone stay uncalibrated estimates.
+
+The panel's cost section shows:
+- the session total;
+- per owner, the baseline, catalog and on-demand figures;
+- providers that are not evaluated, with the missing evidence;
+- unpriced resources;
+- labelled money lines.
+
+Findings on resources the host would not let you edit (`editing.reviewedTextEdit` denied, from the FEAT-041 ownership already sent to the webview) show "Read-only for its owner" instead of fix, AI refine, chat or delegate buttons.
+
+| Requirement | Verification |
+|---|---|
+| R7 | money.test.ts: no estimate without a dated price table; each estimate carries the date and factor; the module contains no network call. costRules.test.ts: cost section with and without prices. CostSection.test.ts renders the labelled line. |
+| R8 | costRules.test.ts: duplication across `CLAUDE.md`, a profile `AGENTS.md` and `copilot-instructions.md`; no finding within one owner or for non-`always` resources; baseline share; on-trigger form only for formats that have one. |
+| R9 | costRules.test.ts: the K01 finding names every affected owner and file. CostSection.test.ts: a read-only resource offers no edit action, and an editable one does. |
+| R10 | costRules.test.ts and CostSection.test.ts: an unevaluated provider is shown with its missing evidence and excluded from the total. |
+
+Verified: 960 unit tests, build.
