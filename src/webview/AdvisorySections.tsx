@@ -1,5 +1,6 @@
 // Advisory panel: CLI installations and architecture patterns sections.
 import * as React from 'react';
+import { Badge } from './controls.js';
 import type { PatternMatch } from '../agentic-detector/types.js';
 import { SPACE, confidenceLabel } from './advisoryParts.js';
 
@@ -34,7 +35,7 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                         {cli.cliName}
                                     </span>
                                     {cli.isActive && (
-                                        <vscode-badge style={{ fontSize: '0.6em' }}>active</vscode-badge>
+                                        <Badge style={{ fontSize: '0.6em' }}>active</Badge>
                                     )}
                                 </div>
                                 {cli.configFiles && cli.configFiles.length > 0 && (
@@ -130,7 +131,7 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                 >
                                     {confidenceLabel(pat.confidence)}
                                 </span>
-                                <vscode-badge
+                                <Badge
                                     style={{
                                         fontSize: '0.6em',
                                         flexShrink: 0,
@@ -141,7 +142,7 @@ export const ArchitectureSections = ({ cliInstalls, patterns, sectionHeader }: {
                                     }}
                                 >
                                     {pat.status}
-                                </vscode-badge>
+                                </Badge>
                             </div>
                         ))}
                     </div>

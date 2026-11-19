@@ -426,13 +426,7 @@
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   },
-  "dependencies": {
-    "@vscode/webview-ui-toolkit": "^1.2.2",
-    "@xyflow/react": "^12.12.1",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "yaml": "^2.9.1"
-  },
+  "dependencies": { "@xyflow/react": "^12.12.1", "react": "^19.3.1", "react-dom": "^19.3.1", "yaml": "^2.9.1" },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
     "form-data": "4.0.6",

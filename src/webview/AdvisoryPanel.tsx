@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Button, Spinner } from './controls.js';
 import type { AgenticProfile } from '../agentic-detector/types.js';
 import { SPACE, formatTime, SignalBar, ActionButtonState, IconRefresh } from './advisoryParts.js';
 import { SuggestionCard } from './SuggestionCard.js';
@@ -68,7 +69,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     color: 'var(--vscode-descriptionForeground)',
                 }}
             >
-                <vscode-progress-ring />
+                <Spinner label="Scanning" />
                 <span style={{ fontSize: '0.85em', opacity: 0.7, textAlign: 'center', maxWidth: '280px' }}>
                     Run a scan to detect agentic architecture in this workspace.
                 </span>
@@ -96,7 +97,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
     if (isScanning && profile === null) {
         return (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, padding: SPACE.lg, color: 'var(--vscode-descriptionForeground)' }}>
-                <vscode-progress-ring />
+                <Spinner label="Scanning" />
                 <span style={{ fontSize: '0.85em', opacity: 0.7 }}>Scanning architecture…</span>
             </div>
         );
@@ -161,7 +162,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     Agentic Architecture
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {isScanning && <vscode-progress-ring style={{ width: '14px', height: '14px' }} />}
+                    {isScanning && <Spinner label="Scanning" size="small" />}
                     <span
                         style={{ fontSize: '0.7em', opacity: 0.45, whiteSpace: 'nowrap' }}
                         title={profile ? `Last scanned: ${new Date(profile.scanTimestamp).toLocaleString()}` : undefined}
@@ -305,9 +306,9 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                 {onApplyHarnessSDD && profile.maturity.level !== 'L5'
                     && !(profile.sources ?? []).some(s => s.providerId === 'harness-sdd') && (
                     <div style={{ marginTop: SPACE.xs }}>
-                        <vscode-button appearance="secondary" onClick={onApplyHarnessSDD}>
+                        <Button appearance="secondary" onClick={onApplyHarnessSDD}>
                             Adopt Harness SDD (optional)
-                        </vscode-button>
+                        </Button>
                     </div>
                 )}
             </div>

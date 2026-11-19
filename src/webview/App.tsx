@@ -7,6 +7,7 @@ import { SkeletonLoading, harnessActionBtnStyle, FrameworkBadge, MaturityBadge, 
 import { vscode } from './vscodeApi.js';
 import { NodeDetailPanel } from './NodeDetailPanel.js';
 import { DASHBOARD_CSS } from './dashboardStyles.js';
+import { CONTROLS_CSS } from './controls.js';
 import { useDashboardState } from './useDashboardState.js';
 import { useDashboardActions } from './useDashboardActions.js';
 
@@ -303,7 +304,7 @@ export const App = () => {
                 Expand
             </button>}
 
-            <style>{DASHBOARD_CSS}</style>
+            <style>{DASHBOARD_CSS + CONTROLS_CSS}</style>
         </div>
     );
 };

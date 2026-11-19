@@ -103,9 +103,10 @@ describe('FEAT-037 R2 — zero legacy-package surface, everything on @xyflow/rea
         expect(pkg.dependencies['react-dom']).toBe('^19.3.1');
         expect(pkg.devDependencies['@types/react']).toBe('^19');
         expect(pkg.devDependencies['@types/react-dom']).toBe('^19');
-        // R13 / DESIGN §2.4: the ONLY runtime deps are the swap + existing ones.
+        // R13 / DESIGN §2.4: the ONLY runtime deps are the swap + existing ones
+        // (FEAT-047 removed the deprecated webview-ui-toolkit).
         expect(Object.keys(pkg.dependencies).sort()).toEqual(
-            ['@vscode/webview-ui-toolkit', '@xyflow/react', 'react', 'react-dom', 'yaml'].sort(),
+            ['@xyflow/react', 'react', 'react-dom', 'yaml'].sort(),
         );
     });
 });

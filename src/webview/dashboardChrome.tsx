@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Spinner } from './controls.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
 import { SPACE } from './styles.js';
 import { vscode } from './vscodeApi.js';
@@ -39,7 +40,7 @@ export const SkeletonLoading = () => (
             alignItems: 'center', 
             justifyContent: 'center' 
         }}>
-            <vscode-progress-ring />
+            <Spinner label="Loading" />
         </div>
     </div>
 );
