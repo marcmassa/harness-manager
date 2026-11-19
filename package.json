@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "See, check and price the AI agent harness you already have: agents, skills, rules and their relationships, in any supported format or your own layout.",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
