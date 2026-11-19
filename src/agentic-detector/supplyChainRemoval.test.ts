@@ -28,6 +28,8 @@ describe('FEAT-047 R4 — supply-chain removal', () => {
 
     it('FEAT-047 R4: the operation catalog has no workspace.audit', () => {
         expect(Object.keys(OPERATIONS)).not.toContain('workspace.audit');
+        // Pre-review: `run-command` (terminal text) was only produced by supply-chain rules; it went with them.
+        expect(Object.keys(OPERATIONS)).not.toContain('workspace.command');
     });
 
     it('FEAT-047 R4: the Advisory engine has no supply-chain rule or category', () => {

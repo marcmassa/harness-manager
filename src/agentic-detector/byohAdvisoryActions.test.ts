@@ -45,7 +45,6 @@ describe('the host decides each resolved action (R6)', () => {
         expect(requestForAction({ type: 'create-file', payload: { relPath: 'CLAUDE.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace', adoptFormat: 'claude-code' });
         expect(requestForAction({ type: 'create-file', payload: { relPath: 'AGENTS.md' } })).toEqual({ op: 'adoption.scaffold', targets: 'workspace' });
         expect(requestForAction({ type: 'scaffold-skill', payload: {} })).toEqual({ op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' });
-        expect(requestForAction({ type: 'run-command', payload: { command: 'npm test' } })).toEqual({ op: 'workspace.command', targets: 'workspace' });
     });
 
     it('allows a native Harness SDD scaffold and refuses it in a foreign harness', () => {

@@ -239,28 +239,6 @@ describe('ActionExecutor — scaffold-skill', () => {
     });
 });
 
-// ─── run-command ─────────────────────────────────────────────────────────────
-
-describe('ActionExecutor — run-command', () => {
-    it('creates a terminal and sends the command text', async () => {
-        const mockTerminal = { sendText: vi.fn(), show: vi.fn() };
-        vi.mocked(vscode.window.createTerminal).mockReturnValue(mockTerminal as any);
-
-        const { executor } = makeExecutor();
-        const action: SuggestionAction = {
-            id: 'test',
-            label: 'Test',
-            type: 'run-command',
-            payload: { command: 'echo hello' },
-        };
-        const result = await executor.execute(action);
-        expect(result).toEqual({ ok: true });
-        expect(vscode.window.createTerminal).toHaveBeenCalledOnce();
-        expect(mockTerminal.sendText).toHaveBeenCalledWith('echo hello');
-        expect(mockTerminal.show).toHaveBeenCalledOnce();
-    });
-});
-
 // ─── Error handling (R19) ────────────────────────────────────────────────────
 
 describe('ActionExecutor — error handling', () => {

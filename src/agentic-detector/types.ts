@@ -131,8 +131,7 @@ export type ActionType =
   | 'create-directory'
   | 'create-file'
   | 'scaffold-agent'
-  | 'scaffold-skill'
-  | 'run-command';
+  | 'scaffold-skill';
 
 export interface SuggestionAction {
   id: string;

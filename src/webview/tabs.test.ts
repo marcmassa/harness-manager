@@ -22,6 +22,11 @@ describe('Dashboard tabs (FEAT-047 R5)', () => {
         expect(resolveTab('nonsense', data(1))).toBe('whiteboard');
     });
 
+    it('shows the Specs Manager on an explicit "Generate spec" request before any feature exists', () => {
+        expect(availableTabs(data(0), true)).toContain('timeline');
+        expect(resolveTab('timeline', data(0), true)).toBe('timeline');
+    });
+
     it('keeps a restored tab until the first data arrives', () => {
         expect(resolveTab('timeline', null)).toBe('timeline');
     });

@@ -119,3 +119,20 @@ Docs:
 |---|---|
 | R7 | Package gate: 334,437 B ≤ 350,000 B, under the 400,000 B budget. |
 | R8 | README, CHANGELOG, DESIGN.md and the matrix are updated as above. |
+
+## Pre-review (agent) — findings and fixes
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Without feature data, the wizard's "Generate spec" switched to the Specs Manager and was sent straight back to the whiteboard. The spec wizard then opened hidden. This blocked the bootstrap path to a first feature. | `availableTabs` and `resolveTab` take `specsRequested`. "Generate spec" sets it, and leaving the tab clears it. Covered in tabs.test.ts. |
+| 2 | Advisory pattern badges carried a 25 % tint override. The web component never rendered it; the native span did, with poor contrast on light themes. | The override is dropped, so the badge looks as it did before. |
+| 3 | The Mission/Prompt textarea lost its editor font, minimum height and flex fill: the rules targeted `vscode-text-area::part(control)`. Other dead toolkit selectors remained. | The rules move to `.hd-textarea.hd-description`, and the dead selectors are removed. |
+| 4 | Re-selecting a node after an outside change kept stale text in the uncontrolled textarea. The next keystroke could then overwrite the change. | `SyncedTextArea` follows the host value while unfocused and keeps the user's text while focused. Typing never remounts it. Covered in controls.test.ts. |
+| 5 | The `run-command` action and the `workspace.command` operation were unreachable: only supply-chain rules produced them. | Both removed, together with the terminal `sendText` path. supplyChainRemoval.test.ts checks the catalog. |
+| 6 | The icon test bound of 8/255 has no headroom: the result is exactly 8. | Kept, because R3 fixes the bound and the test compares against a fixed fixture. A design change to the icon regenerates both. |
+
+Not a defect: on Windows, `reachability.test.ts` would report every file, because of backslash paths against metafile keys. CI runs on Ubuntu and macOS only.
+
+Extension Host re-measure under lower load: activation 40–74 ms; first scan complete after Sources is shown in 339–708 ms. The 2.7 s reading above was machine load (load average 45 during that run).
+
+Verified: 950 unit tests; build.

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, TextArea } from './controls.js';
+import { Button, SyncedTextArea } from './controls.js';
 import { SourceOwnershipSection, canPerform } from './components/SourceOwnershipSection.js';
 import { SPACE } from './styles.js';
 import { vscode } from './vscodeApi.js';
@@ -30,12 +30,13 @@ export const NodeDescriptionTab = ({ ctx }: { ctx: DashboardContext }) => {
                                         Mission / Prompt
                                     </div>
                                 </div>
-                                <TextArea
+                                <SyncedTextArea
                                     key={selectedNode.id}
+                                    className="hd-description"
                                     aria-label="Mission / Prompt"
                                     rows={4}
                                     readOnly={!canPerform(ownership[selectedNode.id], 'editing.updateMetadata')}
-                                    defaultValue={selectedNode.data.metadata.description || selectedNode.data.metadata.body || ''}
+                                    value={selectedNode.data.metadata.description || selectedNode.data.metadata.body || ''}
                                     style={{ width: '100%', flex: 1 }}
                                     onChange={(e) => {
                                         if (!canPerform(ownership[selectedNode.id], 'editing.updateMetadata')) return;
