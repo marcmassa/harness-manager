@@ -54,3 +54,7 @@
 ## 2026-11-18 — FEAT-041 source identity
 - Recorded FEAT-040 as blocked pending the independent review on PR #31 and started the approved FEAT-041.
 - Connected the configured registry to discovery and both analysis paths. Covered mixed-owner ID collisions, retained positions and custom Claude paths with unit and Extension Host tests.
+
+## 2026-11-19 — 0.9.0 closed
+
+The maintainer validated FEAT-039 to FEAT-048 ("dalas por validadas las features") after reviewing the 0.9.0 build and the new dashboard screenshot. That validation also closed the backlog item on verifying the legacy save verifier's retirement under FEAT-040.

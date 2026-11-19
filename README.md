@@ -12,6 +12,10 @@
 
 ## Screenshots
 
+![Harness Dashboard 0.9.0: the Activity Bar's Sources and Findings views with type icons, load mode, tokens and scores per resource and Open Dashboard entries, a subagent file open in the editor, and the Dashboard whiteboard showing Harness, Kiro and OpenCode providers side by side](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/dashboard-0-9-0.png)
+
+*0.9.0 — Bring Your Own Harness: native Sources and Findings views beside the editor Dashboard, one workspace mixing Harness SDD, Kiro and OpenCode.*
+
 | Whiteboard | SDD Panel |
 |---|---|
 | ![Whiteboard showing agent graph with subagents, skills, and steering/hook nodes](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/whiteboard.png) | ![SDD management panel showing feature list, specs, and AI-assisted generation](https://github.com/marcmassa/harness-manager/raw/main/media/screenshots/sdd-panel.png) |
