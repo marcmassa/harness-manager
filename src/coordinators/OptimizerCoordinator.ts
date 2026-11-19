@@ -158,6 +158,16 @@ export class OptimizerCoordinator {
      * guarantees that, and the load step is guarded here (R53).
      */
     async runScan(): Promise<OptimizerReport> {
+        const report = await this._runScan();
+        this._onReport?.();
+        return report;
+    }
+
+    private _onReport?: () => void;
+    /** FEAT-045 R3: told after every scan, so the Findings view follows the report. */
+    setReportListener(fn: () => void): void { this._onReport = fn; }
+
+    private async _runScan(): Promise<OptimizerReport> {
         const config = this._config();
         // R50: when disabled we do not scan at all, rather than scan and discard.
         if (!config.enabled) {

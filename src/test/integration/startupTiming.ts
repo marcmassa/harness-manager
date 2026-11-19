@@ -69,7 +69,7 @@ export async function run(): Promise<void> {
     await vscode.commands.executeCommand('harness-dashboard.refresh');
     const firstContentMs = performance.now() - shown;
 
-    console.log(`FEAT-045 startup [${layout}]: activation ${activationMs.toFixed(0)} ms; Sources content ${firstContentMs.toFixed(0)} ms after it was shown`);
+    console.log(`FEAT-045 startup [${layout}]: activation ${activationMs.toFixed(0)} ms; first scan complete ${firstContentMs.toFixed(0)} ms after Sources was shown`);
     console.log(`FEAT-045 startup ${layout} passed`);
     registration.dispose();
     registration2.dispose();

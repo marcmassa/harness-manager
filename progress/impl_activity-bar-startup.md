@@ -171,3 +171,34 @@ README screenshots are not retaken. That needs a real window capture, which an a
 | R21 | Measured in an empty, a Claude-only and a custom-profile folder; DESIGN.md, README and CHANGELOG updated. |
 
 Verified: nineteen Extension Host runs; 1019 unit tests.
+
+## Pre-review (agent) — findings and fixes
+
+An independent agent reviewed T1–T7 and reported eight defects, four spec gaps and two packaging issues. Each item below was checked in the code before fixing.
+
+| # | Finding | Fix | Test |
+|---|---|---|---|
+| 1 | A webview's `ready` parse could supersede the scheduler's scan. `refresh()` then returned null, so the state became `empty` and the views stayed on the no-provider welcome. | `refresh()` waits for the latest parse. Every new graph notifies `onResultsChanged`. | providerData.test.ts |
+| 2 | `checkLM` was not registered without a folder, so the palette entry gave "command not found". The test asserted the gap. | `src/commands/checkLM.ts` is registered on both activation paths. | folderlessActivation.test.ts (fails with the old registration) |
+| 3 | Revealing a hidden panel on a tab could lose `activateTab` while its webview reloaded. | `_pendingTab` is sent on `ready`, before the data. | panel.test.ts. The Extension Host suite reveals a hidden panel on Timeline and passes, but it also passes with the fix disabled: VS Code 1.147 queues the message, so this is a safeguard the host does not reproduce. |
+| 4 | Findings went stale when Optimizer results changed outside a scheduler scan: the command, rescans, dismissals and trust grants. | The coordinator's report listener and the provider's results listener refresh the views. A trust grant goes through the scheduler. | providerData.test.ts |
+| 5 | A failed scan set `ready`, so Sources was blank. | A new `error` state, with a welcome and a Refresh link. | scanScheduler.test.ts |
+| 6 | Several panels restored from older releases broke the single-panel rule and the visibility tracking. | `adoptPanel` disposes any panel beyond the first. | panel.test.ts |
+| 7 | A scan could still run after dispose. | A `disposed` flag in `run` and `rescanSoon`. | scanScheduler.test.ts |
+| 8 | Showing a hidden panel again parsed twice. | `ready` is answered from the cached graph; `getData` still parses. | providerData.test.ts |
+
+Spec gaps:
+- **R9:** the walkthrough says formats are detected automatically and links to the BYOH guide.
+- **R7:** an Open Settings overflow action (also works without a folder).
+- **R3:** an Advisory suggestion is grouped under the resource it is evidenced on, beside that resource's Optimizer findings.
+
+R21 limit, not fixed: probe adapters can only register after `activate()` returns, because the API comes from activation. An activation-time scan would still reach them, since a scan is asynchronous and the test waits one second. The timing measures until the first scan completes, not until tree items render. The log now says so.
+
+Packaging:
+- Chunks are rebuilt from scratch on every build, so no stale hashed chunk ships.
+- The VSIX gate requires `dist/webview-chunks/*.js`.
+- VSIX: 390,247 bytes.
+
+Also removed: the unused sidebar `resolveWebviewView` code.
+
+Verified: 1028 unit tests; nineteen Extension Host runs; package gate.

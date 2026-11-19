@@ -29,8 +29,9 @@ async function main() {
   pruneStaleDistOutputs([
     "extension.cjs", "webview.js", "webview.css",
     "extension.cjs.map", "webview.js.map", "webview.css.map",
-    "webview-chunks",
   ]);
+  // Chunk names carry a content hash: clear them so stale chunks never ship.
+  // (pruneStaleDistOutputs removed the folder above; it is rebuilt from scratch.)
 
   const extensionCtx = await esbuild.context({
     entryPoints: ["src/extension.ts"],

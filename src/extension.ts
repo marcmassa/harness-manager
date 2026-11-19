@@ -2,16 +2,15 @@ import * as vscode from 'vscode';
 import { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { createCompanionApi, type HarnessDashboardApiV1 } from './adapters/companionApi.js';
 import { OperationGate } from './operations/operationGate.js';
-import { InferenceLedger, setInferenceRecorder, withInferenceAction } from './cost/inferenceLedger.js';
+import { InferenceLedger, setInferenceRecorder } from './cost/inferenceLedger.js';
 import { registerScaffoldCommands } from './commands/scaffoldCommands.js';
 import { createStartup, STATE_CONTEXT_KEY } from './startup/startupWiring.js';
 import { registerHarnessViews, type HarnessViews } from './views/harnessTrees.js';
-import { contributedCommandIds, registerFolderlessCommands } from './startup/folderless.js';
+import { contributedCommandIds, registerFolderlessCommands, registerOpenSettings } from './startup/folderless.js';
 import type { OperationRequest } from './operations/operations.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
 import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from './config/harnessConfig.js';
-import { generateText, diagnoseLmAvailability } from './lmUtils.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
 import type { AgenticProfile, GraphContext, ArchitectureSummary } from './agentic-detector/types.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
@@ -21,12 +20,18 @@ import { ClaudeCodeAdapter } from './run/adapters/claudeCodeAdapter.js';
 import { GeminiCliAdapter } from './run/adapters/geminiCliAdapter.js';
 import { GenericAdapter } from './run/adapters/genericAdapter.js';
 import { HarnessDashboardProvider } from './HarnessDashboardProvider.js';
+import { registerCheckLM } from './commands/checkLM.js';
 
 export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV1 {
     const root = vscode.workspace.workspaceFolders?.[0].uri;
     if (!root) {
         // FEAT-045 R17: commands still resolve; R8: the welcome view explains why.
         registerFolderlessCommands(context, contributedCommandIds(context));
+        // checkLM needs no folder: register the real handler (FOLDERLESS_OK).
+        const folderlessLog = vscode.window.createOutputChannel('Harness Dashboard', { log: true });
+        context.subscriptions.push(folderlessLog);
+        registerCheckLM(context, folderlessLog);
+        registerOpenSettings(context);
         void vscode.commands.executeCommand('setContext', STATE_CONTEXT_KEY, 'noFolder');
         return createCompanionApi(undefined);
     }
@@ -149,7 +154,11 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         getProfile: () => agenticDetector.getProfile(),
         onVisible: (surface, visible) => scheduler.scheduler.setVisible(surface, visible),
     });
-    context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => { void provider._sendData(); }));
+    // FEAT-045 R3: the views follow every graph and report change, whatever triggered it.
+    provider.onResultsChanged(() => views?.refresh());
+    provider.optimizerCoordinator.setReportListener(() => views?.refresh());
+    // Trust changes operation availability: rescan if visible, else mark stale.
+    context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => { scheduler.onChange(); void provider._sendData(); }));
     /** True (after telling the user why) when the operation is not available. */
     const denied = async (request: OperationRequest): Promise<boolean> => {
         const decision = await gate.authorize(request);
@@ -226,53 +235,8 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     context.subscriptions.push({ dispose: () => agenticDetector.dispose() });
 
     // FEAT-028 T5: checkLM command — diagnostics + quick AI ping
-    context.subscriptions.push(
-        vscode.commands.registerCommand('harness-dashboard.checkLM', async () => {
-            const config = vscode.workspace.getConfiguration('harness-dashboard');
-            const apiKey = config.get<string>('ai.apiKey', '');
-            const endpoint = config.get<string>('ai.endpoint', 'https://api.openai.com/v1/chat/completions');
-            const model = config.get<string>('ai.model', 'gpt-4o-mini');
-
-            // Run diagnostics first
-            const diagSummary = await diagnoseLmAvailability(log);
-
-            // Then try a simple generation
-            const result = await withInferenceAction('provider-check', () => generateText(
-                'Say "OK" and nothing else.',
-                log,
-                { apiKey, endpoint, model },
-            ));
-
-            // Log full results
-            const lines = [
-                '--- LM Diagnostics ---',
-                diagSummary,
-                '--- AI Generation Test ---',
-                result.ok
-                    ? `✓ Response: ${result.text.slice(0, 200)}`
-                    : `✗ Failed: ${result.error}`,
-            ];
-            log.info('[checkLM]\n' + lines.join('\n'));
-
-            // Surface a notification
-            if (result.ok) {
-                const text = result.text.slice(0, 100);
-                vscode.window.showInformationMessage(
-                    `Harness Dashboard: AI is working (${text})`,
-                    'View Output',
-                ).then((selection) => {
-                    if (selection === 'View Output') log.show();
-                });
-            } else {
-                vscode.window.showWarningMessage(
-                    `Harness Dashboard: AI check failed — ${result.error}`,
-                    'View Output',
-                ).then((selection) => {
-                    if (selection === 'View Output') log.show();
-                });
-            }
-        })
-    );
+    registerCheckLM(context, log);
+    registerOpenSettings(context);
 
     // FEAT-041 T2: versioned API for companion extensions (registerAdapter → Disposable).
     return createCompanionApi(registry);

@@ -68,6 +68,13 @@ export function buildSources(
     return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
+/** A readable label from a source URI's last two segments, else the node id. */
+function resourceLabel(sourceUri: string | undefined, nodeId: string): string {
+    if (!sourceUri) return nodeId;
+    const parts = decodeURIComponent(sourceUri.replace(/^[a-z]+:\/\/[^/]*/, '')).split('/').filter(Boolean);
+    return parts.slice(-2).join('/') || nodeId;
+}
+
 const IMPACT: Record<string, FindingItem['severity']> = { high: 'warning', medium: 'info', low: 'info' };
 
 export function buildFindings(
@@ -92,7 +99,11 @@ export function buildFindings(
         if (profile?.dismissedSuggestionIds.includes(s.id)) continue;
         const owner = s.scope?.kind === 'provider' ? s.scope.providerId : 'workspace';
         const evidence = s.evidence?.[0];
-        add(owner, `advisory:${owner}`, 'Advisory', evidence?.sourceUri,
+        // R3: by the resource the suggestion is evidenced on (merging with its Optimizer
+        // findings); a suggestion with no supporting resource sits under the owner itself.
+        const key = evidence?.nodeId ?? `advisory:${owner}`;
+        const label = evidence ? resourceLabel(evidence.sourceUri, evidence.nodeId) : '(no single resource)';
+        add(owner, key, label, evidence?.sourceUri,
             { id: `advisory::${s.id}`, label: s.title, severity: IMPACT[s.impact] ?? 'info', detail: s.description, sourceUri: evidence?.sourceUri });
     }
     return [...groups.values()].sort((a, b) => (a.owner === 'workspace' ? 1 : b.owner === 'workspace' ? -1 : a.label.localeCompare(b.label)));

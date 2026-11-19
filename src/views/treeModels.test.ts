@@ -52,6 +52,16 @@ describe('Findings (R3)', () => {
         expect(groups[1].resources[0].findings.map(f => f.label)).toEqual(['Add skills']);
     });
 
+    it('puts an evidenced Advisory suggestion under its resource, beside that resource\'s Optimizer findings', () => {
+        const evidenced = { dismissedSuggestionIds: [], suggestions: [
+            { id: 's1', title: 'Describe the skill', description: 'd', impact: 'high', scope: { kind: 'provider', providerId: 'harness-sdd' }, evidence: [{ providerId: 'harness-sdd', nodeId: 'a', sourceUri: 'file:///w/a.md' }] },
+            { id: 's2', title: 'Name the agent', description: 'd', impact: 'low', scope: { kind: 'provider', providerId: 'harness-sdd' }, evidence: [{ providerId: 'harness-sdd', nodeId: 'b', sourceUri: 'file:///w/agents/b.md' }] },
+        ] } as unknown as AgenticProfile;
+        const [harness] = buildFindings(report, evidenced, label);
+        expect(harness.resources.map(r => r.label)).toEqual(['a.md', 'agents/b.md']);
+        expect(harness.resources[0].findings.map(f => f.label)).toEqual(['OPT-S01 No frontmatter', 'OPT-H01 Path', 'Describe the skill']);
+    });
+
     it('counts error findings for the badge, and none at zero', () => {
         expect(errorCount(buildFindings(report, profile, label))).toBe(1);
         expect(errorCount(buildFindings(null, null, label))).toBe(0);
@@ -73,8 +83,12 @@ describe('views and menus in the manifest (R1, R4, R7)', () => {
 
     it('offers at most three title actions per view and three actions per item', () => {
         for (const view of ['harness-dashboard.sources', 'harness-dashboard.findings']) {
-            expect(menus['view/title'].filter((m: { when: string }) => m.when.includes(view)).length).toBeLessThanOrEqual(3);
+            const title = menus['view/title'].filter((m: { when: string }) => m.when.includes(view));
+            // R7: icon actions are the navigation group; settings and local configuration sit in the overflow.
+            expect(title.filter((m: { group: string }) => m.group.startsWith('navigation')).length).toBeLessThanOrEqual(3);
         }
+        const overflow = menus['view/title'].filter((m: { group: string; when: string }) => !m.group.startsWith('navigation') && m.when.includes('harness-dashboard.sources')).map((m: { command: string }) => m.command);
+        expect(overflow).toEqual(expect.arrayContaining(['harness-dashboard.openSettings', 'harness-dashboard.openLocalConfig']));
         for (const kind of ['resource', 'finding']) {
             expect(menus['view/item/context'].filter((m: { when: string }) => m.when.includes(`viewItem == ${kind}`)).length).toBeLessThanOrEqual(3);
         }

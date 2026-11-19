@@ -4,7 +4,7 @@
 // panel becomes visible, or a command needs results; watchers start after it.
 // While nothing is visible, changes only mark results stale.
 
-export type DashboardState = 'noFolder' | 'scanning' | 'empty' | 'ready';
+export type DashboardState = 'noFolder' | 'scanning' | 'empty' | 'ready' | 'error';
 
 export interface SchedulerEffects {
     /** Load profiles, parse, scan Advisory and Optimizer. Resolves to whether any provider was found. */
@@ -25,6 +25,7 @@ export class ScanScheduler {
     private watching = false;
     private timer: ReturnType<typeof setTimeout> | null = null;
     private state: DashboardState = 'scanning';
+    private disposed = false;
 
     public constructor(private readonly effects: SchedulerEffects, private readonly debounceMs = 300) {}
 
@@ -75,11 +76,13 @@ export class ScanScheduler {
     }
 
     private rescanSoon(): void {
+        if (this.disposed) return;
         if (this.timer) clearTimeout(this.timer);
         this.timer = setTimeout(() => { this.timer = null; void this.run(); }, this.debounceMs);
     }
 
     private run(): Promise<void> {
+        if (this.disposed) return Promise.resolve();
         if (this.running) {                   // coalesce: one scan at a time, rerun once after
             this.stale = true;
             return this.running;
@@ -92,7 +95,7 @@ export class ScanScheduler {
                 this.set(empty ? 'empty' : 'ready');
             } catch (error) {
                 this.effects.log?.(`[Startup] scan failed: ${String(error)}`);
-                this.set('ready');
+                this.set('error');
             }
         }).finally(() => {
             this.running = null;
@@ -102,6 +105,7 @@ export class ScanScheduler {
     }
 
     public dispose(): void {
+        this.disposed = true;
         if (this.timer) clearTimeout(this.timer);
     }
 }

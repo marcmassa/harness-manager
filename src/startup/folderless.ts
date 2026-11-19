@@ -6,7 +6,13 @@ import * as vscode from 'vscode';
 export const FOLDERLESS_MESSAGE = 'Harness Dashboard: open a folder to use this command.';
 
 /** Command IDs that work without a workspace folder. */
-export const FOLDERLESS_OK = new Set(['harness-dashboard.checkLM']);
+export const FOLDERLESS_OK = new Set(['harness-dashboard.checkLM', 'harness-dashboard.openSettings']);
+
+/** R7: the view overflow's settings action; works with or without a folder. */
+export function registerOpenSettings(context: vscode.ExtensionContext): void {
+    context.subscriptions.push(vscode.commands.registerCommand('harness-dashboard.openSettings',
+        () => vscode.commands.executeCommand('workbench.action.openSettings', '@ext:marcmassacapo.harness-dashboard-vscode')));
+}
 
 export function contributedCommandIds(context: vscode.ExtensionContext): string[] {
     const contributed = (context.extension?.packageJSON?.contributes?.commands ?? []) as Array<{ command: string }>;

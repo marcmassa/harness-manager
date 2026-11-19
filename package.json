@@ -6,10 +6,7 @@
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
-  "galleryBanner": {
-    "color": "#12121e",
-    "theme": "dark"
-  },
+  "galleryBanner": { "color": "#12121e", "theme": "dark" },
   "keywords": [
     "ai agents",
     "agent architecture",
@@ -25,37 +22,21 @@
     "spec driven development"
   ],
   "categories": ["Visualization", "Other"],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/marcmassa/harness-manager"
-  },
-  "bugs": {
-    "url": "https://github.com/marcmassa/harness-manager/issues"
-  },
-  "engines": {
-    "vscode": "^1.85.0"
-  },
+  "repository": { "type": "git", "url": "https://github.com/marcmassa/harness-manager" },
+  "bugs": { "url": "https://github.com/marcmassa/harness-manager/issues" },
+  "engines": { "vscode": "^1.85.0" },
   "type": "module",
   "activationEvents": ["onWebviewPanel:harness-dashboard.fullDashboard"],
   "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
-        {
-          "id": "harness-dashboard",
-          "title": "Harness",
-          "icon": "media/icon.svg"
-        }
+        { "id": "harness-dashboard", "title": "Harness", "icon": "media/icon.svg" }
       ]
     },
     "views": {
       "harness-dashboard": [
-        {
-          "id": "harness-dashboard.sources",
-          "name": "Sources",
-          "icon": "media/icon.svg",
-          "contextualTitle": "Harness"
-        },
+        { "id": "harness-dashboard.sources", "name": "Sources", "icon": "media/icon.svg", "contextualTitle": "Harness" },
         {
           "id": "harness-dashboard.findings",
           "name": "Findings",
@@ -83,11 +64,7 @@
         "category": "Harness Dashboard",
         "icon": "$(gear)"
       },
-      {
-        "command": "harness-dashboard.checkLM",
-        "title": "Check AI Provider Status",
-        "category": "Harness Dashboard"
-      },
+      { "command": "harness-dashboard.checkLM", "title": "Check AI Provider Status", "category": "Harness Dashboard" },
       {
         "command": "harness-dashboard.scaffoldMissing",
         "title": "Scaffold Missing Harness SDD Files",
@@ -107,6 +84,12 @@
         "command": "harness-dashboard.runSupplyChainAudit",
         "title": "Run npm Audit (Supply Chain)",
         "category": "Harness Dashboard"
+      },
+      {
+        "command": "harness-dashboard.openSettings",
+        "title": "Open Settings",
+        "category": "Harness Dashboard",
+        "icon": "$(gear)"
       }
     ],
     "configuration": {
@@ -250,9 +233,7 @@
           "type": "array",
           "scope": "resource",
           "default": [],
-          "items": {
-            "type": "string"
-          },
+          "items": { "type": "string" },
           "description": "Optimizer rule IDs to skip entirely, e.g. [\"OPT-H03\", \"OPT-O02\"]. Disabled rules contribute no findings and no score deduction."
         },
         "harness-dashboard.optimizer.budgetMedianMultiple": {
@@ -274,25 +255,15 @@
           "default": {},
           "markdownDescription": "Optional price table for cost estimates: `date` and `models` (`inputPerMTok`, optional `family`). No prices ship or are fetched; estimates show the date.",
           "properties": {
-            "date": {
-              "type": "string"
-            },
+            "date": { "type": "string" },
             "models": {
               "type": "object",
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "inputPerMTok": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "outputPerMTok": {
-                    "type": "number",
-                    "minimum": 0
-                  },
-                  "family": {
-                    "type": "string"
-                  }
+                  "inputPerMTok": { "type": "number", "minimum": 0 },
+                  "outputPerMTok": { "type": "number", "minimum": 0 },
+                  "family": { "type": "string" }
                 },
                 "required": ["inputPerMTok"]
               }
@@ -303,10 +274,7 @@
           "type": "object",
           "scope": "resource",
           "default": {},
-          "additionalProperties": {
-            "type": "number",
-            "exclusiveMinimum": 0
-          },
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
           "markdownDescription": "Optional calibration factor per model family, applied only to money estimates for that family."
         },
         "harness-dashboard.optimizer.assistedFixes.mode": {
@@ -325,34 +293,13 @@
     },
     "menus": {
       "commandPalette": [
-        {
-          "command": "harness-dashboard.openDashboard",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.refresh",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.openLocalConfig",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.scaffoldMissing",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.syncFromFilesystem",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.optimizeComponents",
-          "when": "workspaceFolderCount > 0"
-        },
-        {
-          "command": "harness-dashboard.runSupplyChainAudit",
-          "when": "workspaceFolderCount > 0"
-        }
+        { "command": "harness-dashboard.openDashboard", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.refresh", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.openLocalConfig", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.scaffoldMissing", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.syncFromFilesystem", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" },
+        { "command": "harness-dashboard.runSupplyChainAudit", "when": "workspaceFolderCount > 0" }
       ],
       "view/title": [
         {
@@ -364,6 +311,11 @@
           "command": "harness-dashboard.openDashboard",
           "when": "view == harness-dashboard.sources",
           "group": "navigation@2"
+        },
+        {
+          "command": "harness-dashboard.openSettings",
+          "when": "view == harness-dashboard.sources",
+          "group": "settings@0"
         },
         {
           "command": "harness-dashboard.openLocalConfig",
@@ -396,6 +348,11 @@
         "contents": "No agent harness found. Supported formats are detected automatically; for another layout, [declare a harness profile](command:harness-dashboard.openLocalConfig). Learn how in [Bring Your Own Harness](https://github.com/marcmassa/harness-manager/blob/main/docs/byoh/v0.9.0.md)."
       },
       {
+        "view": "harness-dashboard.sources",
+        "when": "harnessDashboard.state == error",
+        "contents": "The last scan failed; details are in the Harness Dashboard output.\n[Refresh](command:harness-dashboard.refresh)"
+      },
+      {
         "view": "harness-dashboard.findings",
         "when": "harnessDashboard.state == ready",
         "contents": "No findings for the detected harness."
@@ -415,51 +372,36 @@
           {
             "id": "open",
             "title": "Open the Dashboard",
-            "description": "The whiteboard, Advisory, Optimizer and timeline open in an editor tab.\n[Open the Dashboard](command:harness-dashboard.openDashboard)",
-            "media": {
-              "svg": "media/walkthrough/dashboard.svg",
-              "altText": "A graph of agents and skills"
-            },
+            "description": "Supported formats are detected automatically. The whiteboard, Advisory, Optimizer and timeline open in an editor tab.\n[Open the Dashboard](command:harness-dashboard.openDashboard)",
+            "media": { "svg": "media/walkthrough/dashboard.svg", "altText": "A graph of agents and skills" },
             "completionEvents": ["onCommand:harness-dashboard.openDashboard"]
           },
           {
             "id": "sources",
             "title": "Review detected sources",
             "description": "Sources lists every provider found and each file it owns.\n[Show Sources](command:harness-dashboard.sources.focus)",
-            "media": {
-              "svg": "media/walkthrough/sources.svg",
-              "altText": "A list of providers and files"
-            },
+            "media": { "svg": "media/walkthrough/sources.svg", "altText": "A list of providers and files" },
             "completionEvents": ["onView:harness-dashboard.sources"]
           },
           {
             "id": "profile",
             "title": "Declare a profile for a custom layout",
-            "description": "Agents in your own folders? Describe them in a profile.\n[Open Local Configuration](command:harness-dashboard.openLocalConfig)",
-            "media": {
-              "svg": "media/walkthrough/profile.svg",
-              "altText": "A configuration file"
-            },
+            "description": "Agents in your own folders? Describe them in a profile ([Bring Your Own Harness](https://github.com/marcmassa/harness-manager/blob/main/docs/byoh/v0.9.0.md)).\n[Open Local Configuration](command:harness-dashboard.openLocalConfig)",
+            "media": { "svg": "media/walkthrough/profile.svg", "altText": "A configuration file" },
             "completionEvents": ["onCommand:harness-dashboard.openLocalConfig"]
           },
           {
             "id": "findings",
             "title": "Review findings",
             "description": "Advisory and Optimizer results, grouped by owner.\n[Show Findings](command:harness-dashboard.findings.focus)",
-            "media": {
-              "svg": "media/walkthrough/findings.svg",
-              "altText": "A list of findings"
-            },
+            "media": { "svg": "media/walkthrough/findings.svg", "altText": "A list of findings" },
             "completionEvents": ["onView:harness-dashboard.findings"]
           },
           {
             "id": "cost",
             "title": "Explore context cost",
             "description": "See what each harness costs per session and what loads only on demand.\n[Optimize Components](command:harness-dashboard.optimizeComponents)",
-            "media": {
-              "svg": "media/walkthrough/cost.svg",
-              "altText": "A bar chart of token cost"
-            },
+            "media": { "svg": "media/walkthrough/cost.svg", "altText": "A bar chart of token cost" },
             "completionEvents": ["onCommand:harness-dashboard.optimizeComponents"]
           }
         ]
@@ -504,12 +446,7 @@
     "form-data": "4.0.6",
     "undici": "7.29.0",
     "diff": "9.0.0",
-    "mocha": {
-      "glob": "14.0.6",
-      "minimatch": "11.0.8"
-    },
-    "@vscode/vsce": {
-      "minimatch": "11.0.8"
-    }
+    "mocha": { "glob": "14.0.6", "minimatch": "11.0.8" },
+    "@vscode/vsce": { "minimatch": "11.0.8" }
   }
 }
