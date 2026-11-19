@@ -76,13 +76,16 @@ async function companionAroundDashboard(): Promise<void> {
         parse: () => { parses += 1; if (disposed.has(id)) parsesAfterDispose += 1; return { graph: { nodes: [{ id: `${id}::bot`, type: 'agent', label: 'Bot', metadata: {} }], edges: [] } }; },
     });
 
-    // Before the Dashboard is first opened: registration triggers the shared rescan.
+    // Before the Dashboard is first opened: registration updates the provider set at once, but
+    // FEAT-045 R14/R15 defer the scan until something is shown (no work before the user looks).
     const early = api.registerAdapter(provider('early-companion'));
-    await until(() => parses > 0, 'a scan after registration before the Dashboard opened');
     assert.throws(() => api.registerAdapter(provider('early-companion')), /already registered/);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    assert.equal(parses, 0, 'a scan ran before any Dashboard surface was shown');
 
-    // After it is visible: opening and a later registration both reach the provider.
+    // Opening the Dashboard runs the first scan, which reaches the early registration.
     await vscode.commands.executeCommand('harness-dashboard.openDashboard');
+    await until(() => parses > 0, 'the first scan after opening the Dashboard');
     const visible = parses;
     const late = api.registerAdapter(provider('late-companion'));
     await until(() => parses > visible, 'a scan after registration with the Dashboard visible');
