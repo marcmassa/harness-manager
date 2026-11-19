@@ -419,7 +419,6 @@
     "vsce:prepublish": "npm run build"
   },
   "devDependencies": {
-    "@types/dagre": "^0.7.54",
     "@types/mocha": "^10.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -428,7 +427,6 @@
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "^4.1.1",
     "canvas": "^3.2.3",
-    "dagre": "^0.8.5",
     "esbuild": "^0.28.1",
     "mocha": "^12.0.3",
     "typescript": "^7.0.2",

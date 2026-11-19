@@ -78,7 +78,7 @@ export class HarnessDashboardProvider {
 
     /** FEAT-045: parse and cache the graph even when no webview is open (tree views read it). */
     public async refresh(): Promise<DashboardData | null> {
-        let latest = this._sendDataTo(msg => this.postToWebview(msg));
+        let latest: Promise<void> | null = this._sendDataTo(msg => this.postToWebview(msg));
         // A newer parse (a webview's `ready`) may supersede this one: wait for the latest.
         while (latest) { const current = latest; await current; latest = this._lastParse !== current ? this._lastParse : null; }
         return this._cachedData;

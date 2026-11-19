@@ -297,17 +297,3 @@ export function edgeGlowCSS(edgeType: string, rgb: string, dashScroll = false): 
     }
     return css;
 }
-
-// ===== SDD MANAGER STYLE TOKENS (FEAT-025) =====
-
-export const SDD_MANAGER = {
-    SIDEBAR_WIDTH: '240px',
-    TAB_STRIP_HEIGHT: '32px',
-    STATUS_BADGE_COLOURS: {
-        pending: '#6c6c8a',
-        spec_ready: '#d4a84a',
-        in_progress: '#4a90d4',
-        done: '#2aa198',
-        blocked: '#c14a4a',
-    },
-} as const;

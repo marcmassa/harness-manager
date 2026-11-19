@@ -1,7 +1,7 @@
 // ============================================================================
 // sddManagerProvider.test.ts — FEAT-025 T8–T12
 //
-// Unit tests for SDDManagerProvider and related pure functions.
+// Unit tests for the spec helpers and SddCoordinator's spec handlers.
 //   - T8:  getFeatureList reads feature_list.json and returns parsed features[]
 //   - T9:  getSpecFile returns file content if exists, { exists: false } if not
 //   - T10: saveSpecFile writes content atomically; on failure returns { ok, error }
@@ -219,9 +219,11 @@ describe('FEAT-025 — getFallbackTemplate', () => {
     });
 });
 
-// ===== SDDManagerProvider tests =====
+// ===== SddCoordinator spec handler tests =====
 
-describe('FEAT-025 — SDDManagerProvider', () => {
+// The spec handlers live in SddCoordinator; the unregistered SDDManagerProvider
+// class that duplicated them was removed by FEAT-047.
+describe('FEAT-025 — SddCoordinator spec handlers', () => {
     beforeEach(() => {
         clearMockFiles();
         // Reset the specs-root discovery cache so each test starts clean
@@ -232,9 +234,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
         it('R2: reads feature_list.json and returns parsed features', async () => {
             setMockFile('/workspace/feature_list.json', JSON.stringify(MOCK_FEATURE_LIST));
 
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -246,9 +247,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
         });
 
         it('R2: returns empty array when feature_list.json is missing', async () => {
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -262,9 +262,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
         it('R4: returns content with exists: true when file exists', async () => {
             setMockFile('/workspace/specs/test-feature/requirements.md', '# Requirements\nR1 text');
 
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -276,9 +275,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
         });
 
         it('R4: returns { exists: false } when file does not exist', async () => {
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -291,9 +289,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
 
     describe('saveSpecFile (T10)', () => {
         it('R7: writes content atomically and returns { ok: true }', async () => {
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -308,9 +305,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
         it('R9: returns { ok: false, error } when write fails', async () => {
             setMockFile('/workspace/specs/readonly/requirements.md', 'existing');
 
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
@@ -324,9 +320,8 @@ describe('FEAT-025 — SDDManagerProvider', () => {
 
     describe('generateWithAI (T12)', () => {
         it('R13: returns { ok: false, error } when feature is not found', async () => {
-            const { SDDManagerProvider } = await import('./sddManagerProvider.js');
-            const provider = new SDDManagerProvider(
-                { fsPath: '/ext' } as any,
+            const { SddCoordinator } = await import('./coordinators/SddCoordinator.js');
+            const provider = new SddCoordinator(
                 { fsPath: '/workspace' } as any,
                 { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
             );
