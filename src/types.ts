@@ -117,6 +117,8 @@ export type WebviewMessageType =
     | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt'
     // FEAT-036: supply-chain health — user-triggered npm audit (R6, R7)
     | 'runSupplyChainAudit'
+    // FEAT-044: read-only cost comparison with git HEAD
+    | 'compareCostWithHead' | 'costComparison'
     | 'supplyChainAuditResult';
 
 export interface WebviewMessage {
@@ -160,6 +162,7 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
     // FEAT-036: supply-chain health
     'runSupplyChainAudit', 'supplyChainAuditResult',
+    'compareCostWithHead', 'costComparison',
 ]);
 
 // FEAT-033 R27–R29 limit the gear menu to these two host actions.

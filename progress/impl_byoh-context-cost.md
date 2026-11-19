@@ -126,3 +126,21 @@ Delegated terminal runs are not metered, as stated in design.md.
 | R12 | inferenceLedger.test.ts: stored entries have exactly the metadata keys, and contain neither the prompt, the response nor the API key. |
 
 Verified: 973 unit tests, build.
+
+## T5 — Cost against git HEAD
+
+The cost section has a "Compare with HEAD" button. It sends `compareCostWithHead`, a read: no operation decision is needed and nothing is written. The coordinator then:
+1. runs `git rev-parse` and `git show HEAD:<path>` through `src/cost/gitRunner.ts` (argument array, no shell, 5 s timeout, bounded output);
+2. compares, with the pure `compareWithHead`, the session cost of each resource now and at HEAD. Load modes are re-derived from the HEAD frontmatter, so toggling `alwaysApply` counts.
+
+Each resource is reported as changed, new (not in HEAD or untracked) or deleted, and each provider gets its change. A folder that is not a git repository, a repository without commits, or a missing git binary yields "comparison unavailable" with the reason; the cost analysis itself never fails.
+
+`vscodeApi.ts` now tolerates the absence of `window`, so webview components that post messages can be rendered in unit tests. The webview behaves as before.
+
+| Requirement | Verification |
+|---|---|
+| R13 | baselineDiff.test.ts: changed, new and deleted resources and per-owner totals; unchanged resources counted but not listed. CostSection.test.ts renders both. |
+| R14 | baselineDiff.test.ts: not a repository, no commit, git failing; an untracked file is reported as new against a real temporary repository. |
+| R15 | baselineDiff.test.ts: the working tree status is identical after reading HEAD. Extension Host check is T6. |
+
+Verified: 978 unit tests, build.

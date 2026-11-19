@@ -46,3 +46,17 @@ describe('read-only findings (R9)', () => {
         expect(render(true)).toContain('AI refine');
     });
 });
+
+describe('HEAD comparison (R13, R14)', () => {
+    it('renders the change per provider and resource, or why it is unavailable', async () => {
+        const { HeadComparison } = await import('./CostSection.js');
+        const ok = strip(renderToString(React.createElement(HeadComparison, { comparison: {
+            available: true, owners: [{ owner: 'claude-code', sessionNow: 300, sessionAtHead: 100, delta: 200 }],
+            resources: [{ owner: 'claude-code', nodeId: 'r', filePath: 'CLAUDE.md', status: 'changed', sessionNow: 300, sessionAtHead: 100, delta: 200 }],
+        } })));
+        expect(ok).toContain('Claude Code since HEAD: +200 tok per session (100 → 300)');
+        expect(ok).toContain('CLAUDE.md: changed, +200 tok');
+        const no = strip(renderToString(React.createElement(HeadComparison, { comparison: { available: false, reason: 'This workspace is not a git repository, so there is no HEAD to compare with.' } })));
+        expect(no).toContain('Comparison unavailable: This workspace is not a git repository');
+    });
+});

@@ -2,9 +2,10 @@
 // ===== SINGLE VS Code API acquisition — shared globally =====
 let _vscode: any = null;
 try {
-    _vscode = (window as any).acquireVsCodeApi?.() ?? (window as any).vscode ?? {};
+    const w: any = typeof window !== 'undefined' ? window : {}; // window is absent in unit tests
+    _vscode = w.acquireVsCodeApi?.() ?? w.vscode ?? {};
 } catch (e) {
     _vscode = {};
 }
 export const vscode = _vscode;
-(window as any).__harness_vscode_api = vscode;
+if (typeof window !== 'undefined') (window as any).__harness_vscode_api = vscode;
