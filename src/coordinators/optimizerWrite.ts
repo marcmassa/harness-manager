@@ -51,6 +51,9 @@ export function secondaryFileProblem(source: ComponentSource, relPath: string): 
     const folder = folderOf(source.filePath.replace(/\\/g, '/'));
     if (!path || path.startsWith('/') || path.split('/').includes('..')) return `secondary file ${relPath} escapes the workspace`;
     if (!folder || !path.startsWith(folder + '/')) return `secondary file ${relPath} is outside ${source.label}'s folder, so its owner cannot be confirmed`;
+    // Only a folder-per-component format keeps a second file inside the component;
+    // anywhere else the owner's adapter would scan it as a component of its own.
+    if (!/(?:^|\/)(?:SKILL|SUBAGENT)\.md$/i.test(source.filePath)) return `${source.label}'s format has no per-component folder, so a second file would become a component of its own`;
     return null;
 }
 
@@ -84,6 +87,7 @@ export async function previewAndWrite(opts: PreviewWriteOptions, deps: PreviewWr
         const again = await deps.authorize?.({ type: 'applyQuickFix', nodeId: source.nodeId });
         if (again && !again.ok) return fail(again.reason);
         if ((await deps.readFile(source.filePath)) !== base) return fail('the file changed while the preview was open — nothing was written');
+        if (extraFile && (await deps.readFile(extraFile.relPath)) !== null) return fail(`${extraFile.relPath} appeared while the preview was open — nothing was written`);
 
         await deps.writer.writeFileAtPath(source.filePath, content);
         // extract-to-references is the only fix that produces a second file;

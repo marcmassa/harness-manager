@@ -68,3 +68,32 @@ describe('rule applicability (R1)', () => {
         expect(applicability('OPT-H01', orphan).applies).toBe(true);
     });
 });
+
+describe('FEAT-043 review fixes', () => {
+    it('keeps native checks on the Harness SDD primary agent (a SUBAGENT.md typed agent), not on the manifest root', () => {
+        const primary = component('harness-sdd', { label: 'harness-vscode', nodeType: 'agent', filePath: '.agents/subagents/harness-vscode/SUBAGENT.md', raw: 'No frontmatter.' });
+        const manifest = component('harness-sdd', { label: 'harness', nodeType: 'agent', filePath: '.agents/agentic.json', raw: '{}' });
+        expect(applicability('OPT-S01', primary).applies).toBe(true);
+        expect(applicability('OPT-S03', primary).applies).toBe(true);
+        expect(applicability('OPT-S01', manifest).applies).toBe(false);
+        expect(rulesOf([primary]).map(f => f.ruleId)).toContain('OPT-S01');
+    });
+
+    it('records a consistency check that cannot calibrate as skipped, not as a perfect score', () => {
+        const a = component('claude-code', { label: 'a', nodeId: 'claude-code::a', filePath: '.claude/agents/a.md', raw: '---\nname: a\ndescription: Reviews code changes carefully.\n---\nA.' });
+        const b = component('claude-code', { label: 'b', nodeId: 'claude-code::b', filePath: '.claude/agents/b.md', raw: '---\nname: b\ndescription: Writes the documentation pages.\n---\nB.' });
+        const report = scan([a, b], [], new Set([a.nodeId, b.nodeId]), new Set([a.filePath, b.filePath]), DEFAULT_OPTIMIZER_CONFIG);
+        const comp = report.components[0];
+        expect(comp.dimensions.consistency).toBeNull();
+        expect(comp.coverage.skipped).toEqual(expect.arrayContaining([expect.objectContaining({ ruleId: 'OPT-C01', reason: expect.stringContaining('needs 3 to calibrate') })]));
+    });
+
+    it('offers extract-to-references only in folder-per-component formats', () => {
+        const body = '---\nname: x\ndescription: Use when needed for the work at hand.\n---\n## One\na\n## Two\nb\n## Three\nc';
+        const flat = component('claude-code', { label: 'x', filePath: '.claude/agents/x.md', raw: body, tokenEstimate: 99999 });
+        const folder = component('harness-sdd', { label: 'x', nodeType: 'skill', filePath: '.agents/skills/x/SKILL.md', raw: body, tokenEstimate: 99999 });
+        const b02 = (s: ComponentSource) => rulesOf([s]).find(f => f.ruleId === 'OPT-B02');
+        expect(b02(flat)?.fix).toBeUndefined();
+        expect(b02(folder)?.fix?.type).toBe('extract-to-references');
+    });
+});

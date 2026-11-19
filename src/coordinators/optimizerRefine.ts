@@ -16,6 +16,8 @@ export interface HandoffDeps {
     assistAllowed(kind: 'ai' | 'delegate'): boolean;
     sources: readonly ComponentSource[];
     findings: readonly OptimizerFinding[];
+    /** A reason when any listed component's file no longer matches the scan. */
+    staleSource?: (nodeIds: string[]) => Promise<string | null>;
     log: vscode.LogOutputChannel;
 }
 
@@ -87,6 +89,9 @@ export async function handoffToChat(msg: WebviewMessage, postMessage: PostMessag
     if (!source || !finding) {
         return post({ ok: false, reason: 'component or finding not found — re-scan and try again' });
     }
+    // FEAT-043 R6: check the source before constructing a prompt or exposing its content.
+    const stale = await deps.staleSource?.([nodeId]);
+    if (stale) return post({ ok: false, reason: stale });
 
     post(await sendPromptToHostChat(buildRefinePrompt({ source, finding }), {
         log: deps.log,

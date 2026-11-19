@@ -96,6 +96,18 @@ export class OptimizerCoordinator {
         return new Set(this._context.workspaceState.get<string[]>(DISMISSED_FINDINGS_KEY, []));
     }
 
+    /** FEAT-043 R6: a reason when a component's file no longer matches the last scan. */
+    private async _staleSource(nodeIds: readonly string[]): Promise<string | null> {
+        for (const id of nodeIds) {
+            const source = this._cachedSources.find(s => s.nodeId === id);
+            if (!source) return `"${id}" is no longer in the current scan — re-scan and try again`;
+            if (source.exists && (await this._readFile(source.filePath)) !== source.raw) {
+                return `${source.filePath} changed since the last scan — re-scan and try again`;
+            }
+        }
+        return null;
+    }
+
     /** Distinguishes a directory from an absent path — see OPT-D01. */
     private async _statPath(rel: string): Promise<'file' | 'directory' | 'missing'> {
         try {
@@ -286,6 +298,7 @@ export class OptimizerCoordinator {
             case 'handoffToChat':
                 await handoffToChat(msg, postMessage, {
                     assistAllowed: kind => this._assistAllowed(kind),
+                    staleSource: ids => this._staleSource(ids),
                     sources: this._cachedSources,
                     findings: this._cachedReport?.findings ?? [],
                     log: this._log,
@@ -295,6 +308,7 @@ export class OptimizerCoordinator {
             case 'delegateFinding':
                 await delegateFindings(msg, postMessage, {
                     assistAllowed: kind => this._assistAllowed(kind),
+                    staleSource: ids => this._staleSource(ids),
                     runRegistry: this._runRegistry,
                     findings: this._cachedReport?.findings ?? [],
                     workspaceRoot: this._workspaceRoot,
@@ -388,6 +402,13 @@ export class OptimizerCoordinator {
         const finding = this._cachedReport?.findings.find(f => f.ruleId === ruleId && f.nodeId === nodeId);
         if (!source || !finding) {
             postMessage({ type: 'aiRefineResult', ok: false, reason: 'component or finding not found — re-scan and try again', ruleId, nodeId });
+            return;
+        }
+
+        // FEAT-043 R6: no prompt is built from content that changed since the scan.
+        const stale = await this._staleSource([nodeId]);
+        if (stale) {
+            postMessage({ type: 'aiRefineResult', ok: false, reason: stale, ruleId, nodeId });
             return;
         }
 

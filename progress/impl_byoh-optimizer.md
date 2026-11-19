@@ -113,3 +113,17 @@ The run exposed one more defect, now fixed: `OPT-D01` reported a "duplicate comp
 | R6, R7 | The read-only quick fix and the stale delegation are refused with no file change. |
 
 Verified: 912 unit tests; eleven Extension Host runs (critical path, save isolation, source ownership, providers, operation gate, workspace matrix, advisory matrix, four optimizer layouts); build; 35 project checks.
+
+## Agent pre-review and fixes
+
+An agent code review of b261342..14195e1 ran before the human closing review. It does not replace that review. It reported seven defects; all are fixed, each with a regression test:
+
+1. **High.** The Harness SDD primary agent is typed `agent` but is a `SUBAGENT.md`, and it had lost its frontmatter and description checks. Harness SDD now declares those conventions for `agent` nodes whose file is a `SUBAGENT.md`; the synthetic manifest root still gets none.
+2. **High.** `extract-to-references` in flat layouts created a phantom component: `.claude/agents/references/x.md` would be scanned as a new Claude agent. `OPT-B02` now offers the fix only in folder-per-component formats (`<name>/SKILL.md`, `<name>/SUBAGENT.md`), and the write path refuses a second file anywhere else.
+3. **Medium.** A consistency check with an uncalibrated cohort counted as a perfect 100. Rules can now report `cannotEvaluate`; `OPT-C01` and `OPT-C02` do so below the cohort minimum. The engine records them as skipped with the reason, and the dimension stays unevaluated.
+4. **Medium.** The client could choose the terminal runner. The runner now comes from installed CLIs only, and an unknown or uninstalled id is refused.
+5. **Medium.** Prompts were built from cached content. AI refine, the chat handoff and delegation now check every source against disk before building a prompt or exposing content, and refuse stale ones.
+6. **Low.** A secondary file that appears during the preview is detected after the confirmation, and nothing is written.
+7. **Low.** An unscored architecture no longer names a "weakest" dimension.
+
+Verified after the fixes: 968 unit tests, and the Extension Host suites rerun after the fixes.

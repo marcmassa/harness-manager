@@ -90,17 +90,20 @@ export const optB02: OptimizerRule = {
         if (sections.length < 3) return [];
 
         const candidates = sections.slice(2);
+        // FEAT-043: a references/ file is part of the component only in folder-per-component
+        // formats (<name>/SKILL.md, <name>/SUBAGENT.md); elsewhere it would be scanned as a new one.
+        const ownFolder = /(?:^|\/)(?:SKILL|SUBAGENT)\.md$/i.test(source.filePath);
         return [
             finding('OPT-B02', ctx, {
                 severity: 'info',
                 dimension: 'budget',
                 title: 'Extractable reference content',
                 detail: `Sections after the second (${candidates.join(', ')}) are candidates for extraction into references/.`,
-                fix: {
-                    type: 'extract-to-references',
+                ...(ownFolder ? { fix: {
+                    type: 'extract-to-references' as const,
                     label: 'Extract to references/',
                     payload: { sections: candidates.join(',') },
-                },
+                } } : {}),
             }),
         ];
     },

@@ -37,7 +37,7 @@ function harness(reads: Array<string | null>, decision: { ok: boolean; reason?: 
         diffProvider: { stage: vi.fn(), clear: vi.fn() } as never,
         workspaceRoot: { path: '/w', fsPath: '/w' } as never,
         writer: { writeFileAtPath: vi.fn(async (p: string) => { written.push(p); }) } as never,
-        readFile: vi.fn(async () => (reads.length > 1 ? reads.shift()! : reads[0])),
+        readFile: vi.fn(async (rel: string) => (rel !== source.filePath ? null : reads.length > 1 ? reads.shift()! : reads[0])),
         authorize: vi.fn(async () => (decision.ok ? { ok: true, mode: 'persist', owners: ['harness-sdd'] } : { ok: false, reason: decision.reason! })) as never,
         log: { error: vi.fn() } as never,
     };
@@ -88,6 +88,22 @@ describe('reviewed fixes (R5)', () => {
     });
 });
 
+describe('FEAT-043 review fixes', () => {
+    it('refuses a second file in a format without per-component folders', () => {
+        const flat = { ...source, filePath: '.claude/agents/reviewer.md', label: 'reviewer' };
+        expect(secondaryFileProblem(flat, '.claude/agents/references/x.md')).toContain('no per-component folder');
+        expect(secondaryFileProblem(source, '.agents/skills/lint/references/x.md')).toBeNull();
+    });
+
+    it('rejects when the secondary file appears while the preview is open', async () => {
+        const h = harness([RAW]);
+        (h.deps.readFile as ReturnType<typeof vi.fn>).mockImplementation(async () => RAW);
+        await h.run({ relPath: '.agents/skills/lint/references/details.md', content: 'moved' });
+        expect(h.written).toEqual([]);
+        expect(h.results.at(-1)).toMatchObject({ ok: false, reason: expect.stringContaining('appeared while the preview was open') });
+    });
+});
+
 describe('delegation (R6, R7)', () => {
     const finding = (nodeId: string): OptimizerFinding => ({ ruleId: 'OPT-S03', nodeId, nodeType: 'skill', filePath: `${nodeId}.md`, severity: 'warning', dimension: 'structure', title: 't', detail: 'd' });
     const ctx = (owners: Record<string, string>): GateContext => ({
@@ -99,6 +115,30 @@ describe('delegation (R6, R7)', () => {
         expect(decide('agentRuns.delegate', ['a', 'b'], ctx({ a: 'cursor', b: 'opencode' }), { runnerAvailable: true }))
             .toMatchObject({ ok: false, reason: expect.stringContaining('opencode resources cannot be edited') });
         expect(decide('agentRuns.delegate', ['a'], ctx({ a: 'cursor' }), { runnerAvailable: true })).toMatchObject({ ok: true });
+    });
+
+    const delegateDeps = (over: Record<string, unknown>) => ({
+        assistAllowed: () => true,
+        runRegistry: { detect: async () => [{ id: 'claude-code', name: 'Claude', isAvailable: async () => true, buildCommand: () => 'x' }], getById: () => ({ id: 'generic', name: 'Open in Editor', buildCommand: () => 'x' }) } as never,
+        findings: [finding('a')], workspaceRoot: { fsPath: '/w' } as never,
+        authorize: async () => ({ ok: true as const, mode: 'persist' as const, owners: ['cursor'] }),
+        log: { error: vi.fn() } as never, ...over,
+    });
+
+    it('chooses the runner from installed CLIs only', async () => {
+        const results: Array<Record<string, unknown>> = [];
+        await delegateFindings({ type: 'delegateFinding', scope: 'finding', nodeId: 'a', ruleId: 'OPT-S03', adapterId: 'generic' } as never, m => { results.push(m as never); }, delegateDeps({}));
+        expect(calls.terminals).toBe(0);
+        expect(results.at(-1)).toMatchObject({ ok: false, reason: expect.stringContaining('is not installed') });
+    });
+
+    it('hands no agent a component whose file changed since the scan', async () => {
+        const results: Array<Record<string, unknown>> = [];
+        await delegateFindings({ type: 'delegateFinding', scope: 'finding', nodeId: 'a', ruleId: 'OPT-S03' } as never, m => { results.push(m as never); },
+            delegateDeps({ staleSource: async () => 'a.md changed since the last scan — re-scan and try again' }));
+        expect(calls.terminals).toBe(0);
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+        expect(results.at(-1)).toMatchObject({ ok: false, reason: expect.stringContaining('changed since the last scan') });
     });
 
     it('opens no terminal when the resolved scope is refused', async () => {

@@ -23,6 +23,8 @@ export interface DelegationDeps {
     workspaceRoot: vscode.Uri;
     scheduleScan?: () => void;
     authorize?: AuthorizeFn;
+    /** A reason when any listed component's file no longer matches the scan. */
+    staleSource?: (nodeIds: string[]) => Promise<string | null>;
     log: vscode.LogOutputChannel;
 }
 
@@ -87,6 +89,9 @@ export async function delegateFindings(msg: WebviewMessage, postMessage: PostMes
     const authorizeScope = () => deps.authorize?.({ type: 'delegateFinding', nodeIds: scopeNodes });
     const first = await authorizeScope();
     if (first && !first.ok) return fail(first.reason);
+    // R6: never hand an agent a component whose file changed since the scan it was judged on.
+    const stale = await deps.staleSource?.(scopeNodes);
+    if (stale) return fail(stale);
 
     const task = buildDelegateTask(scope);
     if (task.filePaths.length === 0) return fail('no resolvable file paths in this scope');
@@ -111,8 +116,10 @@ export async function delegateFindings(msg: WebviewMessage, postMessage: PostMes
                 : 'The agent edits files directly. There is no diff preview; your working tree is clean, so git can revert the result.';
 
     // R17 — the weaker contract is stated, not hidden.
-    const adapterId = (msg.adapterId as string) || usable[0].id;
-    const adapter = deps.runRegistry?.getById(adapterId) ?? usable[0];
+    // FEAT-043 review: the runner comes from the detected CLIs only, never from any registered id.
+    const requested = msg.adapterId as string | undefined;
+    const adapter = requested ? usable.find(a => a.id === requested) : usable[0];
+    if (!adapter) return fail(`agent CLI "${requested}" is not installed`);
     const go = await vscode.window.showWarningMessage(
         `Delegate ${task.componentCount} component${task.componentCount === 1 ? '' : 's'} to ${adapter.name}?`,
         { modal: true, detail: vcsNote },
