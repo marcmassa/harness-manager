@@ -9,6 +9,7 @@ import { ROOT, makeLog, makeMemento, mockFiles, seedWorkspace } from './detector
 import { makeProfile } from './testUtils.js';
 import { classify } from './maturityClassifier.js';
 import { generate } from './advisoryEngine.js';
+import { migrateLegacyDismissals } from './dismissals.js';
 import { evidenceFromGraph, sharedCategories } from './evidence.js';
 import { CORE_RULES } from './advisoryRules.js';
 import { METHODOLOGY_RULES } from './methodologyRules.js';
@@ -25,19 +26,28 @@ beforeEach(() => {
 
 describe('evidence (R1)', () => {
     it('maps provider resources to shared categories by declared type', () => {
-        const node = (id: string, type: HarnessNode['type'], providerId: string): HarnessNode =>
-            ({ id, type, label: id, metadata: {}, source: { workspaceUri: 'w', providerId, nativeId: id } });
+        const node = (id: string, type: HarnessNode['type'], providerId: string, filePath?: string): HarnessNode =>
+            ({ id, type, label: id, metadata: filePath ? { _filePath: filePath } : {}, source: { workspaceUri: 'w', providerId, nativeId: id } });
         expect(evidenceFromGraph([
-            node('claude-code::root', 'agent', 'claude-code'),
-            node('reviewer', 'subagent', 'harness-sdd'),
-            node('lint', 'skill', 'team-guides'),
-            node('kiss', 'steering', 'kiro'),
-            node('on-save', 'hook', 'harness-sdd'),
+            node('claude-code::root', 'agent', 'claude-code', 'CLAUDE.md'),
+            node('reviewer', 'subagent', 'harness-sdd', '.agents/subagents/reviewer/SUBAGENT.md'),
+            node('lint', 'skill', 'team-guides', 'team/skills/lint.md'),
+            node('kiss', 'steering', 'kiro', '.kiro/steering/kiss.md'),
+            node('on-save', 'hook', 'harness-sdd', '.agents/hooks/on-save.sh'),
+            // Synthetic roots are not instructions: a manifest node, a config directory.
+            node('harness', 'agent', 'harness-sdd'),
+            node('kiro::workspace', 'agent', 'kiro', '.kiro'),
+            node('opencode::root', 'agent', 'opencode', 'opencode.json'),
+            // Single-tool rule files are rules whatever node type their adapter uses.
+            node('cursor::style', 'subagent', 'cursor', '.cursor/rules/style.mdc'),
+            node('cursor::root', 'agent', 'cursor', '.cursorrules'),
         ]).map(e => [e.category, e.providerId])).toEqual([
             ['context-identity', 'claude-code'],
             ['agent-methodologies', 'harness-sdd'],
             ['skills', 'team-guides'],
             ['rules', 'kiro'],
+            ['rules', 'cursor'],
+            ['rules', 'cursor'],
         ]);
     });
 
@@ -57,25 +67,34 @@ describe('evidence (R1)', () => {
 });
 
 describe('maturity across layouts (R3, R4)', () => {
-    it('gives equivalent Harness SDD and Claude Code workflows the same level', async () => {
+    // Each side has the same workflow: a role and a skill, with or without a real
+    // instructions document. No synthetic root counts as instructions (review H1).
+    it.each([
+        ['without instructions', {}, {}],
+        ['with instructions', { 'AGENTS.md': '# Agents\nHow we work.' }, { 'CLAUDE.md': '# Instructions\nHow we work.' }],
+    ])('gives equivalent Harness SDD and Claude Code workflows the same level %s', async (_label, sddExtra, claudeExtra) => {
         seedWorkspace({
             '.agents/agentic.json': JSON.stringify({ subagents: [{ name: 'reviewer', description: 'Review.', role_file: '.agents/subagents/reviewer/SUBAGENT.md' }], skills: [{ name: 'lint', description: 'Lint.' }] }),
             '.agents/subagents/reviewer/SUBAGENT.md': '---\nname: reviewer\ndescription: Review.\n---\nReview.',
             '.agents/skills/lint/SKILL.md': '---\nname: lint\ndescription: Lint.\n---\nLint.',
             'opencode.json': '{}',
+            ...sddExtra,
         });
         const sdd = await scan();
         mockFiles.clear();
         seedWorkspace({
-            'CLAUDE.md': '# Instructions',
             '.claude/agents/reviewer.md': '---\nname: reviewer\ndescription: Review.\n---\nReview.',
             '.claude/skills/lint/SKILL.md': '---\nname: lint\ndescription: Lint.\n---\nLint.',
             'opencode.json': '{}',
+            ...claudeExtra,
         });
         const claude = await scan();
         expect([...sharedCategories(claude)].sort()).toEqual([...sharedCategories(sdd)].sort());
         expect(claude.maturity.level).toBe(sdd.maturity.level);
         expect(claude.maturity.unavailableInputs).toEqual(sdd.maturity.unavailableInputs);
+        // Shared findings match; provider-specific ones (add-claude-md, harness-without-sdd) belong to their owner.
+        const shared = (p: typeof sdd) => p.suggestions.filter(s => s.scope?.kind === 'workspace').map(s => s.ruleId).sort();
+        expect(shared(claude)).toEqual(shared(sdd));
     });
 
     it('reports an unknown root as unassessed inputs, not as defects', async () => {
@@ -132,10 +151,14 @@ describe('owner-qualified findings (R2, R7)', () => {
         expect(skills?.evidence).toEqual([]);
     });
 
-    it('applies a legacy bare-ID dismissal only when it is unambiguous', () => {
-        expect(steering(generate(toolRules(['cursor']), new Set(['migrate-to-steering'])))).toEqual([]);
-        expect(steering(generate(toolRules(['cursor', 'windsurf']), new Set(['migrate-to-steering']))).map(s => s.id))
-            .toEqual(['migrate-to-steering@cursor', 'migrate-to-steering@windsurf']);
+    it('migrates a legacy bare-ID dismissal once, only when unambiguous (review M3)', () => {
+        const one = generate(toolRules(['cursor']));
+        const two = generate(toolRules(['cursor', 'windsurf']));
+        expect(migrateLegacyDismissals(['migrate-to-steering'], one)).toEqual(['migrate-to-steering@cursor']);
+        expect(migrateLegacyDismissals(['migrate-to-steering'], two)).toEqual([]);
+        expect(migrateLegacyDismissals(['use-skill-files', 'x@cursor'], one)).toEqual(['use-skill-files', 'x@cursor']);
+        // After migration IDs match exactly: a workspace dismissal never hides an owner's finding.
+        expect(steering(generate(toolRules(['cursor']), new Set(['migrate-to-steering']))).map(s => s.id)).toEqual(['migrate-to-steering@cursor']);
     });
 
     it('keeps the other owner actionable after one is dismissed, and drops a removed source', () => {
@@ -155,5 +178,20 @@ describe('owner-qualified findings (R2, R7)', () => {
         const third = await detector.scan();
         expect(second.suggestions.map(s => s.id)).not.toContain(target.id);
         expect(third.suggestions.map(s => s.id)).toEqual(second.suggestions.map(s => s.id));
+    });
+});
+
+describe('per-owner findings from real adapters (R7, review H2)', () => {
+    it('gives a Cursor rule its own finding beside a workspace-wide one for unclaimed .clinerules', async () => {
+        seedWorkspace({
+            '.cursor/rules/style.mdc': '---\ndescription: Code style\nglobs: "**/*.ts"\n---\nUse strict types.',
+            '.clinerules': 'Keep functions small.',
+            'prompts/review.prompt.md': 'Review the diff.',
+            'tools/lint_tool.ts': 'export const lint = () => 0;',
+        });
+        const profile = await scan();
+        expect(profile.evidence).toEqual(expect.arrayContaining([expect.objectContaining({ category: 'rules', providerId: 'cursor' })]));
+        const ids = profile.suggestions.filter(s => s.ruleId === 'migrate-to-steering').map(s => s.id).sort();
+        expect(ids).toEqual(['migrate-to-steering', 'migrate-to-steering@cursor']);
     });
 });

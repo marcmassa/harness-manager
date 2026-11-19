@@ -125,3 +125,19 @@ The suite also asserts:
 | R7 | Covered by the unit rescan test. |
 
 Verified: 886 unit tests; seven Extension Host runs; build; 35 project checks.
+
+## Agent pre-review and fixes
+
+An agent code review of f97af80..3a87173 ran before the human closing review. It does not replace that review. All findings are fixed with regression tests:
+
+- **H1 — synthetic roots counted as project instructions.** The Harness SDD manifest node, the Kiro workspace directory and the OpenCode and Windsurf config roots gave their layouts a "Project instructions" category for free. Now only a real Markdown instructions document counts as `context-identity`. The R3 equivalence test runs both with and without instructions on each side, and asserts equal categories, level, unavailable inputs and shared findings.
+- **H2 — Cursor and Windsurf rules were not rules.** Those adapters emit rules as `agent`/`subagent` nodes, so the rule evidence never existed and `migrate-to-steering` could not fire per owner. The category now comes from the native file first (`.cursorrules`, `.windsurfrules`, `.clinerules`, `*.mdc`, `*.instructions.md`, `.windsurf/rules/`), the node type second. A detector test with a real Cursor rule and an unclaimed `.clinerules` yields `migrate-to-steering@cursor` plus the workspace-wide instance.
+- **H3 and M1 — entry points.** `CLAUDE.md` was hidden and refused when Claude Code was detected through its agents but had no `CLAUDE.md`. A provider's entry point is now native to that format: offered and allowed where the format is present or where no harness exists, refused inside another provider's harness. Creating a file never overwrites. Other files (`AGENTS.md`, `prompts/`, `dependabot.yml`) are format-neutral by design.
+- **M2 — `offered()` and the gate saw different providers.** The profile now carries `detectedProviders` from the same detection the gate uses.
+- **M3 — read-time legacy matching could hide another owner's finding.** Pre-FEAT-042 bare IDs are migrated once per workspace (`dismissals.ts`, with a stored marker). Stored IDs are then matched exactly.
+- **L1.** The `sddDetected` event no longer refires for spec-only workspaces. `.kiro/feature_list.json` counts as a feature registry again. Discovered methodology nodes are still keyed by methodology name, so a manifest-only workspace no longer shows one; this is intended, since a manifest is not a lifecycle.
+- **L2.** Advisory actions fail closed when no operation decision is attached.
+
+Dismissal storage moved to `dismissals.ts` to keep `agenticDetector.ts` under the staged-file limit.
+
+Verified after the fixes: 904 unit tests, build.

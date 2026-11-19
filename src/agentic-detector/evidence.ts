@@ -25,9 +25,22 @@ const CATEGORY_BY_TYPE: Partial<Record<HarnessNode['type'], SignalCategory>> = {
     steering: 'rules',
 };
 
+/** Single-tool rule formats are rules whatever node type their adapter uses (Cursor, Windsurf, Cline, Copilot). */
+const RULE_FILE = /(?:^|\/)\.(?:cursorrules|windsurfrules|clinerules)$|\.mdc$|\.instructions\.md$|(?:^|\/)\.windsurf\/rules\//i;
+/** A real instructions document; synthetic roots (a manifest, a config directory) are not. */
+const INSTRUCTIONS_FILE = /\.md$/i;
+
+/** The shared category of a resource, from its native file first, its declared type second (H1, H2). */
+function categoryOf(node: HarnessNode): SignalCategory | undefined {
+    const path = String(node.metadata._filePath ?? '');
+    if (RULE_FILE.test(path)) return 'rules';
+    if (node.type === 'agent') return INSTRUCTIONS_FILE.test(path) ? 'context-identity' : undefined;
+    return CATEGORY_BY_TYPE[node.type];
+}
+
 export function evidenceFromGraph(nodes: readonly HarnessNode[]): EvidenceItem[] {
     return nodes.flatMap(node => {
-        const category = CATEGORY_BY_TYPE[node.type];
+        const category = categoryOf(node);
         const providerId = node.source?.providerId ?? (node.metadata._framework as string | undefined);
         return category && providerId
             ? [{ category, providerId, nodeId: node.id, sourceUri: node.source?.sourceUri }]

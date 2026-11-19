@@ -60,8 +60,9 @@ function evidenceFor(profile: AgenticProfile, base: Omit<Suggestion, 'id'>, scop
     .map(({ providerId, nodeId, sourceUri }) => ({ providerId, nodeId, sourceUri }));
 }
 
-/** Providers present in the workspace, from attributed sources and evidence. */
+/** Providers present: what detection found (as the gate sees it), else attributed sources. */
 function presentProviders(profile: AgenticProfile): Set<string> {
+  if (profile.detectedProviders) return new Set(profile.detectedProviders);
   return new Set([...(profile.sources ?? []), ...(profile.evidence ?? [])].map(s => s.providerId));
 }
 
@@ -74,7 +75,6 @@ function presentProviders(profile: AgenticProfile): Set<string> {
 function offered(action: SuggestionAction, present: Set<string>): boolean {
   const request = requestForAction(action);
   if (request?.adoptFormat) return present.size === 0 || present.has(request.adoptFormat);
-  if (request?.format) return !present.has(request.format);
   return true;
 }
 
@@ -82,9 +82,7 @@ function offered(action: SuggestionAction, present: Set<string>): boolean {
  * Generate maturity-gated, owner-qualified suggestions.
  *
  * A workspace-wide finding keeps its rule ID; a provider's finding is
- * `<ruleId>@<providerId>`. A dismissal stored under a bare rule ID (before
- * FEAT-042) still hides the finding when exactly one instance exists, and
- * never when two owners have the same rule.
+ * `<ruleId>@<providerId>`. Dismissed IDs are matched exactly.
  *
  * @param profile       The scanned agentic profile
  * @param dismissedIds  Set of suggestion IDs that the user has dismissed (optional)
@@ -107,10 +105,9 @@ export function generate(
   for (const rule of allRules) {
     try {
       if (!rule.condition(profile)) continue;
-      const instances = instancesOf(rule.id, profile);
-      const legacyDismissed = dismissed.has(rule.id) && instances.length === 1;
-      for (const { id, scope } of instances) {
-        if (dismissed.has(id) || legacyDismissed) continue;
+      // Stored IDs are matched verbatim; pre-FEAT-042 bare IDs are migrated once (dismissals.ts).
+      for (const { id, scope } of instancesOf(rule.id, profile)) {
+        if (dismissed.has(id)) continue;
         const built = rule.build(profile);
         const actions = built.actions?.filter(a => offered(a, present));
         const base = { ...built, ...(built.actions ? { actions } : {}) };

@@ -1,4 +1,5 @@
 import { evidenceFromGraph } from './evidence.js';
+import { migrateDismissalsOnce, readDismissed, updateDismissed } from './dismissals.js';
 import * as vscode from 'vscode';
 
 import { EventEmitter } from './detectorEvents.js';
@@ -22,7 +23,6 @@ import type {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const AGENTIC_DISMISSED_KEY = 'agenticDetector.dismissedSuggestionIds';
 const AGENTIC_ACKNOWLEDGED_KEY = 'agenticDetector.acknowledgedNodeIds';
 
 // ─── AgenticDetector ─────────────────────────────────────────────────────────
@@ -181,9 +181,7 @@ export class AgenticDetector extends EventEmitter {
 
       // ── T21/R58: Emit methodology adoption events ──
       if (methodology.hasMethodology) {
-        const wasSdd =
-          this._previousMethodology?.methodologyName === 'Harness SDD' ||
-          this._previousMethodology?.methodologyName === 'Custom SDD';
+        const wasSdd = this._previousMethodology?.hasMethodology === true;
         if (!wasSdd) {
           this.emit('sddDetected');
         }
@@ -221,6 +219,7 @@ export class AgenticDetector extends EventEmitter {
         graphContext,
         sources,
         evidence,
+        detectedProviders: native.detectedProviders,
         supplyChain,
       };
 
@@ -233,6 +232,7 @@ export class AgenticDetector extends EventEmitter {
       profile.patterns = patterns;
 
       // ── Read dismissed suggestion IDs ──
+      await migrateDismissalsOnce(this._workspaceState, () => generate(profile));
       const dismissedIds = this.getDismissedSuggestionIds();
 
       // ── Generate suggestions ──
@@ -379,39 +379,22 @@ export class AgenticDetector extends EventEmitter {
    */
   async dismissSuggestion(id: string): Promise<void> {
     if (!this._workspaceState) return;
-
-    const dismissed = new Set(this.getDismissedSuggestionIds());
-    dismissed.add(id);
-    await this._workspaceState.update(AGENTIC_DISMISSED_KEY, Array.from(dismissed));
+    await updateDismissed(this._workspaceState, ids => ids.add(id));
     this._log.info(`[AgenticDetector] Dismissed suggestion "${id}"`);
-
     await this.scan();
   }
 
-  /**
-   * Restore a previously dismissed suggestion so it may appear again.
-   * Triggers an immediate re-scan.
-   *
-   * No-op when `_workspaceState` is not available.
-   */
+  /** Restore a previously dismissed suggestion and re-scan. No-op without workspace state. */
   async restoreSuggestion(id: string): Promise<void> {
     if (!this._workspaceState) return;
-
-    const dismissed = new Set(this.getDismissedSuggestionIds());
-    dismissed.delete(id);
-    await this._workspaceState.update(AGENTIC_DISMISSED_KEY, Array.from(dismissed));
+    await updateDismissed(this._workspaceState, ids => ids.delete(id));
     this._log.info(`[AgenticDetector] Restored suggestion "${id}"`);
-
     await this.scan();
   }
 
-  /**
-   * Return the list of suggestion IDs that the user has dismissed.
-   * When `_workspaceState` is not available the list is always empty.
-   */
+  /** Dismissed suggestion IDs; empty without workspace state. */
   getDismissedSuggestionIds(): string[] {
-    if (!this._workspaceState) return [];
-    return this._workspaceState.get<string[]>(AGENTIC_DISMISSED_KEY, []);
+    return readDismissed(this._workspaceState);
   }
 
   // ── Node acknowledgment (Phase 5 — T29) ────────────────────────────────

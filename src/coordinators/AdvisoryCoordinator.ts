@@ -76,7 +76,10 @@ export class AdvisoryCoordinator {
                     return true;
                 }
                 const request = requestForAction(action);
-                const decision = request && this._authorizeRequest ? await this._authorizeRequest(request) : null;
+                // Fail closed: an action that needs a decision never runs without one.
+                const decision = !request ? null
+                    : this._authorizeRequest ? await this._authorizeRequest(request)
+                    : { ok: false as const, reason: 'The operation decision is not available.' };
                 if (decision && !decision.ok) {
                     this._log.warn(`[Operations] Denied Advisory action ${actionId}: ${decision.reason}`);
                     _postMessage({ type: 'advisoryActionResult', suggestionId, actionId, ok: false, error: decision.reason });

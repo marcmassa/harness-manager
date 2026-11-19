@@ -192,8 +192,10 @@ describe('AgenticDetector', () => {
       expect(profile.patterns.length).toBeGreaterThanOrEqual(1);
     });
 
+    // FEAT-042 review H1: the manifest's root node is not instructions; AGENTS.md is.
     it('reaches L2 with Harness but no CLI', async () => {
       seedWorkspace({
+        'AGENTS.md': '# Agents\nHow this team works.',
         '.agents/agentic.json': JSON.stringify({ subagents: [] }),
         '.agents/subagents/spec-author/SUBAGENT.md': '# Spec Author',
         '.agents/subagents/implementer/SUBAGENT.md': '# Implementer',

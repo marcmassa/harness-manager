@@ -72,12 +72,14 @@ export async function detectMethodology(root: vscode.Uri): Promise<MethodologyIn
   // FEAT-042 R3: a governed lifecycle is feature or spec records, in any
   // layout. A Harness SDD manifest alone declares roles, not a lifecycle.
   const first = async (glob: string) => (await vscode.workspace.findFiles(new vscode.RelativePattern(root, glob), undefined, 1))[0];
-  const [manifest, featureList, kiroSpecs, specs] = await Promise.all([
+  const [manifest, rootFeatureList, kiroFeatureList, kiroSpecs, specs] = await Promise.all([
     first('.agents/agentic.json'),
     first('feature_list.json'),
+    first('.kiro/feature_list.json'),
     first('.kiro/specs/*/requirements.md'),
     first('specs/*/requirements.md'),
   ]);
+  const featureList = rootFeatureList ?? kiroFeatureList;
   const record = featureList ?? kiroSpecs ?? specs;
   if (record) {
     return {

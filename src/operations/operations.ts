@@ -111,6 +111,9 @@ export function decide(op: OperationId, targets: readonly string[] | 'workspace'
         if (op === 'adoption.scaffold' && pre.format && ctx.detected.includes(pre.format)) {
             return deny(`${ctx.providerLabel(pre.format)} is already set up in this workspace; scaffolding it again would overwrite it.`);
         }
+        if (op === 'adoption.scaffold' && pre.adoptFormat && ctx.detected.length > 0 && !ctx.detected.includes(pre.adoptFormat)) {
+            return deny(`This would add ${ctx.providerLabel(pre.adoptFormat)} files to a ${ctx.detected.map(ctx.providerLabel).join(', ')} harness. Adopt ${ctx.providerLabel(pre.adoptFormat)} explicitly first.`);
+        }
         if (!info.capability) return { ok: true, mode: 'persist', owners: [] };
         const able = ctx.detected.filter(id => ctx.providerOperations(id).has(op));
         if (able.length === 0 && pre.adoptFormat) {
@@ -244,8 +247,14 @@ export function requestForAction(action: { type: string; payload: Record<string,
     switch (action.type) {
         case 'open-file':
             return null;
-        case 'create-directory': case 'create-file':
-            return { op: 'adoption.scaffold', targets: 'workspace', format: formatOfPath(action.payload.relPath ?? '') };
+        case 'create-directory': case 'create-file': {
+            // Never overwrites (ActionExecutor opens an existing file). A provider's
+            // entry point belongs to that format: native where the format is present,
+            // an adoption where no harness exists, refused inside another harness.
+            // Other files (AGENTS.md, prompts/, dependabot.yml) are format-neutral.
+            const adoptFormat = formatOfPath(action.payload.relPath ?? '');
+            return { op: 'adoption.scaffold', targets: 'workspace', ...(adoptFormat ? { adoptFormat } : {}) };
+        }
         case 'scaffold-agent': case 'scaffold-skill':
             // Writes `.agents/**`: a Harness SDD entity, or an explicit adoption in an empty workspace.
             return { op: 'editing.createEntity', targets: 'workspace', adoptFormat: 'harness-sdd' };
