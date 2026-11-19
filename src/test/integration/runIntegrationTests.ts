@@ -97,6 +97,19 @@ async function main(): Promise<void> {
                 await fs.rm(root, { recursive: true, force: true });
             }
         }
+        // FEAT-043 T4: one host per layout, each opened as its own workspace folder.
+        for (const layout of ['claude', 'custom', 'mixed', 'sdd']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-optimizer-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'optimizerMatrix.cjs'),
+                    extensionTestsEnv: { ...process.env, OPTIMIZER_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
         // FEAT-041 T4: opt-in real-workspace results (needs local copies of the
         // sources in docs/byoh/adapter-capabilities.md; never part of CI).
         const fieldRoot = process.env.HARNESS_FIELD_ROOT;
