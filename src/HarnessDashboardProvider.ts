@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { dashboardHtml } from './dashboardHtml.js';
 import type { AdapterRegistry } from './adapters/AdapterRegistry.js';
 import { HarnessParser } from './harnessParser.js';
 import { HarnessWriter } from './harnessWriter.js';
@@ -28,6 +29,9 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     private _runCoordinator?: RunCoordinator;
     private _cachedData: DashboardData | null = null;
     private _gate?: OperationGate;
+    private readonly _readyTabs = new Set<string>();
+    /** FEAT-045: tabs whose code has loaded in a Dashboard webview (Extension Host evidence). */
+    public get readyTabs(): ReadonlySet<string> { return this._readyTabs; }
     /** FEAT-041: only the newest scan may replace the cached ownership. */
     private _scanGeneration = 0;
 
@@ -253,6 +257,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
                         }
                     }
                     break;
+                case 'tabReady':
+                    // FEAT-045 R19: a tab's chunk loaded under the CSP and mounted.
+                    if (typeof data.tab === 'string') this._readyTabs.add(data.tab);
+                    break;
                 case 'openFullWindow':
                     this.openFullWindowPanel();
                     break;
@@ -303,41 +311,10 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    /**
-     * Generate the HTML for a Harness Dashboard webview (used by both sidebar and full-window panel).
-     * A fresh cryptographic nonce is generated on every call so the CSP is unforgeable.
-     */
-    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview, isFullWindow = false, tab?: string): string {
-        // FEAT-045 R6: the tab to restore; only a plain identifier ever reaches the page.
-        const initialTab = tab && /^[a-z]+$/.test(tab) ? tab : 'whiteboard';
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
-        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
-        const nonceBytes = new Uint8Array(16);
-        globalThis.crypto.getRandomValues(nonceBytes);
-        const nonce = btoa(Array.from(nonceBytes).map(b => String.fromCharCode(b)).join(''));
-
-        return `<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta http-equiv="Content-Security-Policy"
-                      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data:;">
-                <link href="${styleUri}" rel="stylesheet">
-                <title>Harness Dashboard</title>
-            </head>
-            <body>
-                <div id="root"></div>
-                <script nonce="${nonce}">window.__harness_is_full_window = ${isFullWindow}; window.__harness_initial_tab = "${initialTab}";</script>
-                <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
-            </body>
-            </html>`;
-    }
-
     private _attachWebview(webview: vscode.Webview, isFullWindow: boolean, tab?: string): void {
         const reply = (message: unknown) => webview.postMessage(message);
         webview.onDidReceiveMessage(data => this._handleWebviewMessage(data, reply));
-        webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, isFullWindow, tab);
+        webview.html = dashboardHtml(this._extensionUri, webview, isFullWindow, tab);
     }
 
     /**

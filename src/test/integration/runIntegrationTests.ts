@@ -86,7 +86,7 @@ async function main(): Promise<void> {
             },
         });
         await checkSaveIsolation(vscodeExecutablePath, extensionDevelopmentPath);
-        for (const suite of ['sourceOwnership', 'byohProviders', 'operationGate', 'workspaceMatrix', 'advisoryMatrix']) {
+        for (const suite of ['sourceOwnership', 'byohProviders', 'operationGate', 'workspaceMatrix', 'advisoryMatrix', 'webviewChunks']) {
             const root = await fs.mkdtemp(path.join(tmpdir(), `dashboard-${suite}-`));
             try {
                 await runTests({

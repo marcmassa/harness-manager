@@ -119,6 +119,8 @@ export type WebviewMessageType =
     | 'runSupplyChainAudit'
     // FEAT-044: read-only cost comparison with git HEAD
     | 'compareCostWithHead' | 'costComparison'
+    // FEAT-045: a lazily loaded tab mounted
+    | 'tabReady'
     | 'supplyChainAuditResult';
 
 export interface WebviewMessage {
@@ -163,6 +165,7 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     // FEAT-036: supply-chain health
     'runSupplyChainAudit', 'supplyChainAuditResult',
     'compareCostWithHead', 'costComparison',
+    'tabReady',
 ]);
 
 // FEAT-033 R27–R29 limit the gear menu to these two host actions.
