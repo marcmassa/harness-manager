@@ -622,6 +622,18 @@
       "agent": "typescript-implementer",
       "sprint": "0.9.0",
       "description": "Give every Sources and Findings item a type icon from a bundled light/dark SVG set (agent, subagent robot, skill bolt, steering wheel, hook, feature, terminal, document), make the Dashboard visible as the first item and a title action in both views, and show name, type, load mode, token estimate, score and per-provider session cost with Markdown tooltips. Presentation only; no analysis change."
+    },
+    {
+      "id": "FEAT-047",
+      "name": "package-slimming",
+      "title": "Package slimming and scope alignment",
+      "type": "chore",
+      "status": "spec_ready",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "description": "Make room in the VSIX budget and align scope with BYOH: replace the deprecated webview-ui-toolkit with native themed controls, palettise the icon, remove the npm supply-chain audit, show the Specs Manager tab only when a provider supplies feature or spec data, and delete unreachable code and the unused dagre dependency. Target VSIX at most 350,000 bytes."
     }
   ]
 }
