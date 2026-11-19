@@ -139,7 +139,9 @@ describe('FEAT-037 R6 — explicit nodeDragThreshold={1} (design §4)', () => {
     it('pill/handle clicks stopPropagation so the drag machinery never sees them (R6 rationale)', () => {
         const pillHandlers = customNodeSrc.match(/onClick=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/g) ?? [];
         expect(pillHandlers.length).toBeGreaterThanOrEqual(2); // source + target Handle
-        expect(customNodeSrc).toMatch(/onPointerDown=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/); // skill picker
+        // The skill picker moved to NodeLinkPicker.tsx (FEAT-046 split).
+        const pickerSrc = readFileSync(join(WEBVIEW_ROOT, 'components', 'NodeLinkPicker.tsx'), 'utf8');
+        expect(pickerSrc).toMatch(/onPointerDown=\{\(event\) => \{\s*\n?\s*event\.stopPropagation\(\)/); // skill picker
     });
 });
 

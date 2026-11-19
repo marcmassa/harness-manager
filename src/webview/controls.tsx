@@ -2,6 +2,7 @@
 // Plain elements styled from VS Code theme variables; keyboard and screen-reader
 // behaviour come from the native element itself.
 import * as React from 'react';
+import { iconThemeCss } from '../shared/typeIcons.js';
 
 type ButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> & {
     appearance?: 'primary' | 'secondary' | 'icon';
@@ -52,7 +53,7 @@ export const Spinner = ({ label, size = 'medium', style }: { label: string; size
 );
 
 /** Injected once by App, next to DASHBOARD_CSS. */
-export const CONTROLS_CSS = `
+export const CONTROLS_CSS = iconThemeCss() + `
 .hd-btn { font: inherit; font-size: var(--vscode-font-size); border: 1px solid var(--vscode-button-border, transparent); border-radius: 2px; padding: 4px 11px; cursor: pointer; line-height: 18px; }
 .hd-btn-primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 .hd-btn-primary:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); }

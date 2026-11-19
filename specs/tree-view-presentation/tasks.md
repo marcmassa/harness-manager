@@ -1,12 +1,12 @@
 # Tasks — Tree view presentation and Dashboard access
 
-- [ ] **T1** — Define the icons in `src/shared/typeIcons.ts`, generate `dist/icons/` from esbuild, and add `treeIcons.ts`.
+- [x] **T1** — Define the icons in `src/shared/typeIcons.ts`, generate `dist/icons/` from esbuild, and add `treeIcons.ts`.
   - Test that every `NodeType` maps to an icon and that both generated files exist after a build.
   - Test that each pair differs only in colour.
   - Test each accent's contrast against `#F3F3F3` (light) and `#252526` (dark).
   - Test that the generated SVG equals `svgFor()`.
   - _(R1, R2, R3)_
-- [ ] **T2** — Render the whiteboard type badge from `typeIcons.ts` in `CustomNode.tsx`. Test that each type's badge uses the same paths as its tree icon and that no type keeps its old emoji or glyph. _(R3)_
+- [x] **T2** — Render the whiteboard type badge from `typeIcons.ts` in `CustomNode.tsx`. Test that each type's badge uses the same paths as its tree icon and that no type keeps its old emoji or glyph. _(R3)_
 - [ ] **T3** — Extend `treeModels.ts` with structured resource, provider and finding data, and the description and Markdown tooltip builders.
   - Test the field order and that unknown parts are left out.
   - Test token formatting.
