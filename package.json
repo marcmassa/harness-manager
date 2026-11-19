@@ -48,7 +48,7 @@
       "activitybar": [
         {
           "id": "harness-dashboard",
-          "title": "Harness Dashboard",
+          "title": "Harness",
           "icon": "media/icon.svg"
         }
       ]
@@ -59,6 +59,18 @@
           "type": "webview",
           "id": "harness-dashboard.dashboard",
           "name": "Dashboard"
+        },
+        {
+          "id": "harness-dashboard.sources",
+          "name": "Sources",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Harness"
+        },
+        {
+          "id": "harness-dashboard.findings",
+          "name": "Findings",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Harness"
         }
       ]
     },
@@ -365,6 +377,30 @@
         {
           "command": "harness-dashboard.runSupplyChainAudit",
           "when": "workspaceFolderCount > 0"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "harness-dashboard.refresh",
+          "when": "view == harness-dashboard.sources || view == harness-dashboard.findings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "harness-dashboard.openDashboard",
+          "when": "view == harness-dashboard.sources",
+          "group": "navigation@2"
+        },
+        {
+          "command": "harness-dashboard.openLocalConfig",
+          "when": "view == harness-dashboard.sources",
+          "group": "settings@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "harness-dashboard.openDashboard",
+          "when": "view == harness-dashboard.sources && viewItem == resource",
+          "group": "inline"
         }
       ]
     }

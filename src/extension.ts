@@ -5,6 +5,7 @@ import { OperationGate } from './operations/operationGate.js';
 import { InferenceLedger, setInferenceRecorder, withInferenceAction } from './cost/inferenceLedger.js';
 import { registerScaffoldCommands } from './commands/scaffoldCommands.js';
 import { createStartup, STATE_CONTEXT_KEY } from './startup/startupWiring.js';
+import { registerHarnessViews, type HarnessViews } from './views/harnessTrees.js';
 import { contributedCommandIds, registerFolderlessCommands } from './startup/folderless.js';
 import type { OperationRequest } from './operations/operations.js';
 import { HarnessWriter } from './harnessWriter.js';
@@ -115,9 +116,11 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     const syncProfiles = () => harnessConfig.read(root)
         .then(config => registry.setProfiles(config.profiles))
         .catch((error: unknown) => log.error(`[Dashboard] Profile load failed: ${String(error)}`));
+    let views: HarnessViews | undefined;
     const scheduler = createStartup({
         context, log, registry, provider, agenticDetector, syncProfiles,
         graphContext: buildGraphContext,
+        onScanned: () => views?.refresh(),
     });
     // FEAT-041 T2: config edits, profile changes and companion registration go through the scheduler.
     context.subscriptions.push(registry.onDidChange(() => scheduler.onProvidersChanged()));
@@ -136,6 +139,19 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     setInferenceRecorder(entry => { void ledger.record(entry); });
     provider.optimizerCoordinator.setInferenceLedger(ledger);
     provider.setOperationGate(gate);
+    // FEAT-045 T3: native Sources and Findings views over the same scan.
+    views = registerHarnessViews({
+        context,
+        getData: () => provider.getCachedData(),
+        describe: nodeId => {
+            const node = provider.getCachedData()?.graph.nodes.find(n => n.id === nodeId);
+            return node ? gate.describe(node) : undefined;
+        },
+        providerLabel: id => registry.providerLabel(id),
+        getReport: () => provider.optimizerCoordinator.getCachedReport(),
+        getProfile: () => agenticDetector.getProfile(),
+        onVisible: (surface, visible) => scheduler.scheduler.setVisible(surface, visible),
+    });
     context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => { void provider._sendData(); }));
     /** True (after telling the user why) when the operation is not available. */
     const denied = async (request: OperationRequest): Promise<boolean> => {
@@ -204,6 +220,7 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
 
     // FEAT-031: Forward scan results + architecture summary to the webview
     agenticDetector.on('scanComplete', (profile: AgenticProfile) => {
+        views?.refresh();
         provider.sendAdvisoryProfile(profile);
         provider.postToWebview({ type: 'architectureSummary', ...buildArchitectureSummary(profile) });
     });

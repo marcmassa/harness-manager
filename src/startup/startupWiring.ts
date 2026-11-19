@@ -11,7 +11,7 @@ import { ScanScheduler, type DashboardState } from './scanScheduler.js';
 /** Context key read by `viewsWelcome` and menus (FEAT-045 R8). */
 export const STATE_CONTEXT_KEY = 'harnessDashboard.state';
 /** The view that shows scan progress (R16). */
-export const PROGRESS_VIEW_ID = 'harness-dashboard.dashboard';
+export const PROGRESS_VIEW_ID = 'harness-dashboard.sources';
 
 export interface StartupDeps {
     context: vscode.ExtensionContext;
@@ -22,6 +22,8 @@ export interface StartupDeps {
     syncProfiles: () => Promise<void>;
     graphContext: () => GraphContext;
     progressViewId?: string;
+    /** Called after every scan (the tree views refresh). */
+    onScanned?: () => void;
 }
 
 export interface Startup {
@@ -60,6 +62,7 @@ export function createStartup(deps: StartupDeps): Startup {
             const data = await provider.refresh();
             await agenticDetector.scan(deps.graphContext());
             await provider.optimizerCoordinator.refresh(msg => provider.postToWebview(msg));
+            deps.onScanned?.();
             return { empty: (data?.detectedProviders?.length ?? 0) === 0 };
         },
         startWatchers,
