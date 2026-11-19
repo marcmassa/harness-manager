@@ -39,7 +39,7 @@ Baseline is extension 0.8.2 at 990470d. Each row classifies the primary responsi
 | FEAT-033 | Run and architecture studio | optional-integration | Separate installed CLI availability from target ownership and scaffold formats (D). |
 | FEAT-034 | Optimizer | optional-integration | Apply rules only when their inputs exist in the detected format (D). |
 | FEAT-035 | Assisted fixes | optional-integration | Route edits to the source owner and delegation to an available runner (C/D). |
-| FEAT-036 | Supply-chain health | optional-integration | Detect package metadata independently of harness identity. Audit remains user-triggered. |
+| FEAT-036 | Supply-chain health | optional-integration | Removed by FEAT-047: it audited npm dependencies, not the agent harness. |
 | FEAT-037 | React Flow migration | shared-core | Keep rendering and stable layout IDs across migration. |
 | FEAT-038 | VSIX size gate | repository-development | Keep the packaged artifact below 400,000 bytes. |
 

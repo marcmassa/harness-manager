@@ -17,7 +17,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Startup and Activity Bar** (FEAT-045): activation registers only (51–55 ms measured in the Extension Host); the first scan waits until a Harness view or the Dashboard is shown, and changes while nothing is visible only mark results stale. The Activity Bar container, now "Harness", holds native **Sources** and **Findings** tree views with welcome content for no folder, a running scan and a workspace without a detected harness. The sidebar webview is gone: the Dashboard is one editor panel, restored after a reload on its last tab, whose tabs load on first display. A five-step walkthrough covers the Dashboard, sources, profiles, findings and context cost. **Re-scan Agentic Architecture** leaves the Command Palette; use **Refresh**.
+- **Smaller package** (FEAT-047): the VSIX drops from 390 KB to 334 KB. The deprecated `@vscode/webview-ui-toolkit` gives way to native controls styled from the editor theme, and the icon is palettised. The **Specs Manager** tab appears only when a provider supplies feature or spec data.
 - Releases 0.1.0–0.8.0 move from this file to [docs/changelog](https://github.com/marcmassa/harness-manager/blob/main/docs/changelog/README.md).
+
+### Removed
+
+- **Supply-chain audit** (FEAT-036, FEAT-047): the **Run npm Audit** command, the supply-chain Advisory suggestions and their section. It checked a workspace's npm dependencies rather than its agent harness; run `npm audit` directly instead. Dismissals of those suggestions are ignored.
 
 ## [0.8.2] — 2026-11-08
 

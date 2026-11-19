@@ -22,7 +22,7 @@
 - [x] **T5** — Delete the unreachable files, the `SDDManagerProvider` class and its tests, and `dagre`.
   - Add `reachability.test.ts`.
   - _(R6)_
-- [ ] **T6** — Package and run the Extension Host suites. Update README, CHANGELOG, DESIGN.md and the compatibility matrix. Record sizes before and after. _(R7, R8)_
+- [x] **T6** — Package and run the Extension Host suites. Update README, CHANGELOG, DESIGN.md and the compatibility matrix. Record sizes before and after. _(R7, R8)_
 
 ## Traceability
 
