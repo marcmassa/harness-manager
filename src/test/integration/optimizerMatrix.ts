@@ -12,6 +12,7 @@ import { HarnessConfig } from '../../config/harnessConfig.js';
 import { HarnessDashboardProvider } from '../../HarnessDashboardProvider.js';
 import { OperationGate } from '../../operations/operationGate.js';
 import type { OptimizerReport } from '../../optimizer/types.js';
+import { snapshot, fakeContext } from './fixtures.js';
 
 const ROOTS: Record<string, Record<string, string>> = {
     claude: {
@@ -34,19 +35,6 @@ const ROOTS: Record<string, Record<string, string>> = {
         '.agents/skills/lint/SKILL.md': '---\nname: linter\ndescription: Use when code changes to run the linter.\n---\n## Usage\nRun the linter.',
     },
 };
-
-async function snapshot(dir: string): Promise<Record<string, string>> {
-    const out: Record<string, string> = {};
-    for (const e of await nodeFs.readdir(dir, { recursive: true, withFileTypes: true })) {
-        if (e.isFile()) out[path.relative(dir, path.join(e.parentPath, e.name))] = await nodeFs.readFile(path.join(e.parentPath, e.name), 'utf8');
-    }
-    return out;
-}
-
-function fakeContext(): vscode.ExtensionContext {
-    const state = new Map<string, unknown>();
-    return { workspaceState: { get: (k: string, f?: unknown) => (state.has(k) ? state.get(k) : f), update: async (k: string, v: unknown) => { state.set(k, v); }, keys: () => [...state.keys()] }, subscriptions: [] } as unknown as vscode.ExtensionContext;
-}
 
 export const OPTIMIZER_ROOTS = ['claude', 'custom', 'mixed', 'sdd'];
 
