@@ -103,6 +103,11 @@ async function main() {
       external: ["vscode"],
     },
     {
+      in: "src/test/integration/startupTiming.ts",
+      out: "startupTiming.cjs",
+      external: ["vscode"],
+    },
+    {
       in: "src/test/integration/webviewChunks.ts",
       out: "webviewChunks.cjs",
       external: ["vscode"],

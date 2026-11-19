@@ -130,7 +130,7 @@ Verified: 1017 unit tests; package gate 385,374 bytes; 35 project checks.
 ## T6 — Tabs load on first display
 
 - `lazyTabs.tsx` wraps each tab in `React.lazy`: whiteboard (React Flow, via `WhiteboardTab.tsx`), timeline, Advisory and Optimizer. The overlays (run agent, templates, wizard) are lazy too. `TabBoundary` mounts a tab the first time it is shown and keeps it mounted, so its state survives tab switches.
-- esbuild builds the webview with `splitting: true`; chunks go to `dist/webview-chunks/`. The shell is 445675 bytes unminified-equivalent output (`dist/webview.js`); every tab is a separate chunk.
+- esbuild builds the webview with `splitting: true`; chunks go to `dist/webview-chunks/`. The shell (`dist/webview.js`, 445,675 bytes minified: React, the toolkit and the tab bar) loads first; every tab is a separate chunk.
 - CSP: `script-src` adds `webview.cspSource` so chunks load from the extension's own resource root; inline script still needs the nonce.
 - A mounted tab posts `tabReady`; the host keeps the set as `readyTabs` for Extension Host evidence only.
 - VSIX: 389,365 bytes (97 % of 400,000).
@@ -140,3 +140,34 @@ Verified: 1017 unit tests; package gate 385,374 bytes; 35 project checks.
 | R19 | lazyTabs.test.ts: an unseen tab renders nothing; App.tsx imports no tab or React Flow; splitting is on. webviewChunks (Extension Host): in a real panel the whiteboard chunk loads first; Optimizer and Advisory load only when shown, under the CSP. |
 
 Verified: 1019 unit tests; sixteen Extension Host runs; package gate 389,365 bytes.
+
+## T7 — Activation measured in the Extension Host; docs
+
+`startupTiming` runs one Extension Host per layout (`STARTUP_ROOT`). For each it:
+1. writes the layout;
+2. checks the extension is not active;
+3. times `activate()`;
+4. registers probe companions whose `detect` and `parse` count calls, and waits one second to confirm no scan started;
+5. shows Sources and times until the first scan has completed (Refresh resolves after it).
+
+| Layout | Activation | Sources content after shown |
+|---|---|---|
+| empty | 55 ms | 321 ms |
+| Claude-only | 53 ms | 635 ms |
+| custom profile | 51 ms | 566 ms |
+
+Budget: activation under 500 ms, asserted.
+
+Docs:
+- **DESIGN.md §6 Performance** records the measured activation, the activation events, deferred scans and watchers, native views, the single restorable panel and lazy tabs.
+- **README** Getting started describes the Harness container, Open Dashboard and the walkthrough; the feature table row now reads "Editor Dashboard".
+- **CHANGELOG** has an Unreleased entry.
+
+README screenshots are not retaken. That needs a real window capture, which an agent cannot produce here, and is listed for the human reviewer.
+
+| Requirement | Verification |
+|---|---|
+| R13 | startupTiming (Extension Host, three layouts): activation under 500 ms; no `detect` or `parse` call from activation alone. activation.test.ts (unit). |
+| R21 | Measured in an empty, a Claude-only and a custom-profile folder; DESIGN.md, README and CHANGELOG updated. |
+
+Verified: nineteen Extension Host runs; 1019 unit tests.
