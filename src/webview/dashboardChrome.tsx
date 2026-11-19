@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Spinner } from './controls.js';
 import { SUPPORTED_FRAMEWORKS } from '../frameworks.js';
-import { SPACE } from './styles.js';
+import { SPACE, ACTION_BUTTON } from './styles.js';
 import { vscode } from './vscodeApi.js';
 
 
@@ -45,20 +45,7 @@ export const SkeletonLoading = () => (
     </div>
 );
 // ── Shared action button style: vivid vscode-button color + compact toolbar shape ──
-export const harnessActionBtnStyle: React.CSSProperties = {
-    padding: '5px 13px',
-    fontSize: '0.78em',
-    fontWeight: 600,
-    background: 'var(--vscode-button-background)',
-    border: 'none',
-    borderRadius: 7,
-    cursor: 'pointer',
-    color: 'var(--vscode-button-foreground)',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
-};
+export const harnessActionBtnStyle: React.CSSProperties = ACTION_BUTTON;
 
 export const FRAMEWORK_SIGNATURES: Array<{ label: string; signatures: string }> = SUPPORTED_FRAMEWORKS.map((framework) => ({
     label: framework.label,

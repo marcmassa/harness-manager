@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { SPACE } from './styles.js';
 import type { FeatureEntry } from './FeatureList.js';
-import { aiButtonStyle, CreateFeatureStep, ReviewStep, CompleteStep, type WizardStep } from './SpecWizardSteps.js';
+import { AiIconButton } from './components/AiIconButton.js';
+import { CreateFeatureStep, ReviewStep, CompleteStep, type WizardStep } from './SpecWizardSteps.js';
 
 type SpecFile = 'requirements' | 'design' | 'tasks';
 type VscodeApi = { postMessage?: (msg: unknown) => void };
@@ -186,36 +187,20 @@ export const SpecWizard = ({ vscode, selectedFeature, onClose }: SpecWizardProps
                                 style={{ flex: 1, minHeight: '120px', fontFamily: 'var(--vscode-editor-font-family, monospace)', fontSize: 'var(--vscode-editor-font-size, 12px)', lineHeight: 1.5, padding: SPACE.sm, border: '1px solid var(--vscode-panel-border)', borderRadius: '4px', background: 'var(--vscode-input-background)', color: 'var(--vscode-input-foreground)', resize: 'vertical', outline: 'none' }}
                             />
                             <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '2px' }}>
-                                <button type="button" title="Generate prompt from feature title"
+                                <AiIconButton kind="generate" title="Generate prompt from feature title" disabled={promptGenerating}
                                     onClick={() => {
                                         if (!activeTarget?.title || promptGenerating) return;
                                         setPromptGenerating(true);
                                         vscode.postMessage?.({ type: 'generateFeatureDescription', target: 'wizardPrompt', title: activeTarget.title });
                                     }}
-                                    style={aiButtonStyle(promptGenerating)}
-                                    onMouseEnter={(e) => { if (!promptGenerating) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                                >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
-                                        <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
-                                    </svg>
-                                </button>
-                                <button type="button" title="Refine prompt with AI"
-                                    disabled={!wizardPrompt.trim() || promptGenerating}
+                                />
+                                <AiIconButton kind="refine" title="Refine prompt with AI" disabled={!wizardPrompt.trim() || promptGenerating}
                                     onClick={() => {
                                         if (!wizardPrompt.trim() || promptGenerating) return;
                                         setPromptGenerating(true);
                                         vscode.postMessage?.({ type: 'generateFeatureDescription', target: 'wizardPrompt', mode: 'refine', title: activeTarget?.title || '', currentDescription: wizardPrompt.trim() });
                                     }}
-                                    style={{ ...aiButtonStyle(!wizardPrompt.trim() || promptGenerating), opacity: !wizardPrompt.trim() || promptGenerating ? 0.3 : 0.7 }}
-                                    onMouseEnter={(e) => { if (wizardPrompt.trim() && !promptGenerating) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                                >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                    </svg>
-                                </button>
+                                />
                             </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: SPACE.sm }}>
