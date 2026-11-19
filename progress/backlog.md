@@ -66,4 +66,4 @@ _(cleared — see Completed sections below)_
 
 - FEAT-045: retake README screenshots (`full-window.png` and a new Sources/Findings sidebar capture) for the native views and the editor Dashboard.
 
-- FEAT-048 R9: upstream the `check.sh` fix (judge `npm test`/`npm run build` exit status, fail on test failures) to the Harness SDD framework template, so a framework update does not revert it. The Go block (`go test … | tail -5`) has the same pipe issue.
+- FEAT-048 R9: upstream the `check.sh` fix (a failing unit-test run fails the check instead of warning) to the Harness SDD framework template, so a framework update does not revert it.

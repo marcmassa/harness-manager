@@ -162,7 +162,7 @@ fi
 # ── TypeScript checks (if applicable) ─────────────────
 if ! $SPEC_ONLY && ! $PY_ONLY && ! $GO_ONLY && [ -f "package.json" ]; then
 	section "TypeScript — Build"
-	# FEAT-048 R9: judge the command's own exit status, not tail's (a pipe hides it).
+	# FEAT-048 R9: a failing test run fails the check (it only warned before) and reports the count.
 	if build_out=$(npm run build 2>&1); then pass "npm run build"; else echo "$build_out" | tail -3; fail "npm run build"; fi
 
 	if [ -f "vitest.config.js" ] || [ -f "vitest.config.ts" ]; then
