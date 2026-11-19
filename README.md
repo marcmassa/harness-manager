@@ -61,7 +61,6 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | 🚀 **One-click Scaffold** | "Apply Harness+SDD" button bootstraps `.agents/agentic.json` and `feature_list.json` from detected signals |
 | 🩺 **Component Optimizer** | Scores every agent, subagent, skill, steering and hook 0–100 across six dimensions — 19 deterministic rules, thresholds calibrated against your own corpus, no LLM — with a dimension radar and quick fixes previewed in a diff |
 | 🤖 **Assisted fixes** | For findings with no mechanical fix: AI Refine proposes a rewrite through your editor's model where the host exposes one (`vscode.lm`), or a configured API; Delegate hands a scoped task to an installed terminal agent |
-| 🔗 **Supply-Chain Health** | Deterministic dependency scan (`package.json`, lockfile, bot config) wired into the advisory loop: flags a missing Dependabot/Renovate config with a one-click `dependabot.yml` scaffold, stale security `overrides` vs patched versions, and prod-vs-dev audit findings — remediation commands included *(new in 0.8.1)* |
 | 🔲 **Editor Dashboard** | The Dashboard is one editor tab, restored after a reload on the tab you left; the Activity Bar keeps light native Sources and Findings views |
 
 ---
@@ -77,7 +76,7 @@ A **dependency and CI maintenance release** incorporating every commit since `v0
 - **Security evidence captured** — `npm audit --omit=dev` reports **0 production vulnerabilities**. The full audit separately records 18 development-tree findings at the release date; they are explicitly tracked rather than presented as fixed. See the [0.8.2 security snapshot](docs/security/0.8.2.md).
 - **Verified before packaging** — all 819 unit tests and the repository checks pass; the VSIX size and content gate remains mandatory.
 
-For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet features introduced in 0.8.1, plus full release details, see the [CHANGELOG](./CHANGELOG.md).
+For the React Flow 12/React 19 and VSIX Asset Diet changes introduced in 0.8.1, plus full release details, see the [CHANGELOG](./CHANGELOG.md).
 
 ---
 

@@ -81,11 +81,6 @@
         "category": "Harness Dashboard"
       },
       {
-        "command": "harness-dashboard.runSupplyChainAudit",
-        "title": "Run npm Audit (Supply Chain)",
-        "category": "Harness Dashboard"
-      },
-      {
         "command": "harness-dashboard.openSettings",
         "title": "Open Settings",
         "category": "Harness Dashboard",
@@ -298,8 +293,7 @@
         { "command": "harness-dashboard.openLocalConfig", "when": "workspaceFolderCount > 0" },
         { "command": "harness-dashboard.scaffoldMissing", "when": "workspaceFolderCount > 0" },
         { "command": "harness-dashboard.syncFromFilesystem", "when": "workspaceFolderCount > 0" },
-        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" },
-        { "command": "harness-dashboard.runSupplyChainAudit", "when": "workspaceFolderCount > 0" }
+        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" }
       ],
       "view/title": [
         {

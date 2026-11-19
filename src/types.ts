@@ -115,13 +115,10 @@ export type WebviewMessageType =
     | 'handoffToChat' | 'handoffResult'
     // FEAT-036: spec generation chat handoff
     | 'getAiCapabilities' | 'aiCapabilities' | 'handoffSpecPrompt'
-    // FEAT-036: supply-chain health — user-triggered npm audit (R6, R7)
-    | 'runSupplyChainAudit'
     // FEAT-044: read-only cost comparison with git HEAD
     | 'compareCostWithHead' | 'costComparison'
     // FEAT-045: a lazily loaded tab mounted
-    | 'tabReady'
-    | 'supplyChainAuditResult';
+    | 'tabReady';
 
 export interface WebviewMessage {
     type: WebviewMessageType;
@@ -162,8 +159,6 @@ const KNOWN_MESSAGE_TYPES = new Set<string>([
     'handoffToChat', 'handoffResult',
     // FEAT-036: spec generation chat handoff
     'getAiCapabilities', 'aiCapabilities', 'handoffSpecPrompt',
-    // FEAT-036: supply-chain health
-    'runSupplyChainAudit', 'supplyChainAuditResult',
     'compareCostWithHead', 'costComparison',
     'tabReady',
 ]);

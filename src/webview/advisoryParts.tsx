@@ -14,6 +14,16 @@ export const IMPACT_PALETTE = {
     low:   { bg: 'rgba(42, 161, 152, 0.14)', fg: '#2aa198' },
 } as const;
 
+// ===== Inline SVG refresh icon for the re-scan button =====
+
+export const IconRefresh = () => (
+    <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor"
+        strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" />
+        <polyline points="13.5 2.5 13.5 5.5 10.5 5.5" />
+    </svg>
+);
+
 // ===== Inline SVG icon for the dismiss button (mirrors IconClose in index.tsx) =====
 
 export const IconXSmall = () => (

@@ -1,7 +1,5 @@
 import type { AgenticProfile, Suggestion, SuggestionAction, MaturityLevel } from './types.js';
 import { requestForAction } from '../operations/operations.js';
-// FEAT-036: supply-chain rule family (same table shape, merged below).
-import { SC_RULES, expandStaleOverrideRules } from './supplyChainRules.js';
 import type { SuggestionRule } from './ruleHelpers.js';
 import { CORE_RULES } from './advisoryRules.js';
 import { METHODOLOGY_RULES } from './methodologyRules.js';
@@ -96,13 +94,9 @@ export function generate(
 
   const suggestions: Suggestion[] = [];
 
-  // FEAT-036: RULES ⊕ SC_RULES. The stale-override rules are expanded per
-  // profile because their ids are stable per package (dismissal support);
-  // the rest of the table is static like RULES.
-  const allRules: SuggestionRule[] = [...RULES, ...SC_RULES, ...expandStaleOverrideRules(profile)];
   const present = presentProviders(profile);
 
-  for (const rule of allRules) {
+  for (const rule of RULES) {
     try {
       if (!rule.condition(profile)) continue;
       // Stored IDs are matched verbatim; pre-FEAT-042 bare IDs are migrated once (dismissals.ts).
