@@ -25,3 +25,18 @@ Baseline at the FEAT-046 hold: 985 unit tests; VSIX 345,151 B.
 | Requirement | Verification |
 |---|---|
 | R3 | sharedHelpers.test.ts: `finding()` is defined only in `ruleUtils.ts`; the full type list is written once in the Optimizer and webview (layout tiers excepted); `ALL_TYPES` is the constant. The rule suites pass with assertions unchanged. |
+
+## T6 — Host helpers
+
+| Helper | Replaces |
+|---|---|
+| `src/test/integration/fixtures.ts` | `snapshot(dir, { skipGit })`: five copies. `fakeContext()`: four copies, also repeated, beyond what the review listed. |
+| `src/agentic-detector/summary.ts` | `activeSuggestions` and `buildArchitectureSummary`, which `extension.ts` and `HarnessDashboardProvider.ts` both built. |
+| `viewRelations.ts` constants | The workspace-state key literals, now defined once alongside `CUSTOM_USES_EDGES_KEY`. `DISMISSED_SUGGESTIONS_KEY` and `DISABLED_CONNECTIONS_KEY` were written out six times; one integration test also spelled out a key that already had a constant. |
+| `OperationGate.describeAll(nodes)` | The two ownership-map constructions. |
+
+The webview's own suggestion filter also applies dismissals made in the panel itself, so it is a different computation and stays as it is.
+
+| Requirement | Verification |
+|---|---|
+| R7 | sharedHostHelpers.test.ts: the summary maths; one definition each for the summary, the state keys and the ownership map; `snapshot` and `fakeContext` exist only in `fixtures.ts`. panel.test.ts (FEAT-045 R20) still checks the key values, now in `viewRelations.ts`. |

@@ -12,7 +12,8 @@ import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
 import { HarnessConfig, HARNESS_CONFIG_DIR, HARNESS_CONFIG_RELATIVE_PATH } from './config/harnessConfig.js';
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
-import type { AgenticProfile, GraphContext, ArchitectureSummary } from './agentic-detector/types.js';
+import { buildArchitectureSummary } from './agentic-detector/summary.js';
+import type { AgenticProfile, GraphContext } from './agentic-detector/types.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
 import { OPTIMIZER_DIFF_SCHEME } from './coordinators/OptimizerCoordinator.js';
 import { RunAdapterRegistry } from './run/runAdapterRegistry.js';
@@ -205,15 +206,6 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
 
     registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan, ensureScanned: () => scheduler.ensureScanned() });
 
-
-    const buildArchitectureSummary = (profile: AgenticProfile): ArchitectureSummary => ({
-        maturityLevel: profile.maturity.level,
-        maturityLabel: profile.maturity.label,
-        maturityColor: profile.maturity.color,
-        activeSuggestions: profile.suggestions.filter(s => !profile.dismissedSuggestionIds.includes(s.id)).length,
-        scanTimestamp: profile.scanTimestamp,
-        isScanning: false,
-    });
 
     // FEAT-031: Forward scan results + architecture summary to the webview
     agenticDetector.on('scanComplete', (profile: AgenticProfile) => {

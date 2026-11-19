@@ -108,9 +108,8 @@ describe('manifest (R1, R12) and state keys (R20)', () => {
     });
 
     it('keeps the workspace-state keys that hold positions, dismissals and disabled connections', () => {
-        const src = readFileSync('src/HarnessDashboardProvider.ts', 'utf8');
-        for (const key of ['harness-dashboard.dismissedSuggestions', 'harness-dashboard.disabledConnections']) expect(src).toContain(`'${key}'`);
+        // FEAT-048 R7: the keys are defined once, in viewRelations.ts; their values must not change.
         const relations = readFileSync('src/coordinators/viewRelations.ts', 'utf8');
-        for (const key of ['harness-dashboard.customUsesEdges', 'harness-dashboard.customEdges']) expect(relations).toContain(`'${key}'`);
+        for (const key of ['harness-dashboard.dismissedSuggestions', 'harness-dashboard.disabledConnections', 'harness-dashboard.customUsesEdges', 'harness-dashboard.customEdges']) expect(relations).toContain(`'${key}'`);
     });
 });

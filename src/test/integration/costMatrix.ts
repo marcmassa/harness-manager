@@ -11,6 +11,7 @@ import { createDefaultAdapters } from '../../adapters/index.js';
 import { HarnessConfig } from '../../config/harnessConfig.js';
 import { HarnessDashboardProvider } from '../../HarnessDashboardProvider.js';
 import { OperationGate } from '../../operations/operationGate.js';
+import { snapshot, fakeContext } from './fixtures.js';
 
 const SHARED = 'Always run the full test suite before committing, and never push directly to main without a review from someone who knows the code.';
 const SENTINEL = 'HOOK-RAN';
@@ -42,20 +43,6 @@ const LAYOUTS: Record<string, Record<string, string>> = {
     },
 };
 
-async function snapshot(dir: string): Promise<Record<string, string>> {
-    const out: Record<string, string> = {};
-    for (const e of await nodeFs.readdir(dir, { recursive: true, withFileTypes: true })) {
-        const full = path.join(e.parentPath, e.name);
-        if (e.isFile() && !full.includes(`${path.sep}.git${path.sep}`)) out[path.relative(dir, full)] = await nodeFs.readFile(full, 'utf8');
-    }
-    return out;
-}
-
-function fakeContext(): vscode.ExtensionContext {
-    const state = new Map<string, unknown>();
-    return { workspaceState: { get: (k: string, f?: unknown) => (state.has(k) ? state.get(k) : f), update: async (k: string, v: unknown) => { state.set(k, v); }, keys: () => [...state.keys()] }, subscriptions: [] } as unknown as vscode.ExtensionContext;
-}
-
 export async function run(): Promise<void> {
     const name = process.env.COST_ROOT ?? '';
     const files = LAYOUTS[name];
@@ -72,7 +59,7 @@ export async function run(): Promise<void> {
         git('add', '-A'); git('commit', '-q', '-m', 'init');
         await nodeFs.appendFile(path.join(root.fsPath, '.agents/steering/team.md'), `\n\n${'Document every public function. '.repeat(20)}`);
     }
-    const before = await snapshot(root.fsPath);
+    const before = await snapshot(root.fsPath, { skipGit: true });
     const log = vscode.window.createOutputChannel('Cost matrix test', { log: true });
     const config = new HarnessConfig(log);
     try {
@@ -108,7 +95,7 @@ export async function run(): Promise<void> {
         }
         if (name === 'mixed') assert.deepEqual(k01, ['claude-code', 'harness-sdd'], 'mixed: cross-owner duplication not reported on both');
 
-        assert.deepEqual(await snapshot(root.fsPath), before, `${name}: cost analysis or the HEAD comparison changed files`);
+        assert.deepEqual(await snapshot(root.fsPath, { skipGit: true }), before, `${name}: cost analysis or the HEAD comparison changed files`);
         await assert.rejects(nodeFs.access(path.join(root.fsPath, SENTINEL)), `${name}: a hook ran`);
         console.log(`FEAT-044 cost matrix (${name}) passed`);
     } finally {

@@ -13,6 +13,7 @@ import { AgenticDetector } from '../../agentic-detector/agenticDetector.js';
 import { HarnessDashboardProvider } from '../../HarnessDashboardProvider.js';
 import { OperationGate } from '../../operations/operationGate.js';
 import type { AgenticProfile } from '../../agentic-detector/types.js';
+import { snapshot, fakeContext } from './fixtures.js';
 
 const PROFILE = JSON.stringify({ profiles: [{
     version: 1, id: 'team-guides', label: 'Team guides', markers: ['team/agents/index.md'],
@@ -42,23 +43,6 @@ const ROOTS: Record<string, Record<string, string>> = {
         '.agents/subagents/reviewer/SUBAGENT.md': '---\nname: reviewer\ndescription: Review.\n---\nReview.',
     },
 };
-
-async function snapshot(dir: string): Promise<Record<string, string>> {
-    const out: Record<string, string> = {};
-    for (const entry of await nodeFs.readdir(dir, { recursive: true, withFileTypes: true })) {
-        if (entry.isFile()) out[path.relative(dir, path.join(entry.parentPath, entry.name))] = await nodeFs.readFile(path.join(entry.parentPath, entry.name), 'utf8');
-    }
-    return out;
-}
-
-function fakeContext(): vscode.ExtensionContext {
-    const state = new Map<string, unknown>();
-    return { workspaceState: {
-        get: (k: string, f?: unknown) => (state.has(k) ? state.get(k) : f),
-        update: async (k: string, v: unknown) => { state.set(k, v); },
-        keys: () => [...state.keys()],
-    }, subscriptions: [] } as unknown as vscode.ExtensionContext;
-}
 
 const SDD_SCAFFOLDS = new Set(['scaffold-agent', 'scaffold-skill']);
 const actionTypes = (profile: AgenticProfile) => profile.suggestions.flatMap(s => (s.actions ?? []).map(a => a.type));
