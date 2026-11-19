@@ -62,7 +62,7 @@ Works out of the box with **Harness SDD**, and ships with **universal adapters**
 | 🩺 **Component Optimizer** | Scores every agent, subagent, skill, steering and hook 0–100 across six dimensions — 19 deterministic rules, thresholds calibrated against your own corpus, no LLM — with a dimension radar and quick fixes previewed in a diff |
 | 🤖 **Assisted fixes** | For findings with no mechanical fix: AI Refine proposes a rewrite through your editor's model where the host exposes one (`vscode.lm`), or a configured API; Delegate hands a scoped task to an installed terminal agent |
 | 🔗 **Supply-Chain Health** | Deterministic dependency scan (`package.json`, lockfile, bot config) wired into the advisory loop: flags a missing Dependabot/Renovate config with a one-click `dependabot.yml` scaffold, stale security `overrides` vs patched versions, and prod-vs-dev audit findings — remediation commands included *(new in 0.8.1)* |
-| 🔲 **Full-window Dashboard** | Open the dashboard as a standalone editor panel, detached from the activity bar, for more screen space |
+| 🔲 **Editor Dashboard** | The Dashboard is one editor tab, restored after a reload on the tab you left; the Activity Bar keeps light native Sources and Findings views |
 
 ---
 
@@ -101,10 +101,10 @@ For the Supply-Chain Health, React Flow 12/React 19, and VSIX Asset Diet feature
 
 1. **Install** — download the latest VSIX from the [Releases page](https://github.com/marcmassa/harness-manager/releases) and install it via `Extensions: Install from VSIX...`, or install directly from the VS Code Marketplace (*coming soon*).
 2. Open a workspace that uses [Harness SDD](https://github.com/marcmassa/harness-sdd-template.git) or any supported agentic framework  
-3. Click the **Harness Dashboard** icon in the Activity Bar
-4. The whiteboard renders your agent graph automatically
+3. Click the **Harness** icon in the Activity Bar: **Sources** lists each detected provider and the files it owns; **Findings** groups Advisory and Optimizer results by owner
+4. Run **Open Dashboard** (view toolbar or Command Palette) for the whiteboard, timeline, Advisory and Optimizer in an editor tab, or follow the *Get started with Harness Dashboard* walkthrough
 
-> **No config needed.** The extension detects your project structure on activation.
+> **No config needed.** Supported formats are detected automatically; for any other layout, declare a harness profile. Nothing is scanned until you open a Harness view or the Dashboard.
 
 ---
 

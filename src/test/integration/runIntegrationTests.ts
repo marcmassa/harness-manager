@@ -97,6 +97,19 @@ async function main(): Promise<void> {
                 await fs.rm(root, { recursive: true, force: true });
             }
         }
+        // FEAT-045 T7: activation and first Sources content, one host per layout.
+        for (const layout of ['empty', 'claude', 'custom']) {
+            const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-startup-${layout}-`));
+            try {
+                await runTests({
+                    vscodeExecutablePath, extensionDevelopmentPath, launchArgs: [dir],
+                    extensionTestsPath: path.join(__dirname, 'startupTiming.cjs'),
+                    extensionTestsEnv: { ...process.env, STARTUP_ROOT: layout },
+                });
+            } finally {
+                await fs.rm(dir, { recursive: true, force: true });
+            }
+        }
         // FEAT-043 T4: one host per layout, each opened as its own workspace folder.
         for (const layout of ['claude', 'custom', 'mixed', 'sdd']) {
             const dir = await fs.mkdtemp(path.join(tmpdir(), `dashboard-optimizer-${layout}-`));

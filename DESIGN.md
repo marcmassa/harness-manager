@@ -222,8 +222,20 @@ models via `vscode.lm`.
     key needed).
 
 - **Performance**:
-  - Activation time < 500 ms (surgical `onView` activation event,
-    lazy import of webview bundle).
+  - Activation time < 500 ms, measured in the Extension Host for an
+    empty, a Claude-only and a custom-profile folder (FEAT-045 T7:
+    51–55 ms). Activation registers commands, views and the panel
+    serializer only: no file read, process, watcher or scan. The first
+    scan starts when a Harness view or the Dashboard panel is shown, or
+    a command needs results; watchers start after it; changes while
+    nothing is visible only mark results stale.
+  - Activation events: only `onWebviewPanel:harness-dashboard.fullDashboard`
+    (views and commands activate implicitly). Never `*`,
+    `onStartupFinished` or `workspaceContains`.
+  - The Activity Bar container holds native tree views (Sources,
+    Findings) with `viewsWelcome`; the Dashboard is one editor panel,
+    restored by a serializer, without `retainContextWhenHidden`. Its
+    tabs are lazy chunks loaded on first display.
   - All disposables registered in `context.subscriptions`.
   - Vitest unit-test suite: 228 tests in < 1 s.
 
