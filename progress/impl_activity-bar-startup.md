@@ -100,3 +100,29 @@ Workspace-state keys are unchanged: dismissed suggestions, disabled connections,
 Extension Host: the fifteen suites pass with the panel as the only Dashboard surface. "Open Dashboard" triggers the first scan in the FEAT-041 companion suite.
 
 Verified: 1012 unit tests; fifteen Extension Host runs; build.
+
+## T5 — Welcome content and walkthrough
+
+`viewsWelcome`:
+
+| View | State | Content |
+|---|---|---|
+| Sources | `noFolder`, or `workbenchState == empty` before activation | the single button, Open Folder |
+| Sources | `scanning` | a short notice |
+| Sources | `empty` | detection is automatic; inline links to declare a harness profile and to the BYOH guide; no button |
+| Findings | `ready` and not yet scanned | a one-line note, with an inline Refresh link when not yet scanned |
+
+No text names or recommends a framework.
+
+One walkthrough, "Get started with Harness Dashboard", has five steps: open the Dashboard, review detected sources, declare a profile for a custom layout, review findings, explore context cost. Each step has a verb-led command link, a command or view completion event, and a small SVG (`media/walkthrough/*.svg`, 2.2 KB in total) drawn with `var(--vscode-*)` colours, so it follows the theme. Nothing in the source opens the walkthrough or a webview by itself.
+
+VSIX budget: with T1–T5 the package reached 397,659 bytes (99 % of 400,000). Releases 0.1.0–0.7.0 moved from `CHANGELOG.md` to `docs/changelog/0.1-0.7.md`, which is not packaged; `CHANGELOG.md` links to it. The package is now 385,374 bytes (96 %).
+
+| Requirement | Verification |
+|---|---|
+| R8 | onboarding.test.ts: the three Sources states are covered; at most one button per welcome; the empty state uses links. |
+| R9 | onboarding.test.ts: welcome and walkthrough text names no framework; the empty state links to the profile and the BYOH guide. |
+| R10 | onboarding.test.ts: one walkthrough of at most five steps, each with a verb-led action, completion events and a theme-aware SVG that exists. |
+| R11 | onboarding.test.ts: no source file opens a walkthrough. activation.test.ts: no webview, walkthrough or notification on activation. |
+
+Verified: 1017 unit tests; package gate 385,374 bytes; 35 project checks.

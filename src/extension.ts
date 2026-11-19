@@ -164,6 +164,7 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     context.subscriptions.push(
         // FEAT-045 T2: the view toolbar's Refresh — one scan through the scheduler.
         vscode.commands.registerCommand('harness-dashboard.refresh', () => scheduler.refresh()),
+        // Kept as an alias of Refresh for keybindings; no longer contributed (FEAT-045 T5).
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
             await scheduler.ensureScanned();
             await agenticDetector.scan(buildGraphContext());
