@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { withInferenceAction } from './cost/inferenceLedger.js';
 import { ParserResult, MarkdownFileContent } from './types.js';
 import {
     reconcileSkillDiscovery,
@@ -19,14 +20,12 @@ export interface ParseOptions {
 }
 
 export class HarnessParser {
-    private readonly _registry: AdapterRegistry;
 
     constructor(
         private readonly workspaceRoot: vscode.Uri,
-        log?: vscode.LogOutputChannel
-    ) {
-        this._registry = new AdapterRegistry(createDefaultAdapters(), log);
-    }
+        log?: vscode.LogOutputChannel,
+        private readonly _registry = new AdapterRegistry(createDefaultAdapters(), log),
+    ) {}
 
     public getWatchGlobs(): string[] {
         return this._registry.watchGlobs();
@@ -146,7 +145,7 @@ export class HarnessParser {
                 if (!model) return 0;
 
                 const prompt = `Rate the relevance between these two descriptions on a scale of 0 to 10, where 0 means completely unrelated and 10 means perfectly matched. Respond with ONLY a number between 0 and 10, nothing else.\n\nDescription A: ${subagentDesc}\n\nDescription B: ${skillDesc}`;
-                const text = await sendChatRequest(model, prompt);
+                const text = await withInferenceAction('semantic-match', () => sendChatRequest(model, prompt));
                 if (text === undefined) return 0;
 
                 const parsed = parseFloat(text.trim());

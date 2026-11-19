@@ -11,10 +11,12 @@
 // below is this task's synthesis of that description plus RuleContext's
 // shape from design.md §A.
 
+import { applicability } from './applicability.js';
 import { activeRules } from './rules/index.js';
 import { scoreComponent, rollup, applySeverityCeiling, DIMENSIONS as ALL_DIMENSIONS } from './scorer.js';
 import { computeCorpusStats } from './corpusStats.js';
 import type {
+    ComponentCoverage,
     ComponentSource,
     OptimizerConfig,
     OptimizerDimension,
@@ -92,9 +94,18 @@ export function scan(
         const corpus = computeCorpusStats(analyzedList);
 
         const rawFindings: OptimizerFinding[] = [];
+        const coverageByNode = new Map<string, ComponentCoverage>();
         for (const source of analyzedList) {
+            const coverage: ComponentCoverage = { evaluated: [], skipped: [] };
+            coverageByNode.set(source.nodeId, coverage);
             for (const rule of rules) {
                 if (!rule.appliesTo.includes(source.nodeType)) continue;
+                // FEAT-043 R1: convention rules run only where the owner's format documents them.
+                const fit = applicability(rule.id, source);
+                if (!fit.applies) {
+                    coverage.skipped.push({ ruleId: rule.id, reason: fit.reason ?? 'not applicable' });
+                    continue;
+                }
 
                 const ctx: RuleContext = {
                     source,
@@ -106,6 +117,12 @@ export function scan(
                     config,
                     corpus,
                 };
+                const unable = rule.cannotEvaluate?.(ctx) ?? null;
+                if (unable) {
+                    coverage.skipped.push({ ruleId: rule.id, reason: unable });
+                    continue;
+                }
+                if (rule.scored !== false && !coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
 
                 try {
                     const found = rule.evaluate(ctx);
@@ -117,6 +134,9 @@ export function scan(
                                 ...f,
                                 severity: applySeverityCeiling(f.severity, rule.confidence),
                                 confidence: rule.confidence,
+                                // FEAT-043 R4: the finding names its native source and owner.
+                                ...(source.source ? { source: source.source } : {}),
+                                ...(rule.scored === false ? { informational: true as const } : {}),
                             });
                         }
                     }
@@ -146,9 +166,10 @@ export function scan(
         }
 
         const components = analyzedList.map(source =>
-            scoreComponent(source, findingsByNode.get(source.nodeId) ?? []),
+            scoreComponent(source, findingsByNode.get(source.nodeId) ?? [], coverageByNode.get(source.nodeId)),
         );
         const architectureScore = rollup(components);
+        const scoredComponents = components.filter(c => c.score !== null).length;
 
         const bySeverity: Record<OptimizerSeverity, number> = { error: 0, warning: 0, info: 0 };
         // Derived from ALL_DIMENSIONS, not written out: the hand-maintained
@@ -166,6 +187,7 @@ export function scan(
             ok: true,
             scanTimestamp,
             architectureScore,
+            scoredComponents,
             totalComponents,
             truncated,
             components,

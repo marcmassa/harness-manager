@@ -65,19 +65,23 @@ export class HarnessSddAdapter implements IAgentAdapter {
         }
 
         logic.parseAgenticJson(agenticJson, result);
+        for (const node of result.graph.nodes) node.metadata._declarationPath = '.agents/agentic.json';
 
         // T11: Read steering file content (R3, R4) and hook script preview (R5)
         await this.parseSteeringFiles(root, result, agenticJson);
         await this.parseHookFiles(root, result, agenticJson);
 
         const featureList = await readTextMultiBase(root, 'feature_list.json');
-        if (featureList) {
-            logic.parseFeatureList(featureList, result);
+        if (featureList?.text) {
+            logic.parseFeatureList(featureList.text, result);
+            for (const node of result.graph.nodes) {
+                if (node.type === 'feature') node.metadata._declarationPath = featureList.path;
+            }
         }
 
         const progressMd = await readTextMultiBase(root, 'progress/progress.md');
-        if (progressMd) {
-            logic.parseProgressMd(progressMd, result);
+        if (progressMd?.text) {
+            logic.parseProgressMd(progressMd.text, result);
         }
 
         await this.parseSkills(root, result);

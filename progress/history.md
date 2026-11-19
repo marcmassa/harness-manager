@@ -32,3 +32,25 @@
 - Classified the 38 baseline features and documented eight built-in adapters, including legacy Windsurf.
 - Added inventory checks to the normal test suite and prepared FEAT-040 for human review.
 - Build, 821 tests, package (373,009 B), and check.sh (35 checks) pass.
+
+## 2026-11-18 — Contributor quality checks (FEAT-040)
+- Removed the installed extension's verifier, command and settings. Kept both contributor hooks and read-only graph discovery.
+- Verified all nine rules and clean controls, native hook attribution, and a real macOS save with both legacy options enabled.
+- Build, 817 unit tests, both host runs, VSIX (371,609 bytes), and 35 project checks passed. Handoff for independent review.
+
+## 2026-11-18 — BYOH code and security review
+- Restricted host dispatch to the two documented toolbar actions, shared webview setup, and removed unused provider state and duplicate types.
+- Confirmed the contributor hooks remain isolated on save. Both macOS Extension Host suites, 820 unit tests, build and VSIX gates passed (371,622 bytes). Full and production npm audits returned zero findings.
+- The standalone TypeScript check reports the same 218 diagnostics before and after these changes. Independent feature closure review remains pending.
+
+## 2026-11-18 — BYOH 0.9.0 analysis panels
+- Probed a Claude-only fixture in the macOS Extension Host. Discovery identified both native files, Advisory proposed the existing CLAUDE.md and Optimizer proposed the parent directory as the agent name.
+- Prepared FEAT-041 through FEAT-043 for human review. The debug fixture, current engine output and release acceptance are in docs/byoh/v0.9.0.md.
+
+## 2026-11-18 — BYOH 0.9.0 spec approvals
+- Recorded the maintainer’s approval for FEAT-041, FEAT-042 and FEAT-043 against the specs at d7b4c7e.
+- FEAT-041 remains queued behind FEAT-040. The start transition enforced the single-feature concurrency limit.
+
+## 2026-11-18 — FEAT-041 source identity
+- Recorded FEAT-040 as blocked pending the independent review on PR #31 and started the approved FEAT-041.
+- Connected the configured registry to discovery and both analysis paths. Covered mixed-owner ID collisions, retained positions and custom Claude paths with unit and Extension Host tests.

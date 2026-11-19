@@ -217,7 +217,7 @@ describe('AdvisoryPanel — Apply Harness+SDD button (T34)', () => {
         const profile = makeProfile();
         // L0 by default
         const html = render(profile);
-        expect(html).toContain('Apply Harness+SDD');
+        expect(html).toContain('Adopt Harness SDD (optional)');
     });
 
     it('renders button when maturity is L4', () => {
@@ -235,7 +235,7 @@ describe('AdvisoryPanel — Apply Harness+SDD button (T34)', () => {
         });
         expect(profile.maturity.level).toBe('L4');
         const html = render(profile);
-        expect(html).toContain('Apply Harness+SDD');
+        expect(html).toContain('Adopt Harness SDD (optional)');
     });
 
     it('hides button when maturity is L5 (SDD already active)', () => {
@@ -262,7 +262,7 @@ describe('AdvisoryPanel — Apply Harness+SDD button (T34)', () => {
         });
         expect(profile.maturity.level).toBe('L5');
         const html = render(profile);
-        expect(html).not.toContain('Apply Harness+SDD');
+        expect(html).not.toContain('Adopt Harness SDD (optional)');
     });
 
     it('hides button when onApplyHarnessSDD callback is not provided', () => {
@@ -275,7 +275,7 @@ describe('AdvisoryPanel — Apply Harness+SDD button (T34)', () => {
                 // onApplyHarnessSDD is intentionally omitted
             }),
         );
-        expect(html).not.toContain('Apply Harness+SDD');
+        expect(html).not.toContain('Adopt Harness SDD (optional)');
     });
 });
 

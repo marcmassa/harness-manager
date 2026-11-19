@@ -102,6 +102,8 @@ export interface MaturityInfo {
     level: MaturityLevel;
     whatIsNeeded: string;
   } | null;
+  /** FEAT-042 R4: inputs the assessment could not use, named for the user. */
+  unavailableInputs?: string[];
 }
 
 // === Architecture patterns ===
@@ -155,6 +157,14 @@ export interface Suggestion {
   actionType?: 'scaffold' | 'navigate' | 'link';
   actionPayload?: string;
   actions?: SuggestionAction[];   // FEAT-032: executable action buttons
+  /** FEAT-042: the rule that produced this finding; `id` is owner-qualified. */
+  ruleId?: string;
+  /** FEAT-042 R2: whose finding this is. */
+  scope?: { kind: 'workspace' } | { kind: 'provider'; providerId: string };
+  /** FEAT-042 R2: provider resources that support the finding. */
+  evidence?: Array<{ providerId: string; nodeId: string; sourceUri?: string }>;
+  /** FEAT-042 R2: the inputs the rule evaluated. */
+  reason?: string;
 }
 
 // === GraphContext (in-memory whiteboard/SDD state passed to scan) ===
@@ -181,6 +191,11 @@ export interface ArchitectureSummary {
 // === Composite profile ===
 
 export interface AgenticProfile {
+  sources?: import('../types.js').SourceIdentity[];
+  /** FEAT-042: provider-attributed evidence that Layer-2 deduplication removed (evidence.ts). */
+  evidence?: import('./evidence.js').EvidenceItem[];
+  /** FEAT-042: providers whose detection succeeded, with or without nodes (same input as the gate). */
+  detectedProviders?: string[];
   workspaceRoot: string;
   scanTimestamp: number;
   layers: {

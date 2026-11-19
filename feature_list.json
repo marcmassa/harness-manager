@@ -477,7 +477,7 @@
       "title": "Bring Your Own Harness — product architecture migration",
       "description": "Reorient Harness Dashboard around the harness each user already has. Define shared-core versus adapter-specific capabilities, audit all current features against BYOH, update DESIGN.md and classify each feature as shared, adapter-specific, optional integration, or repository development tooling. Keep KISS/DRY hooks for this repository's development only. Produce approved follow-up specs before changing affected runtime features; then build the capability model, custom adapter path, and support reporting in staged work.",
       "type": "feat",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "spec-author-vscode",
@@ -488,7 +488,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, reply to FEAT-039 spec_ready: continúa las tareas para orientar harness-manager a una estrategia de Bring Your Own Harness",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     },
     {
       "id": "FEAT-040",
@@ -496,11 +497,119 @@
       "title": "Repository development hooks — BYOH revision of FEAT-027",
       "description": "Keep KISS and DRY as contributor checks and retire their activation in the shipped extension.",
       "type": "chore",
-      "status": "spec_ready",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
-      "sprint": "Next"
+      "sprint": "Next",
+      "spec_approval": {
+        "spec_digest": "e82601760da82c2f6adab758c53736a5e62b69fa112beafac81f964ab905cdd3",
+        "task_digest": "adac100abe404ea7e6d6e79af4d6f73fc62c183fda40306f721b113271ca4060",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18: aprobado, in response to the FEAT-040 design and approval request",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-041",
+      "name": "byoh-source-capabilities",
+      "title": "BYOH source ownership and operation capabilities",
+      "description": "Give built-in and user-defined sources stable ownership, read-only discovery and a common decision for visible and executable actions.",
+      "type": "feat",
+      "status": "blocked",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "ca82b6a0fc5550bb0f0f7e537f57f335311f74d479e64c0e2fd6c959f8620c9d",
+        "task_digest": "d8ff2898954bc8a5ab9b59b3ec2135dedcadb9870e289e15ea9cb1dcf060bae2",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-042",
+      "name": "byoh-advisory",
+      "title": "BYOH Advisory findings, maturity and actions",
+      "description": "Derive Advisory findings and maturity from attributed evidence and scope each available action to its actual provider.",
+      "type": "feat",
+      "status": "blocked",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "8bbfa92e1c262c9a61acdb7ae3d401af3d3c66bfeec437f134782025fd1d24b3",
+        "task_digest": "04af2b0f385dfe707fb39a58bb49ece0d4b533ad618f3257438eba079a3fe271",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-043",
+      "name": "byoh-optimizer",
+      "title": "BYOH Optimizer applicability, scores and assisted fixes",
+      "description": "Evaluate native components only against applicable rules and route fixes and delegation by owner and operation.",
+      "type": "feat",
+      "status": "blocked",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "438d1241d1ea0e2c2503de1c09ec7d361b28b379cb6865001460e6b63db23449",
+        "task_digest": "3c010c26239bd39f6af36a4ea9f4000b580d9f630164fbfa53f278a4807dd296",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-044",
+      "name": "byoh-context-cost",
+      "title": "BYOH context cost, optimization and inference usage",
+      "description": "Price any harness on one scale from owner-declared load modes: per-session baseline, skill catalog and on-demand bodies per provider; unknown load modes listed as unpriced; optional calibration and user price table without network; deterministic cross-owner cost findings; a local inference ledger for the Dashboard own AI actions; cost diff against git HEAD.",
+      "type": "feat",
+      "status": "blocked",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "59f5fd645d96e7fe5d290261e037652afc706df967fc3bd0b1632ff97998c6a5",
+        "task_digest": "228277c2b3da3bb21d1dcae83b9157048c041e06be83dfaf62b41378c33ab134",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18, maintainer reply “aprobada” to FEAT-044 byoh-context-cost presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
+    },
+    {
+      "id": "FEAT-045",
+      "name": "activity-bar-startup",
+      "title": "Activity Bar redesign and lazy startup",
+      "description": "Replace the sidebar webview with native Sources and Findings tree views over the shared scan, move the Dashboard to one restorable editor panel, add provider-neutral welcome views and one walkthrough, register commands with category and palette conditions even without a folder, defer every scan until a view or the panel is visible, code-split webview tabs, and measure activation in the Extension Host.",
+      "type": "feat",
+      "status": "blocked",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "spec_approval": {
+        "spec_digest": "cbeca2af49acd5b437effb5eb9cdd0230b855fa075b29fe57887a26763fedebe",
+        "task_digest": "f1422f6a20dea803c88b34b39deafa8b13d96938eb8f3e05ffcd746f1ab6d593",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-18, maintainer reply “aprobada, haz commit y sigue con T3” to FEAT-045 activity-bar-startup presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      },
+      "blocked_from": "in_progress"
     }
   ]
 }

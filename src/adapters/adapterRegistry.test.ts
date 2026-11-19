@@ -6,7 +6,7 @@ const mockFiles = new Map<string, string>();
 const normalize = (input: string) => input.replace(/\\/g, '/').replace(/\/+/g, '/');
 const toUri = (path: string) => {
     const normalized = normalize(path);
-    return { fsPath: normalized, path: normalized };
+    return { fsPath: normalized, path: normalized, toString: () => 'file://' + normalized };
 };
 
 function globToRegExp(glob: string): RegExp {
@@ -140,6 +140,7 @@ import {
     OpenCodeAdapter,
     WindsurfAdapter,
 } from './index.js';
+import { mergeLayoutedNodesWithManualPositions } from '../webview/nodePositionUtils.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 
 const rootUri = () => vscode.Uri.file(ROOT);
@@ -264,46 +265,54 @@ describe('Adapter framework parsing', () => {
 });
 
 describe('AdapterRegistry behavior', () => {
-    it('deduplicates node ids on merge with first adapter winning', async () => {
-        const first: IAgentAdapter = {
-            id: () => 'first',
-            label: () => 'First',
-            detect: async () => true,
+    it('retains both owners and their edges when providers share a file and node ID', async () => {
+        const adapter = (id: string): IAgentAdapter => ({
+            id: () => id, label: () => id, detect: async () => true,
             parse: async () => ({
                 graph: {
-                    nodes: [{ id: 'agent', type: 'agent', label: 'First Agent', metadata: {} }],
-                    edges: [],
+                    nodes: [
+                        { id: 'agent', type: 'agent', label: id, metadata: { _filePath: 'team.md' } },
+                        { id: id + '-skill', type: 'skill', label: 'skill', metadata: {} },
+                    ],
+                    edges: [{ id: 'uses', source: 'agent', target: id + '-skill', label: 'uses' }],
                 },
-                milestones: [],
-                errors: [],
             }),
-            watchGlobs: () => [],
-            isPathConfigurable: () => false,
-            setHarnessConfig: () => { /* no-op for the test stub */ },
-        };
-        const second: IAgentAdapter = {
-            id: () => 'second',
-            label: () => 'Second',
-            detect: async () => true,
-            parse: async () => ({
-                graph: {
-                    nodes: [{ id: 'agent', type: 'agent', label: 'Second Agent', metadata: {} }],
-                    edges: [],
-                },
-                milestones: [],
-                errors: [],
-            }),
-            watchGlobs: () => [],
-            isPathConfigurable: () => false,
-            setHarnessConfig: () => { /* no-op for the test stub */ },
-        };
+            watchGlobs: () => [], isPathConfigurable: () => false, setHarnessConfig() {},
+        });
+        for (const order of [['first', 'second'], ['second', 'first']]) {
+            const registry = new AdapterRegistry(order.map(adapter));
+            const first = await registry.parse(rootUri());
+            expect((await registry.parse(rootUri())).graph).toEqual(first.graph);
+            expect(first.graph.nodes).toHaveLength(4);
+            expect(new Set(first.graph.edges.map(edge => edge.id)).size).toBe(2);
+            for (const providerId of order) {
+                const node = first.graph.nodes.find(n => n.label === providerId)!;
+                expect(node.id).toBe('byoh:' + encodeURIComponent(JSON.stringify([providerId, 'agent'])));
+                expect(node.source).toEqual({ workspaceUri: 'file:///workspace', providerId, nativeId: 'agent', sourceUri: 'file:///workspace/team.md', loadMode: 'unknown' });
+                expect(first.graph.edges).toContainEqual(expect.objectContaining({ source: node.id, target: providerId + '-skill' }));
+            }
+        }
+    });
 
-        const registry = new AdapterRegistry([first, second]);
-        const parsed = await registry.parse(rootUri());
-
-        expect(parsed.graph.nodes).toHaveLength(1);
-        expect(parsed.graph.nodes[0].label).toBe('First Agent');
-        expect(parsed.detectedFrameworks).toEqual(['First', 'Second']);
+    it('preserves the legacy SDD position and resolves native edges when a foreign agent has the same graph ID', async () => {
+        const legacyId = 'claude-code::reviewer';
+        seedWorkspace({
+            '.agents/agentic.json': JSON.stringify({ subagents: [{ name: legacyId }] }),
+            'CLAUDE.md': '# Instructions',
+            '.claude/agents/reviewer.md': '---\nname: reviewer\n---\nReview changes.',
+        });
+        const registry = new AdapterRegistry([new HarnessSddAdapter(), new ClaudeCodeAdapter()]);
+        const { graph } = await registry.parse(rootUri());
+        const existing = graph.nodes.find(node => node.id === legacyId);
+        expect(existing?.source?.providerId).toBe('harness-sdd');
+        const claude = graph.nodes.find(n => n.source?.providerId === 'claude-code' && n.source.nativeId === 'reviewer')!;
+        expect(claude.source?.sourceUri).toBe('file:///workspace/.claude/agents/reviewer.md');
+        expect(graph.edges).toContainEqual(expect.objectContaining({ source: 'claude-code::root', target: claude.id }));
+        const origin = { x: 0, y: 0 };
+        const saved = { x: 13, y: 21 };
+        const layout = mergeLayoutedNodesWithManualPositions(graph.nodes.map(n => ({ id: n.id, position: origin })), { [legacyId]: saved });
+        expect(layout.nodes.find(n => n.id === legacyId)?.position).toEqual(saved);
+        expect(layout.nodes.find(n => n.id === claude.id)?.position).toEqual(origin);
     });
 
     it('continues parsing when one adapter throws and excludes failing adapter from detected frameworks', async () => {
@@ -381,6 +390,23 @@ describe('FEAT-026 — R18 / R19 — non-configurable adapters skip discovery', 
         expect(eventNames).toEqual(['on_spec_created']); // only the FEAT-024 entry
         const steeringNames = nodes.filter((n) => n.type === 'steering').map((n) => n.metadata.name);
         expect(steeringNames).toEqual(['kiss']); // only the FEAT-024 entry
+    });
+
+    it('preserves native paths and ownership for repository KISS and DRY hooks on rescan', async () => {
+        const hooks = ['kiss', 'dry'].map(kind => ({
+            event: 'on_file_saved_' + kind, script: '.kiro/hooks/on-file-saved-' + kind + '-check.sh',
+        }));
+        seedWorkspace({
+            '.agents/agentic.json': JSON.stringify({ default_agent: 'harness', hooks }),
+            ...Object.fromEntries(hooks.map(h => [h.script, '#!/bin/bash'])),
+        });
+        const adapter = new HarnessSddAdapter();
+        for (let scan = 0; scan < 2; scan++) {
+            const result = await adapter.parse(rootUri());
+            expect(result.graph?.nodes.filter(n => n.type === 'hook').map(n => [
+                n.metadata._framework, n.metadata.event, n.metadata._filePath,
+            ])).toEqual(hooks.map(h => ['harness-sdd', h.event, h.script]));
+        }
     });
 
     it('(R19) OpenCodeAdapter is unaffected by .harness-dashboard/config.json (no discovery at all)', async () => {

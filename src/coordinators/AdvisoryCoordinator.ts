@@ -3,6 +3,7 @@ import type { WebviewMessage } from '../types.js';
 import { AgenticDetector } from '../agentic-detector/agenticDetector.js';
 import { scaffoldAgenticJson, scaffoldFeatureListJson } from '../agentic-detector/scaffold.js';
 import { ActionExecutor } from '../agentic-detector/actionExecutor.js';
+import { requestForAction, type Decision, type OperationRequest } from '../operations/operations.js';
 
 type PostMessageFn = (msg: unknown) => Thenable<boolean> | void;
 type SendDataFn = (postMessage?: PostMessageFn) => Promise<void>;
@@ -23,6 +24,13 @@ export class AdvisoryCoordinator {
         private readonly _log: vscode.LogOutputChannel,
         private _agenticDetector?: AgenticDetector,
     ) {}
+
+    private _authorizeRequest?: (request: OperationRequest) => Promise<Decision>;
+
+    /** FEAT-042 R6: the host decision for the resolved Advisory action. */
+    setAuthorizeRequest(fn: (request: OperationRequest) => Promise<Decision>): void {
+        this._authorizeRequest = fn;
+    }
 
     setAgenticDetector(detector: AgenticDetector): void {
         this._agenticDetector = detector;
@@ -65,6 +73,16 @@ export class AdvisoryCoordinator {
                 const action = suggestion?.actions?.find(a => a.id === actionId);
                 if (!action || !this._actionExecutor) {
                     _postMessage({ type: 'advisoryActionResult', suggestionId, actionId, ok: false, error: 'Action not found' });
+                    return true;
+                }
+                const request = requestForAction(action);
+                // Fail closed: an action that needs a decision never runs without one.
+                const decision = !request ? null
+                    : this._authorizeRequest ? await this._authorizeRequest(request)
+                    : { ok: false as const, reason: 'The operation decision is not available.' };
+                if (decision && !decision.ok) {
+                    this._log.warn(`[Operations] Denied Advisory action ${actionId}: ${decision.reason}`);
+                    _postMessage({ type: 'advisoryActionResult', suggestionId, actionId, ok: false, error: decision.reason });
                     return true;
                 }
                 const result = await this._actionExecutor.execute(action);

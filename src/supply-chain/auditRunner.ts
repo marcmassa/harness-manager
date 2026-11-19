@@ -4,8 +4,7 @@
 // button). Never from scan(), activation, or file watchers. (R6, R7)
 //
 // No HTTP is performed by extension code: `npm audit` is a local npm
-// process the user invoked, mirroring src/verifier/codeQualitySetup.ts's
-// on-demand local-tooling trust model. (R13)
+// process the user invoked. (R13)
 
 import { execFile } from 'node:child_process';
 
