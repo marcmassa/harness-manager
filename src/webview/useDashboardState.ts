@@ -15,7 +15,10 @@ export function useDashboardState() {
     const [selectedNode, setSelectedNode] = React.useState<any>(null);
     // FEAT-041 T3: host decisions per resource (provider, native path, operations).
     const [ownership, setOwnership] = React.useState<Record<string, ResourceOwnership>>({});
-    const [activeTab, setActiveTab] = React.useState('whiteboard');
+    // FEAT-045 R6: restore the last tab (webview state survives a reload; the host passes it to a restored panel).
+    const [activeTab, setActiveTab] = React.useState<string>(() =>
+        (vscode.getState?.()?.tab as string | undefined) ?? ((window as any).__harness_initial_tab as string | undefined) ?? 'whiteboard');
+    React.useEffect(() => { vscode.setState?.({ ...(vscode.getState?.() ?? {}), tab: activeTab }); }, [activeTab]);
     const [startWizard, setStartWizard] = React.useState(0); // increment to trigger wizard in Specs Manager
     const [timelineTargetFeature, setTimelineTargetFeature] = React.useState<string | null>(null); // FEAT node click → select in timeline
     

@@ -70,3 +70,33 @@ The Dashboard webview view stays in the container until T4 moves the Dashboard i
 | R7 | treeModels.test.ts: at most three title actions per view. |
 
 Verified: 1008 unit tests; fifteen Extension Host runs; build.
+
+## T4 — One restorable editor panel
+
+The Dashboard is now one editor panel:
+- `openFullWindowPanel(tab?)` reveals an open panel, posting `activateTab` when a tab is requested, instead of creating another.
+- "Open Dashboard" and "Optimize Components" both open or reveal it; the latter on the Optimizer tab.
+
+Restore after a reload:
+- `registerWebviewPanelSerializer('harness-dashboard.fullDashboard')` re-adopts the panel.
+- The webview saves its tab with `setState`, and the host passes a restored panel's tab into the page. Only a plain lowercase identifier ever reaches the inline script.
+- Panels use `enableScripts` and `localResourceRoots`, not `retainContextWhenHidden`.
+- Panel visibility drives the scan scheduler.
+
+Manifest changes:
+- The sidebar webview view is removed.
+- `activationEvents` is only `onWebviewPanel:harness-dashboard.fullDashboard`; views and commands activate implicitly (engine `^1.85`).
+
+Workspace-state keys are unchanged: dismissed suggestions, disabled connections, view-only relationships. Manual node positions live in the canvas and in node metadata, not in workspace state, so the move to the editor does not affect them.
+
+| Requirement | Verification |
+|---|---|
+| R1 | panel.test.ts: the manifest contributes no webview view. |
+| R5 | panel.test.ts: opening twice creates one panel and reveals it. |
+| R6 | panel.test.ts: the serializer restores the saved tab, refuses a forged tab value, and the options omit `retainContextWhenHidden`. |
+| R12 | panel.test.ts: the activation events contain only `onWebviewPanel`; no `*`, `onStartupFinished` or `workspaceContains`. |
+| R20 | panel.test.ts: the workspace-state keys are unchanged. |
+
+Extension Host: the fifteen suites pass with the panel as the only Dashboard surface. "Open Dashboard" triggers the first scan in the FEAT-041 companion suite.
+
+Verified: 1012 unit tests; fifteen Extension Host runs; build.

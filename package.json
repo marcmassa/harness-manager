@@ -40,7 +40,7 @@
   },
   "type": "module",
   "activationEvents": [
-    "onView:harness-dashboard.dashboard"
+    "onWebviewPanel:harness-dashboard.fullDashboard"
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
@@ -55,11 +55,6 @@
     },
     "views": {
       "harness-dashboard": [
-        {
-          "type": "webview",
-          "id": "harness-dashboard.dashboard",
-          "name": "Dashboard"
-        },
         {
           "id": "harness-dashboard.sources",
           "name": "Sources",

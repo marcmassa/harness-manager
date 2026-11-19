@@ -307,7 +307,9 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
      * Generate the HTML for a Harness Dashboard webview (used by both sidebar and full-window panel).
      * A fresh cryptographic nonce is generated on every call so the CSP is unforgeable.
      */
-    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview, isFullWindow = false): string {
+    private static _getWebviewHtml(extensionUri: vscode.Uri, webview: vscode.Webview, isFullWindow = false, tab?: string): string {
+        // FEAT-045 R6: the tab to restore; only a plain identifier ever reaches the page.
+        const initialTab = tab && /^[a-z]+$/.test(tab) ? tab : 'whiteboard';
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
         const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
         const nonceBytes = new Uint8Array(16);
@@ -326,16 +328,16 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
             </head>
             <body>
                 <div id="root"></div>
-                <script nonce="${nonce}">window.__harness_is_full_window = ${isFullWindow};</script>
+                <script nonce="${nonce}">window.__harness_is_full_window = ${isFullWindow}; window.__harness_initial_tab = "${initialTab}";</script>
                 <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
             </body>
             </html>`;
     }
 
-    private _attachWebview(webview: vscode.Webview, isFullWindow: boolean): void {
+    private _attachWebview(webview: vscode.Webview, isFullWindow: boolean, tab?: string): void {
         const reply = (message: unknown) => webview.postMessage(message);
         webview.onDidReceiveMessage(data => this._handleWebviewMessage(data, reply));
-        webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, isFullWindow);
+        webview.html = HarnessDashboardProvider._getWebviewHtml(this._extensionUri, webview, isFullWindow, tab);
     }
 
     /**
@@ -343,27 +345,45 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
      * The panel reuses the same data source (HarnessParser) and shares the full
      * message-handling logic so all interactions work identically to the sidebar.
      */
-    public async openFullWindowPanel(): Promise<void> {
+    /** FEAT-045 R5, R6: the one editor panel's view type, also its serializer key. */
+    public static readonly panelType = 'harness-dashboard.fullDashboard';
+
+    /**
+     * Open the Dashboard in the editor, or reveal it on `tab` when it is
+     * already open: one panel, never a second one (FEAT-045 R5).
+     */
+    public async openFullWindowPanel(tab?: string): Promise<void> {
+        if (this._panel) {
+            this._panel.reveal(undefined, false);
+            if (tab) this._panel.webview.postMessage({ type: 'activateTab', tab });
+            return;
+        }
         const panel = vscode.window.createWebviewPanel(
-            'harness-dashboard.fullDashboard',
+            HarnessDashboardProvider.panelType,
             'Harness Dashboard',
             vscode.ViewColumn.Beside,
-            {
-                enableScripts: true,
-                localResourceRoots: [this._extensionUri],
-            },
+            HarnessDashboardProvider.panelOptions(this._extensionUri),
         );
+        this.adoptPanel(panel, tab);
+        this._log.info('[Dashboard] Editor panel opened');
+    }
 
+    /** Options shared by new and restored panels. No `retainContextWhenHidden`: state lives in setState (R6). */
+    public static panelOptions(extensionUri: vscode.Uri): vscode.WebviewPanelOptions & vscode.WebviewOptions {
+        return { enableScripts: true, localResourceRoots: [extensionUri] };
+    }
+
+    /** Attach a new or restored panel; `tab` is the panel's saved or requested tab. */
+    public adoptPanel(panel: vscode.WebviewPanel, tab?: string): void {
         this._panel = panel;
-        this._attachWebview(panel.webview, true);
-
-        this._onVisibility?.('panel', true);
+        panel.webview.options = HarnessDashboardProvider.panelOptions(this._extensionUri);
+        this._attachWebview(panel.webview, true, tab);
+        this._onVisibility?.('panel', panel.visible);
+        panel.onDidChangeViewState(e => this._onVisibility?.('panel', e.webviewPanel.visible));
         panel.onDidDispose(() => {
             this._onVisibility?.('panel', false);
             if (this._panel === panel) this._panel = undefined;
         });
-
-        this._log.info('[Dashboard] Full-window panel opened');
     }
 
 }
