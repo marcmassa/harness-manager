@@ -81,3 +81,20 @@ The Open Dashboard title action is on both views, with the generated dashboard i
 | R9 | treeText.test.ts and treeModels.test.ts: type order, then name; most severe first. |
 | R10 | treeText.test.ts: hostile names and labels are escaped, with no link injection. harnessTrees.test.ts: accessibility label on every item; no trusted tooltip. |
 | R11 | treeText.test.ts: no framework name unless a provider label supplies it. |
+
+## T5 — Package and Extension Host
+
+| Measure | FEAT-047 | FEAT-046 |
+|---|---|---|
+| VSIX | 334,437 B | 345,119 B (86 %) |
+| `dist/icons/*` in the VSIX | — | 7,506 B: 3,718 B compressed data plus zip headers for 20 entries |
+
+The rest of the increase is code: tree text, the shared icon module in both bundles, and the badge component.
+
+Extension Host: all 19 runs pass.
+
+| Requirement | Verification |
+|---|---|
+| R12 | Measured by deleting `extension/dist/icons/*` from the packaged VSIX: 7,506 B, within 8 KB. The package gate passes under 400,000 B. |
+
+**Pending, by hand:** a look at the Sources and Findings views in light, dark and high-contrast themes. This is left for the maintainer, because an agent cannot view the running sidebar here. The icons were checked on a rendered contact sheet.
