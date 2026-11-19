@@ -80,7 +80,7 @@ Built-in providers read Claude Code, Gemini CLI, Cursor, GitHub Copilot, OpenCod
 - **Optimizer** — only applicable rules per owner and format; components nothing could evaluate show coverage instead of a score.
 - **Context cost** — per-session tokens from owner-declared load modes, unknown modes left unpriced, money estimates from your own price table, and a git HEAD comparison.
 - **Fast, quiet startup** — activation registers only (about 50 ms); nothing is scanned until you open a Harness view or the Dashboard. The Activity Bar has native **Sources** and **Findings** views with type icons and an **Open Dashboard** entry; the Dashboard is one editor tab restored on its last tab, whose tabs load on first display. A five-step walkthrough covers the basics.
-- **Smaller package** — 345 KB, down from 390 KB: the deprecated webview UI toolkit is replaced by native themed controls, the icon is palettised, and the npm supply-chain audit (outside the harness scope) is removed.
+- **Smaller package** — 347 KB, down from 390 KB: the deprecated webview UI toolkit is replaced by native themed controls, the icon is palettised, and the npm supply-chain audit (outside the harness scope) is removed.
 
 See the [CHANGELOG](./CHANGELOG.md) and the [v0.9.0 acceptance guide](docs/byoh/v0.9.0.md).
 

@@ -14,7 +14,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.9.0] — 2026-11-19
 
-> **Bring Your Own Harness.** Every capability reads, evaluates and prices the harness a workspace already has, built-in format or declared profile, without assuming a framework. 1024 unit tests and 19 Extension Host runs pass; the VSIX is 345,145 bytes.
+> **Bring Your Own Harness.** Every capability reads, evaluates and prices the harness a workspace already has, built-in format or declared profile, without assuming a framework. 1024 unit tests and 19 Extension Host runs pass; the VSIX is 346,545 bytes.
 
 ### Added
 
