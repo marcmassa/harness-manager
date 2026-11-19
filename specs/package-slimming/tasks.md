@@ -19,7 +19,7 @@
   - Test the tab list with and without them.
   - Test the fallback for a restored or requested unavailable tab.
   - _(R5)_
-- [ ] **T5** — Delete the unreachable files, the `SDDManagerProvider` class and its tests, and `dagre`.
+- [x] **T5** — Delete the unreachable files, the `SDDManagerProvider` class and its tests, and `dagre`.
   - Add `reachability.test.ts`.
   - _(R6)_
 - [ ] **T6** — Package and run the Extension Host suites. Update README, CHANGELOG, DESIGN.md and the compatibility matrix. Record sizes before and after. _(R7, R8)_
