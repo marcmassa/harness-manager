@@ -331,20 +331,24 @@ export class AgenticDetector extends EventEmitter {
    * Safe to call multiple times – subsequent calls are no-ops while
    * watchers are already active.
    */
+  /** Globs whose changes affect the Advisory scan (FEAT-045: the scheduler owns the watchers). */
+  watchGlobs(): string[] {
+    return [...new Set([...this._scanner.getWatchGlobs(), ...this._registry.watchGlobs(), 'feature_list.json', '.kiro/specs/**'])];
+  }
+
   startWatching(): void {
     if (this._watchers.length > 0) {
       return;
     }
 
-    const globs = new Set([...this._scanner.getWatchGlobs(), ...this._registry.watchGlobs(), 'feature_list.json', '.kiro/specs/**']);
-    for (const glob of globs) {
+    for (const glob of this.watchGlobs()) {
       const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(this._workspaceRoot, glob));
       watcher.onDidCreate(() => this._onFileChanged());
       watcher.onDidChange(() => this._onFileChanged());
       watcher.onDidDelete(() => this._onFileChanged());
       this._watchers.push(watcher);
     }
-    this._log.info(`[AgenticDetector] File watcher started (${globs.size} patterns)`);
+    this._log.info(`[AgenticDetector] File watcher started (${this._watchers.length} patterns)`);
   }
 
   /**

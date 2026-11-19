@@ -577,7 +577,7 @@
       "title": "BYOH context cost, optimization and inference usage",
       "description": "Price any harness on one scale from owner-declared load modes: per-session baseline, skill catalog and on-demand bodies per provider; unknown load modes listed as unpriced; optional calibration and user price table without network; deterministic cross-owner cost findings; a local inference ledger for the Dashboard own AI actions; cost diff against git HEAD.",
       "type": "feat",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -588,7 +588,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, maintainer reply “aprobada” to FEAT-044 byoh-context-cost presented at spec_ready",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     },
     {
       "id": "FEAT-045",
@@ -596,7 +597,7 @@
       "title": "Activity Bar redesign and lazy startup",
       "description": "Replace the sidebar webview with native Sources and Findings tree views over the shared scan, move the Dashboard to one restorable editor panel, add provider-neutral welcome views and one walkthrough, register commands with category and palette conditions even without a folder, defer every scan until a view or the panel is visible, code-split webview tabs, and measure activation in the Extension Host.",
       "type": "feat",
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",

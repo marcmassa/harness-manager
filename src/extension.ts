@@ -4,6 +4,7 @@ import { createCompanionApi, type HarnessDashboardApiV1 } from './adapters/compa
 import { OperationGate } from './operations/operationGate.js';
 import { InferenceLedger, setInferenceRecorder, withInferenceAction } from './cost/inferenceLedger.js';
 import { registerScaffoldCommands } from './commands/scaffoldCommands.js';
+import { createStartup } from './startup/startupWiring.js';
 import type { OperationRequest } from './operations/operations.js';
 import { HarnessWriter } from './harnessWriter.js';
 import { initConfigurationRegistry, disposeConfigurationRegistry, createDefaultAdapters } from './adapters/index.js';
@@ -103,16 +104,18 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
     provider.setAgenticDetector(agenticDetector, scheduleScan);
     // FEAT-041 T2: one refresh path for config edits, profile changes and
     // companion registration/disposal — both panels rescan the same registry.
-    context.subscriptions.push(registry.onDidChange(() => {
-        provider.refreshWatchers();
-        agenticDetector.refreshWatching();
-        void provider._sendData().then(scheduleScan, error => log.error(`[Dashboard] Provider refresh failed: ${error}`));
-    }));
+    // FEAT-045 R12–R16: activation registers only. The scheduler runs the first
+    // scan when a surface is shown or a command needs data, then owns the watchers.
     const syncProfiles = () => harnessConfig.read(root)
         .then(config => registry.setProfiles(config.profiles))
         .catch((error: unknown) => log.error(`[Dashboard] Profile load failed: ${String(error)}`));
-    void syncProfiles();
-    context.subscriptions.push(harnessConfig.onDidChange(() => { void syncProfiles(); }));
+    const scheduler = createStartup({
+        context, log, registry, provider, agenticDetector, syncProfiles,
+        graphContext: buildGraphContext,
+    });
+    // FEAT-041 T2: config edits, profile changes and companion registration go through the scheduler.
+    context.subscriptions.push(registry.onDidChange(() => scheduler.onProvidersChanged()));
+    context.subscriptions.push(harnessConfig.onDidChange(() => scheduler.onChange()));
 
     // FEAT-033: Wire RunCoordinator into the provider
     const runCoordinator = new RunCoordinator(runRegistry, root, context.workspaceState, log);
@@ -141,6 +144,7 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
 
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.rescanAgentic', async () => {
+            await scheduler.ensureScanned();
             await agenticDetector.scan(buildGraphContext());
         })
     );
@@ -165,6 +169,7 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         vscode.commands.registerCommand('harness-dashboard.optimizeComponents', async () => {
             await vscode.commands.executeCommand('harness-dashboard.dashboard.focus');
             provider.postToWebview({ type: 'activateTab', tab: 'optimizer' });
+            await scheduler.ensureScanned();
             const report = await provider.optimizerCoordinator.runScan();
             provider.postToWebview({ type: 'optimizerReport', report });
         }),
@@ -177,10 +182,8 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         })
     );
 
-    registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan });
+    registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan, ensureScanned: () => scheduler.ensureScanned() });
 
-    // Start watching for file changes
-    agenticDetector.startWatching();
 
     const buildArchitectureSummary = (profile: AgenticProfile): ArchitectureSummary => ({
         maturityLevel: profile.maturity.level,
@@ -197,9 +200,6 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
         provider.postToWebview({ type: 'architectureSummary', ...buildArchitectureSummary(profile) });
     });
 
-    // Run initial scan (don't await — let it complete in background)
-    provider.postToWebview({ type: 'architectureSummary', maturityLevel: null, maturityLabel: '', maturityColor: '', activeSuggestions: 0, scanTimestamp: 0, isScanning: true });
-    agenticDetector.scan(buildGraphContext()).catch(err => log.warn(`[AgenticDetector] Initial scan: ${err}`));
 
     context.subscriptions.push({ dispose: () => agenticDetector.dispose() });
 

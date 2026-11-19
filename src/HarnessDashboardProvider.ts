@@ -16,7 +16,6 @@ import { bindRunTarget } from './operations/operations.js';
 export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'harness-dashboard.dashboard';
     private _view?: vscode.WebviewView;
-    private _watchers: vscode.FileSystemWatcher[] = [];
     private _panel?: vscode.WebviewPanel;
     private readonly _parser: HarnessParser;
     private _agenticDetector?: AgenticDetector;
@@ -79,37 +78,28 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
 
         this._attachWebview(webviewView.webview, false);
 
-        this.refreshWatchers();
-
+        // FEAT-045 R14: the scheduler decides when to scan; it owns the watchers.
+        this._onVisibility?.('sidebar', webviewView.visible);
+        webviewView.onDidChangeVisibility(() => this._onVisibility?.('sidebar', webviewView.visible));
         webviewView.onDidDispose(() => {
             if (this._view === webviewView) this._view = undefined;
-            this._disposeWatchers();
+            this._onVisibility?.('sidebar', false);
         });
     }
 
-    /**
-     * (Re)create file watchers from the registry's current watch globs.
-     * Called when the sidebar view resolves and whenever providers register,
-     * dispose or profiles change (FEAT-041 R6). No-op without a visible view.
-     */
-    public refreshWatchers(): void {
-        this._disposeWatchers();
-        if (!this._view) return;
-        for (const glob of new Set(this._parser.getWatchGlobs())) {
-            const watcher = vscode.workspace.createFileSystemWatcher(
-                new vscode.RelativePattern(this._workspaceRoot, glob)
-            );
-            watcher.onDidChange(() => this._sendData());
-            watcher.onDidCreate(() => this._sendData());
-            watcher.onDidDelete(() => this._sendData());
-            this._watchers.push(watcher);
-        }
+    private _onVisibility?: (surface: string, visible: boolean) => void;
+
+    /** FEAT-045: tell the scan scheduler when a Dashboard surface is shown or hidden. */
+    public setVisibilityListener(fn: (surface: string, visible: boolean) => void): void {
+        this._onVisibility = fn;
     }
 
-    private _disposeWatchers(): void {
-        for (const watcher of this._watchers) watcher.dispose();
-        this._watchers = [];
+    /** FEAT-045: parse and cache the graph even when no webview is open (tree views read it). */
+    public async refresh(): Promise<DashboardData | null> {
+        await this._sendDataTo(msg => this.postToWebview(msg));
+        return this._cachedData;
     }
+
 
     /**
      * Send dashboard data to a specific webview target.
@@ -367,7 +357,9 @@ export class HarnessDashboardProvider implements vscode.WebviewViewProvider {
         this._panel = panel;
         this._attachWebview(panel.webview, true);
 
+        this._onVisibility?.('panel', true);
         panel.onDidDispose(() => {
+            this._onVisibility?.('panel', false);
             if (this._panel === panel) this._panel = undefined;
         });
 

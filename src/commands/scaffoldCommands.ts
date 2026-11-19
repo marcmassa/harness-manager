@@ -13,12 +13,15 @@ export interface ScaffoldCommandDeps {
     /** True (after telling the user why) when the operation is not available. */
     denied: (request: OperationRequest) => Promise<boolean>;
     scheduleScan: () => void;
+    /** FEAT-045: wait for the first scan when a command needs its results. */
+    ensureScanned?: () => Promise<void>;
 }
 
-export function registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan }: ScaffoldCommandDeps): void {
+export function registerScaffoldCommands({ context, root, provider, gate, denied, scheduleScan, ensureScanned }: ScaffoldCommandDeps): void {
     // FEAT-033 T36: Scaffold missing agent files
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.scaffoldMissing', async () => {
+            await ensureScanned?.();
             const data = provider.getCachedData();
             if (!data) {
                 vscode.window.showWarningMessage('Harness: No data loaded yet. Open the Dashboard first.');
@@ -75,6 +78,7 @@ export function registerScaffoldCommands({ context, root, provider, gate, denied
     // FEAT-033 T37: Sync agents from filesystem
     context.subscriptions.push(
         vscode.commands.registerCommand('harness-dashboard.syncFromFilesystem', async () => {
+            await ensureScanned?.();
             if (await denied({ op: 'editing.createEntity', targets: 'workspace' })) return;
             const data = provider.getCachedData();
             const existingIds = new Set(data ? data.graph.nodes.map(n => n.id) : []);
