@@ -52,8 +52,8 @@ export const CostSection = ({ cost }: { cost?: Cost }) => {
                 </div>
             )}
             {cost.money.map(m => (
-                <div key={m.model} data-cost-money={m.model}>
-                    {`≈ ${m.perSession.toFixed(4)} per session on ${m.model} (estimate; prices as of ${m.priceDate}; calibration ×${m.factor}${m.calibrated ? '' : ', none configured'})`}
+                <div key={`${m.owner}:${m.model}`} data-cost-money={m.model}>
+                    {`≈ ${m.perSession.toFixed(4)} per ${frameworkLabel(m.owner)} session on ${m.model} (estimate; prices as of ${m.priceDate}; calibration ×${m.factor}${m.calibrated ? '' : ', none configured'})`}
                 </div>
             ))}
             <button type="button" onClick={() => vscode.postMessage?.({ type: 'compareCostWithHead' })}

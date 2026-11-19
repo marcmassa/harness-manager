@@ -111,6 +111,8 @@ export class CursorAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description: String(data.description ?? (hasGlobs(globs) ? `Applies to ${JSON.stringify(globs)}` : 'Global Cursor rule')),
+                            // FEAT-044: an agent-requested rule declares a description; the fallback above is display text.
+                            _declaredDescription: typeof data.description === 'string' ? data.description : '',
                             body: body.slice(0, 500),
                             _fullBody: body,
                         },

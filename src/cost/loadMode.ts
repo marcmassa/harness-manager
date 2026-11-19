@@ -37,7 +37,9 @@ const BUILTIN: Readonly<Record<string, Rule>> = {
         n.type === 'subagent' ? 'delegated'
         : n.type === 'skill' ? 'on-trigger'
         : n.type === 'steering'
-            ? (Array.isArray(n.metadata.applies_to) && n.metadata.applies_to.includes('*') ? 'always' : 'delegated')
+            // No `applies_to` governs nothing (parserLogic warns), so it is not a declaration (R2).
+            ? (!Array.isArray(n.metadata.applies_to) || n.metadata.applies_to.length === 0 ? undefined
+                : n.metadata.applies_to.includes('*') ? 'always' : 'delegated')
             : undefined,
     'gemini-cli': (n, p) =>
         p === 'GEMINI.md' ? 'always'
@@ -45,14 +47,15 @@ const BUILTIN: Readonly<Record<string, Rule>> = {
         : undefined,
     copilot: (n, p) =>
         p === '.github/copilot-instructions.md' ? 'always'
-        : p.endsWith('.instructions.md') ? (present(n.metadata.applyTo) ? 'on-trigger' : 'always')
+        // Without `applyTo` an instructions file is attached by hand, not applied automatically.
+        : p.endsWith('.instructions.md') ? (present(n.metadata.applyTo) ? 'on-trigger' : 'manual')
         : p.endsWith('.prompt.md') ? 'manual'
         : undefined,
     cursor: (n, p) =>
         base(p) === '.cursorrules' ? 'always'
         : p.endsWith('.mdc')
             ? (n.metadata.alwaysApply === true ? 'always'
-                : present(n.metadata.globs) || present(n.metadata.description) ? 'on-trigger'
+                : present(n.metadata.globs) || present(n.metadata._declaredDescription) ? 'on-trigger'
                 : 'manual')
             : undefined,
     kiro: n =>

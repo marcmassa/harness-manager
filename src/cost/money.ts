@@ -11,6 +11,8 @@ export interface PriceTable {
 }
 
 export interface MoneyEstimate {
+    /** One session loads one provider's harness: estimates are per owner (review fix). */
+    owner: string;
     model: string;
     priceDate: string;
     /** Calibration factor applied for the model's family; 1 when none is configured. */
@@ -30,11 +32,12 @@ export function isPriceTable(value: unknown): value is PriceTable {
 
 export function moneyEstimates(cost: CostReport, prices: unknown, calibration: Readonly<Record<string, number>> = {}): MoneyEstimate[] {
     if (!isPriceTable(prices)) return [];
-    return Object.entries(prices.models).sort(([a], [b]) => a.localeCompare(b)).map(([model, price]) => {
+    const models = Object.entries(prices.models).sort(([a], [b]) => a.localeCompare(b));
+    return cost.owners.filter(o => o.evaluated).flatMap(o => models.map(([model, price]) => {
         const configured = calibration[price.family ?? model];
         const calibrated = typeof configured === 'number' && configured > 0;
         const factor = calibrated ? configured : 1;
-        const sessionTokens = Math.round(cost.sessionTotal * factor);
-        return { model, priceDate: prices.date, factor, calibrated, sessionTokens, perSession: (sessionTokens * price.inputPerMTok) / 1_000_000 };
-    });
+        const sessionTokens = Math.round((o.baseline + o.catalog) * factor);
+        return { owner: o.owner, model, priceDate: prices.date, factor, calibrated, sessionTokens, perSession: (sessionTokens * price.inputPerMTok) / 1_000_000 };
+    }));
 }

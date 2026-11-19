@@ -28,6 +28,7 @@ const MIN_BASELINE = 1500;
 
 export const optK01: OptimizerRule = {
     id: 'OPT-K01',
+    scored: false,
     appliesTo: ['agent', 'subagent', 'skill', 'steering'],
     dimension: 'budget',
     defaultSeverity: 'warning',
@@ -53,6 +54,7 @@ export const optK01: OptimizerRule = {
 
 export const optK02: OptimizerRule = {
     id: 'OPT-K02',
+    scored: false,
     appliesTo: ['agent', 'subagent', 'skill', 'steering'],
     dimension: 'budget',
     defaultSeverity: 'info',
@@ -81,6 +83,7 @@ const ON_TRIGGER_FORM: Readonly<Record<string, string>> = {
 
 export const optK03: OptimizerRule = {
     id: 'OPT-K03',
+    scored: false,
     appliesTo: ['agent', 'subagent', 'steering'],
     dimension: 'budget',
     defaultSeverity: 'info',

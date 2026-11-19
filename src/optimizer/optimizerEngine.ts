@@ -122,7 +122,7 @@ export function scan(
                     coverage.skipped.push({ ruleId: rule.id, reason: unable });
                     continue;
                 }
-                if (!coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
+                if (rule.scored !== false && !coverage.evaluated.includes(rule.dimension)) coverage.evaluated.push(rule.dimension);
 
                 try {
                     const found = rule.evaluate(ctx);
@@ -136,6 +136,7 @@ export function scan(
                                 confidence: rule.confidence,
                                 // FEAT-043 R4: the finding names its native source and owner.
                                 ...(source.source ? { source: source.source } : {}),
+                                ...(rule.scored === false ? { informational: true as const } : {}),
                             });
                         }
                     }
