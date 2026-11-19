@@ -55,7 +55,12 @@ function sourceFiles(root: string, includeTests = false): string[] {
     return out;
 }
 
-const wbSrc = readFileSync(join(WEBVIEW_ROOT, 'WhiteboardCanvas.tsx'), 'utf8');
+// FEAT-048 T5: WhiteboardCanvas.tsx was split by responsibility; the whiteboard
+// source contract is the entry file plus the modules its code moved into.
+const wbSrc = [
+    'WhiteboardCanvas.tsx', 'whiteboardEdgeStyles.ts', 'useWhiteboardGraphData.ts', 'useLinkGestures.ts',
+    'useEdgeActions.ts', 'WhiteboardToolbar.tsx', 'ProviderOverlays.tsx', 'NodeContextMenu.tsx', 'WhiteboardDialogs.tsx',
+].map((f) => readFileSync(join(WEBVIEW_ROOT, f), 'utf8')).join('\n');
 const indexSrc = readFileSync(join(WEBVIEW_ROOT, 'index.tsx'), 'utf8');
 const layoutSrc = readFileSync(join(WEBVIEW_ROOT, 'layoutUtils.ts'), 'utf8');
 const customNodeSrc = readFileSync(join(WEBVIEW_ROOT, 'components', 'CustomNode.tsx'), 'utf8');
