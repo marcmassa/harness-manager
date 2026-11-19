@@ -84,3 +84,32 @@ Verified: 902 unit tests, build.
 | R7 | optimizerWrite.test.ts: a stale scan is rejected before the diff opens; a secondary file outside the component's folder or escaping the workspace is rejected; a mixed delegation with a read-only owner is refused. Stale and unknown targets are covered by the FEAT-041 decision tests. |
 
 Verified: 911 unit tests.
+
+## T4 — Extension Host
+
+`src/test/integration/optimizerMatrix.ts` runs once per layout. Each layout opens as its own workspace folder, because source paths are relative to the workspace folder, as in real use. A first version nested the four layouts in one folder and hit the path-resolution limit already in the backlog: the Optimizer could not read the files, so some assertions passed vacuously. Each run goes through the Dashboard provider, the shared registry, the operation gate and `OptimizerCoordinator.runScan()`.
+
+Observed on VS Code 1.147.0:
+
+| Layout | Architecture score | Scored components | Findings | Checks |
+|---|---|---|---|---|
+| Claude-only | 100 | 2 | none | no `OPT-S02` or `OPT-S05` on the reviewer; reviewed fixes available |
+| Custom profile | 100 | 2 | none | convention rules skipped with reasons; profile resources not editable; a quick-fix message is refused |
+| Mixed (Harness SDD + Claude, both with a `reviewer`) | 100 | 4 | `OPT-O02` on the Harness SDD reviewer (its own linking convention) | both owners present; no cross-owner duplicate-name finding; a delegation naming a stale node is refused |
+| Harness SDD | 99 | 2 | `OPT-S02`, `OPT-O02` on `lint/SKILL.md` named `linter` | positive control below |
+
+In every layout, file contents are unchanged after scanning and after each refused action, and every finding carries its owner.
+
+Positive control: the `OPT-S02` quick fix is dispatched with a forged client `fix` and confirmed. The file then reads `name: lint` (the host's fix) and contains no trace of the forged value.
+
+The run exposed one more defect, now fixed: `OPT-D01` reported a "duplicate component name" across owners, flagging the Harness SDD and Claude `reviewer`s in the mixed layout. Duplicates are now compared within one owner only, with a unit test in coverage.test.ts.
+
+| Requirement | T4 evidence |
+|---|---|
+| R1 | Native applicability per layout, with convention rules skipped for the profile. |
+| R2, R3 | Architecture score and scored-component count per layout; coverage counts per component. |
+| R4 | Every finding carries its owner. |
+| R5 | The native fix is confirmed and only the host's fix is applied. |
+| R6, R7 | The read-only quick fix and the stale delegation are refused with no file change. |
+
+Verified: 912 unit tests; eleven Extension Host runs (critical path, save isolation, source ownership, providers, operation gate, workspace matrix, advisory matrix, four optimizer layouts); build; 35 project checks.

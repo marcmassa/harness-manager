@@ -77,3 +77,16 @@ describe('corpus cohorts (T2)', () => {
         expect(sdd.findings.find(f => f.ruleId === 'OPT-B01' && f.nodeId === big.nodeId)?.detail).toContain('the median harness-sdd skill');
     });
 });
+
+describe('cross-owner names (T4 finding)', () => {
+    it('reports a duplicate name only within one owner', () => {
+        const named = (providerId: string, nodeId: string) => src({
+            nodeId, nodeType: 'subagent', filePath: `${nodeId}.md`, frontmatter: { name: 'reviewer' },
+            source: { workspaceUri: 'w', providerId, nativeId: 'reviewer' },
+        });
+        const run = (sources: ComponentSource[]) => scan(sources, [], new Set(sources.map(s => s.nodeId)), new Set(sources.map(s => s.filePath)), DEFAULT_OPTIMIZER_CONFIG)
+            .findings.filter(f => f.ruleId === 'OPT-D01' && f.title === 'Duplicate component name');
+        expect(run([named('harness-sdd', 'reviewer'), named('claude-code', 'claude-code::reviewer')])).toEqual([]);
+        expect(run([named('claude-code', 'a'), named('claude-code', 'b')])).toHaveLength(2);
+    });
+});
