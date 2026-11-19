@@ -56,6 +56,7 @@ Baseline is extension 0.8.2 at 990470d. Each row classifies the primary responsi
 | FEAT-045 | Activity Bar redesign and lazy startup | shared-core | Native Sources and Findings views over the shared scan, one restorable editor panel, provider-neutral welcome and walkthrough, no work before the user opens a view. |
 | FEAT-046 | Tree view presentation and Dashboard access | shared-core | Type icons, a visible Dashboard entry and richer item details in the native views, from the shared scan and reports, naming no framework. |
 | FEAT-047 | Package slimming and scope alignment | shared-core | Native themed controls instead of a deprecated toolkit; removes the npm supply-chain audit, which is outside the harness scope; the Specs Manager tab appears only when any provider supplies feature or spec data. |
+| FEAT-048 | Shared abstractions for duplicated code | shared-core | One definition per duplicated helper across adapters, rules, webview and tests; git only through the guarded runner; no behaviour change. |
 
 The [v0.9.0 debugging and acceptance guide](v0.9.0.md) records observed behavior and the proposed release checks.
 
