@@ -7,6 +7,8 @@ import { moneyEstimates, type MoneyEstimate } from './money.js';
 
 export interface CostSection extends CostReport {
     money: MoneyEstimate[];
+    /** FEAT-044 R11: the Dashboard's own model usage in this workspace. */
+    inference?: import('./inferenceLedger.js').InferenceSummary;
 }
 
 interface SettingsReader {

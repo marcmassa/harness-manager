@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { withInferenceAction } from '../cost/inferenceLedger.js';
 import { HarnessWriter } from '../harnessWriter.js';
 import { HarnessParser } from '../harnessParser.js';
 import type { MarkdownFileContent, WebviewMessage } from '../types.js';
@@ -246,7 +247,7 @@ export class WhiteboardCoordinator {
                     // modelFamily from wizard overrides workspace config (lets user pick Copilot/Kiro/etc.)
                     const model = (modelFamily as string | undefined) || config.get<string>('ai.model', 'gpt-4o-mini');
                     const prompt = `You are helping design an AI agent named "${name}".\nRole: ${role}\nNode type: ${nodeType}\n\nGenerate 5 specific capabilities for this agent. Reply with ONLY a JSON array of strings, no markdown, no explanation.\nExample: ["Analyzes TypeScript code", "Generates test cases", "Reviews PRs for correctness"]`;
-                    const result = await generateText(prompt, this._log, { apiKey, endpoint, model });
+                    const result = await withInferenceAction('agent-description', () => generateText(prompt, this._log, { apiKey, endpoint, model }));
                     if (result.ok) {
                         const text = result.text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
                         const capabilities = JSON.parse(text);

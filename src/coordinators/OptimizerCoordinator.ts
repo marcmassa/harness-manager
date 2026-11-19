@@ -4,6 +4,7 @@
 // `handle(msg, postMessage, sendData): Promise<boolean>`, returning false for
 // message types it does not own so the caller can fall through the chain.
 
+import { withInferenceAction, type InferenceLedger } from '../cost/inferenceLedger.js';
 import * as vscode from 'vscode';
 import type { HarnessWriter } from '../harnessWriter.js';
 import type { DashboardData, WebviewMessage } from '../types.js';
@@ -74,6 +75,12 @@ export class OptimizerCoordinator {
     }
 
     private _authorize?: AuthorizeFn;
+    private _ledger?: InferenceLedger;
+
+    /** FEAT-044 R11: the local inference ledger, summarised in the cost section. */
+    setInferenceLedger(ledger: InferenceLedger): void {
+        this._ledger = ledger;
+    }
 
     setAuthorize(fn: AuthorizeFn): void {
         this._authorize = fn;
@@ -187,7 +194,7 @@ export class OptimizerCoordinator {
             );
             this._cachedSources = sources;
             // FEAT-044: context cost travels with the report, read from user settings only.
-            this._cachedReport = { ...report, cost: buildCostSection(sources, vscode.workspace.getConfiguration('harness-dashboard')) };
+            this._cachedReport = { ...report, cost: { ...buildCostSection(sources, vscode.workspace.getConfiguration('harness-dashboard')), inference: this._ledger?.summary() } };
             return this._cachedReport;
         } catch (e: unknown) {
             const error = e instanceof Error ? e.message : String(e);
@@ -415,7 +422,7 @@ export class OptimizerCoordinator {
         this._refinesInFlight.add(key);
         try {
             const selected = this._context.workspaceState.get<string>(AI_MODEL_KEY, '');
-            const result = await requestRefine(buildRefinePrompt({ source, finding }), selected);
+            const result = await withInferenceAction('ai-refine', () => requestRefine(buildRefinePrompt({ source, finding }), selected));
             if (!result.ok) {
                 this._log.error(`[Optimizer] AI refine ${key} failed: ${result.error}`);
                 postMessage({ type: 'aiRefineResult', ok: false, reason: result.reason, ruleId, nodeId });
