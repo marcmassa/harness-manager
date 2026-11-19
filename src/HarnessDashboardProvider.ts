@@ -7,6 +7,8 @@ import { isKnownWebviewMessage, isWhiteboardToolbarCommand, type DashboardData }
 import { AgenticDetector } from './agentic-detector/agenticDetector.js';
 import type { AgenticProfile } from './agentic-detector/types.js';
 import { WhiteboardCoordinator, CustomUsesEdge, CustomEdge, CUSTOM_USES_EDGES_KEY, CUSTOM_EDGES_KEY } from './coordinators/WhiteboardCoordinator.js';
+import { DISABLED_CONNECTIONS_KEY, DISMISSED_SUGGESTIONS_KEY } from './coordinators/viewRelations.js';
+import { buildArchitectureSummary } from './agentic-detector/summary.js';
 import { SddCoordinator } from './coordinators/SddCoordinator.js';
 import { AdvisoryCoordinator } from './coordinators/AdvisoryCoordinator.js';
 import { RunCoordinator } from './coordinators/RunCoordinator.js';
@@ -78,7 +80,7 @@ export class HarnessDashboardProvider {
 
     /** FEAT-045: parse and cache the graph even when no webview is open (tree views read it). */
     public async refresh(): Promise<DashboardData | null> {
-        let latest = this._sendDataTo(msg => this.postToWebview(msg));
+        let latest: Promise<void> | null = this._sendDataTo(msg => this.postToWebview(msg));
         // A newer parse (a webview's `ready`) may supersede this one: wait for the latest.
         while (latest) { const current = latest; await current; latest = this._lastParse !== current ? this._lastParse : null; }
         return this._cachedData;
@@ -107,8 +109,8 @@ export class HarnessDashboardProvider {
 
         this._log.info('Parsing project data…');
         // T2 (R2): Read persisted state and pass to parser
-        const dismissedRaw = this._context.workspaceState.get<string[]>('harness-dashboard.dismissedSuggestions', []);
-        const disabledRaw = this._context.workspaceState.get<string[]>('harness-dashboard.disabledConnections', []);
+        const dismissedRaw = this._context.workspaceState.get<string[]>(DISMISSED_SUGGESTIONS_KEY, []);
+        const disabledRaw = this._context.workspaceState.get<string[]>(DISABLED_CONNECTIONS_KEY, []);
         const generation = ++this._scanGeneration;
         const result = await this._parser.parse({
             dismissedSuggestions: new Set(dismissedRaw),
@@ -171,7 +173,7 @@ export class HarnessDashboardProvider {
         // computed by the same decision the host applies at dispatch.
         await this._gate?.refreshRunners();
         const gate = this._gate;
-        const ownership = gate ? Object.fromEntries(result.graph.nodes.map(node => [node.id, gate.describe(node)])) : {};
+        const ownership = gate ? gate.describeAll(result.graph.nodes) : {};
         send({ type: 'init', data: result, ownership });
     }
 
@@ -181,7 +183,7 @@ export class HarnessDashboardProvider {
         if (!data) return this._sendDataTo(postMessage);
         await this._gate?.refreshRunners();
         const gate = this._gate;
-        const ownership = gate ? Object.fromEntries(data.graph.nodes.map(node => [node.id, gate.describe(node)])) : {};
+        const ownership = gate ? gate.describeAll(data.graph.nodes) : {};
         postMessage({ type: 'init', data, ownership });
     }
 
@@ -192,11 +194,6 @@ export class HarnessDashboardProvider {
 
     public sendAdvisoryProfile(profile: AgenticProfile): void {
         this.postToWebview({ type: 'advisoryProfile', profile });
-    }
-
-    /** FEAT-036 R6/R7: palette entry point for the user-triggered npm audit. */
-    public async runSupplyChainAudit(): Promise<void> {
-        await this._advisoryCoordinator.runAuditAndRescan(msg => this.postToWebview(msg));
     }
 
     public setAgenticDetector(detector: AgenticDetector, scheduleScan: () => void): void {
@@ -251,15 +248,7 @@ export class HarnessDashboardProvider {
                         const profile = this._agenticDetector.getProfile();
                         if (profile) {
                             postMessage({ type: 'advisoryProfile', profile });
-                            postMessage({
-                                type: 'architectureSummary',
-                                maturityLevel: profile.maturity.level,
-                                maturityLabel: profile.maturity.label,
-                                maturityColor: profile.maturity.color,
-                                activeSuggestions: profile.suggestions.filter(s => !profile.dismissedSuggestionIds.includes(s.id)).length,
-                                scanTimestamp: profile.scanTimestamp,
-                                isScanning: false,
-                            });
+                            postMessage({ type: 'architectureSummary', ...buildArchitectureSummary(profile) });
                         }
                     }
                     break;

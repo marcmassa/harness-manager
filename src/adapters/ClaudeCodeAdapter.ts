@@ -5,19 +5,19 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
-    extractMarkdownTitle,
     fileExists,
     findFiles,
     prefixedNodeId,
     readTextFromUri,
     readTextIfExists,
+    rootAgentNode,
     toRelativePath,
-    workspaceName,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 export class ClaudeCodeAdapter implements IAgentAdapter {
     private static readonly CONFIG_KEY = 'claude-code';
@@ -66,28 +66,12 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
             .resolvePath(ClaudeCodeAdapter.CONFIG_KEY, root);
         const agentFiles = await findFiles(root, `${path}/agents/**/*.md`);
 
-        const rootLabel = claudeMd
-            ? extractMarkdownTitle(claudeMd, 'Claude Code')
-            : `${workspaceName(root)} Claude Code`;
-
         const rootNodeId = `${adapterId}::root`;
-        result.graph.nodes.push(
-            withFrameworkMetadata(
-                {
-                    id: rootNodeId,
-                    type: 'agent',
-                    label: rootLabel,
-                    metadata: {
-                        description: claudeMd ? claudeMd.split(/\r?\n/).slice(0, 6).join(' ').trim() : 'Claude Code workspace',
-                        body: claudeMd ? claudeMd.slice(0, 500) : '',
-                        _fullBody: claudeMd ?? '',
-                    },
-                },
-                adapterId,
-                adapterLabel,
-                claudeMd ? 'CLAUDE.md' : undefined
-            )
-        );
+        result.graph.nodes.push(rootAgentNode(root, adapterId, adapterLabel, claudeMd, 'CLAUDE.md', {
+            title: 'Claude Code',
+            workspaceSuffix: 'Claude Code',
+            description: 'Claude Code workspace',
+        }));
 
         const sortedFiles = [...agentFiles].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
         for (const file of sortedFiles) {
@@ -111,8 +95,7 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description,
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                         },
                     },
                     adapterId,
@@ -133,23 +116,7 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
         // `.claude/hooks/`, `.claude/steering/`, and (when enabled) the
         // project root. Honours the local config overrides/extras and
         // the kill switches.
-        const localConfig = this._harnessConfig
-            ? await this._harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, ClaudeCodeAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -162,21 +129,4 @@ export class ClaudeCodeAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        return this._getBool(`adapters.${ClaudeCodeAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }

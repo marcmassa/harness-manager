@@ -5,10 +5,8 @@
 // OPT-K03 an always-loaded resource whose format offers an on-trigger form (opinion).
 
 import type { ComponentSource, OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
+import { finding } from './ruleUtils.js';
 
-function finding(id: string, ctx: RuleContext, partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>): OptimizerFinding {
-    return { ruleId: id, nodeId: ctx.source.nodeId, nodeType: ctx.source.nodeType, filePath: ctx.source.filePath, ...partial };
-}
 
 const isAlways = (s: ComponentSource) => s.exists && s.source?.loadMode === 'always';
 const owner = (s: ComponentSource) => s.source?.providerId ?? '';

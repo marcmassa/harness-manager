@@ -4,20 +4,20 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
-    extractMarkdownTitle,
     fileExists,
     findFiles,
     parseSimpleToml,
     prefixedNodeId,
     readTextFromUri,
     readTextIfExists,
+    rootAgentNode,
     toRelativePath,
-    workspaceName,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 export class GeminiCliAdapter implements IAgentAdapter {
     private static readonly CONFIG_KEY = 'gemini-cli';
@@ -66,28 +66,12 @@ export class GeminiCliAdapter implements IAgentAdapter {
             .resolvePath(GeminiCliAdapter.CONFIG_KEY, root);
         const commandFiles = await findFiles(root, `${path}/commands/**/*.toml`);
 
-        const rootLabel = geminiMd
-            ? extractMarkdownTitle(geminiMd, 'Gemini CLI')
-            : `${workspaceName(root)} Gemini CLI`;
-
         const rootNodeId = `${adapterId}::root`;
-        result.graph.nodes.push(
-            withFrameworkMetadata(
-                {
-                    id: rootNodeId,
-                    type: 'agent',
-                    label: rootLabel,
-                    metadata: {
-                        description: geminiMd ? geminiMd.split(/\r?\n/).slice(0, 6).join(' ').trim() : 'Gemini CLI workspace',
-                        body: geminiMd ? geminiMd.slice(0, 500) : '',
-                        _fullBody: geminiMd ?? '',
-                    },
-                },
-                adapterId,
-                adapterLabel,
-                geminiMd ? 'GEMINI.md' : undefined
-            )
-        );
+        result.graph.nodes.push(rootAgentNode(root, adapterId, adapterLabel, geminiMd, 'GEMINI.md', {
+            title: 'Gemini CLI',
+            workspaceSuffix: 'Gemini CLI',
+            description: 'Gemini CLI workspace',
+        }));
 
         const sortedFiles = [...commandFiles].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
         for (const file of sortedFiles) {
@@ -112,8 +96,7 @@ export class GeminiCliAdapter implements IAgentAdapter {
                         metadata: {
                             ...parsedToml,
                             description,
-                            body: content.slice(0, 500),
-                            _fullBody: content,
+                            ...bodyMetadata(content),
                         },
                     },
                     adapterId,
@@ -133,23 +116,7 @@ export class GeminiCliAdapter implements IAgentAdapter {
         // FEAT-026 T7: append hook/steering nodes discovered under
         // `.gemini/hooks/`, `.gemini/steering/`, and (when enabled)
         // the project root.
-        const localConfig = this._harnessConfig
-            ? await this._harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, GeminiCliAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -162,21 +129,4 @@ export class GeminiCliAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        return this._getBool(`adapters.${GeminiCliAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }

@@ -477,7 +477,7 @@
       "title": "Bring Your Own Harness — product architecture migration",
       "description": "Reorient Harness Dashboard around the harness each user already has. Define shared-core versus adapter-specific capabilities, audit all current features against BYOH, update DESIGN.md and classify each feature as shared, adapter-specific, optional integration, or repository development tooling. Keep KISS/DRY hooks for this repository's development only. Produce approved follow-up specs before changing affected runtime features; then build the capability model, custom adapter path, and support reporting in staged work.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "spec-author-vscode",
@@ -488,8 +488,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, reply to FEAT-039 spec_ready: continúa las tareas para orientar harness-manager a una estrategia de Bring Your Own Harness",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-040",
@@ -497,7 +496,7 @@
       "title": "Repository development hooks — BYOH revision of FEAT-027",
       "description": "Keep KISS and DRY as contributor checks and retire their activation in the shipped extension.",
       "type": "chore",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -508,8 +507,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18: aprobado, in response to the FEAT-040 design and approval request",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-041",
@@ -517,7 +515,7 @@
       "title": "BYOH source ownership and operation capabilities",
       "description": "Give built-in and user-defined sources stable ownership, read-only discovery and a common decision for visible and executable actions.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -528,8 +526,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-042",
@@ -537,7 +534,7 @@
       "title": "BYOH Advisory findings, maturity and actions",
       "description": "Derive Advisory findings and maturity from attributed evidence and scope each available action to its actual provider.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -548,8 +545,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-043",
@@ -557,7 +553,7 @@
       "title": "BYOH Optimizer applicability, scores and assisted fixes",
       "description": "Evaluate native components only against applicable rules and route fixes and delegation by owner and operation.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -568,8 +564,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "Maintainer reply “aprobadas” to FEAT-041, FEAT-042 and FEAT-043 presented at d7b4c7e.",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-044",
@@ -577,7 +572,7 @@
       "title": "BYOH context cost, optimization and inference usage",
       "description": "Price any harness on one scale from owner-declared load modes: per-session baseline, skill catalog and on-demand bodies per provider; unknown load modes listed as unpriced; optional calibration and user price table without network; deterministic cross-owner cost findings; a local inference ledger for the Dashboard own AI actions; cost diff against git HEAD.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -588,8 +583,7 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, maintainer reply “aprobada” to FEAT-044 byoh-context-cost presented at spec_ready",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
     },
     {
       "id": "FEAT-045",
@@ -597,7 +591,7 @@
       "title": "Activity Bar redesign and lazy startup",
       "description": "Replace the sidebar webview with native Sources and Findings tree views over the shared scan, move the Dashboard to one restorable editor panel, add provider-neutral welcome views and one walkthrough, register commands with category and palette conditions even without a folder, defer every scan until a view or the panel is visible, code-split webview tabs, and measure activation in the Extension Host.",
       "type": "feat",
-      "status": "blocked",
+      "status": "done",
       "sdd": true,
       "priority": "P1",
       "agent": "typescript-implementer",
@@ -608,8 +602,64 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-18, maintainer reply “aprobada, haz commit y sigue con T3” to FEAT-045 activity-bar-startup presented at spec_ready",
         "assurance": "declared-unmanaged-no-roles"
-      },
-      "blocked_from": "in_progress"
+      }
+    },
+    {
+      "id": "FEAT-046",
+      "name": "tree-view-presentation",
+      "title": "Tree view presentation and Dashboard access",
+      "type": "feat",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "description": "Give every Sources and Findings item a type icon from a bundled light/dark SVG set (agent, subagent robot, skill bolt, steering wheel, hook, feature, terminal, document), make the Dashboard visible as the first item and a title action in both views, and show name, type, load mode, token estimate, score and per-provider session cost with Markdown tooltips. Presentation only; no analysis change.",
+      "spec_approval": {
+        "spec_digest": "175ae490e236eaab1809faaa22854bd24718f92548caa21499fee178707c8bdb",
+        "task_digest": "4a80ceaf9ff7a8862d3294501384a9b8f62986cba3e10158db2803e325ab62d8",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-19, maintainer reply “aprobadas” to FEAT-046 and FEAT-047 presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      }
+    },
+    {
+      "id": "FEAT-047",
+      "name": "package-slimming",
+      "title": "Package slimming and scope alignment",
+      "type": "chore",
+      "status": "done",
+      "sdd": true,
+      "priority": "P1",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "description": "Make room in the VSIX budget and align scope with BYOH: replace the deprecated webview-ui-toolkit with native themed controls, palettise the icon, remove the npm supply-chain audit, show the Specs Manager tab only when a provider supplies feature or spec data, and delete unreachable code and the unused dagre dependency. Target VSIX at most 350,000 bytes.",
+      "spec_approval": {
+        "spec_digest": "50faebcf18c3a5688c5a3fe44c969e70633a586e3a6acddb93d5b766cfcb47b1",
+        "task_digest": "c92c877f0d7246addd714f6906bf93142b94eb095a79bb0edc279cffd3adc4fd",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-19, maintainer reply “aprobadas” to FEAT-046 and FEAT-047 presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      }
+    },
+    {
+      "id": "FEAT-048",
+      "name": "shared-abstractions",
+      "title": "Shared abstractions for duplicated code",
+      "type": "refactor",
+      "status": "done",
+      "sdd": true,
+      "priority": "P2",
+      "agent": "typescript-implementer",
+      "sprint": "0.9.0",
+      "description": "Give each duplicated piece of logic one definition: adapter discovery wiring and node helpers, one in-memory vscode test mock, Optimizer finding() and type list, webview button/menu/colour constants, integration snapshot, summary, state keys and ownership map. Route git through createGitRunner and make check.sh fail on failing tests. No behaviour change.",
+      "spec_approval": {
+        "spec_digest": "00c1d02f303cfab4c7e5f912db7f9772fac559f3cfc14e8a3e013c3001f73c9a",
+        "task_digest": "4c2442ab807ced109920e5306578a5928f87553a276eeb190408052bcc2545fe",
+        "reviewer": "maintainer (conversation)",
+        "evidence_ref": "2026-11-19, maintainer reply “adelante” to FEAT-048 shared-abstractions presented at spec_ready",
+        "assurance": "declared-unmanaged-no-roles"
+      }
     }
   ]
 }

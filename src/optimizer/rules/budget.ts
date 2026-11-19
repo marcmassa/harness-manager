@@ -3,20 +3,8 @@
 
 import type { ComponentSource, OptimizableType, OptimizerFinding, OptimizerRule, RuleContext } from '../types.js';
 import { resolveBudget, cohortKey } from '../corpusStats.js';
+import { finding } from './ruleUtils.js';
 
-function finding(
-    ruleId: string,
-    ctx: RuleContext,
-    partial: Omit<OptimizerFinding, 'ruleId' | 'nodeId' | 'nodeType' | 'filePath'>,
-): OptimizerFinding {
-    return {
-        ruleId,
-        nodeId: ctx.source.nodeId,
-        nodeType: ctx.source.nodeType,
-        filePath: ctx.source.filePath,
-        ...partial,
-    };
-}
 
 /** Budget lookup for the four types that carry one (hooks have none). */
 function budgetFor(nodeType: OptimizableType, config: RuleContext['config']): number | undefined {

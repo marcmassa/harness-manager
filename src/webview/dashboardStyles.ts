@@ -1,4 +1,6 @@
 // Global stylesheet of the Dashboard webview, extracted from index.tsx.
+import { KEYFRAMES } from './styles.js';
+
 export const DASHBOARD_CSS = `
                 :root {
                     --space-xs: 4px;
@@ -72,14 +74,7 @@ export const DASHBOARD_CSS = `
 
                 /* ===== ANIMATIONS ===== */
                 @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-                @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes fadeInLeft { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
-                @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-                @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-                @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-                @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+                ${KEYFRAMES}
                 /* FEAT-034: Optimizer re-scan spinner */
                 @keyframes harnessSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -91,27 +86,6 @@ export const DASHBOARD_CSS = `
                 .harness-node--running {
                     animation: runPulse 1.2s ease-out infinite;
                     --run-color-rgb: 99, 179, 237;
-                }
-
-                @keyframes pickerFadeIn {
-                    from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
-                    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-                }
-                @keyframes pickerItemFadeIn {
-                    from { opacity: 0; transform: translateY(-4px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes shimmer {
-                    0%, 100% { opacity: 0.3; }
-                    50% { opacity: 0.6; }
-                }
-                @keyframes dotPulse {
-                    0%, 100% { box-shadow: 0 0 0 2px var(--vscode-editorInfo-foreground); transform: scale(1); }
-                    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--vscode-editorInfo-foreground) 25%, transparent); transform: scale(1.2); }
-                }
-                @keyframes mismatchPulse {
-                    0%, 100% { border-color: rgba(232, 111, 74, 0.4); }
-                    50% { border-color: rgba(232, 111, 74, 1); }
                 }
 
                 /* ===== REACT FLOW OVERRIDES ===== */
@@ -129,16 +103,6 @@ export const DASHBOARD_CSS = `
                 .react-flow__node:hover { z-index: 10; }
 
                 /* ===== FEAT-023 R19 — node appear/disappear animation ===== */
-                @keyframes nodeAppear {
-                    from {
-                        opacity: 0;
-                        transform: scale(0.85);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
                 .node-enter {
                     animation: nodeAppear 200ms ease-out forwards;
                 }
@@ -149,22 +113,6 @@ export const DASHBOARD_CSS = `
                 }
 
                 /* ===== ACTIVE NODE — panel open ===== */
-                @keyframes activeNodePulse {
-                    0%, 100% {
-                        box-shadow:
-                            0 0 0 3px var(--vscode-focusBorder),
-                            0 0 0 7px rgba(0, 122, 204, 0.22),
-                            0 0 24px 8px rgba(0, 122, 204, 0.15),
-                            0 12px 40px rgba(0,0,0,0.5);
-                    }
-                    50% {
-                        box-shadow:
-                            0 0 0 3px var(--vscode-focusBorder),
-                            0 0 0 11px rgba(0, 122, 204, 0.12),
-                            0 0 36px 12px rgba(0, 122, 204, 0.28),
-                            0 12px 40px rgba(0,0,0,0.5);
-                    }
-                }
                 .react-flow__node.harness-active-node {
                     z-index: 20;
                 }
@@ -179,12 +127,7 @@ export const DASHBOARD_CSS = `
                 }
 
                 /* ===== DESCRIPTION TEXTAREA — fills right panel ===== */
-                vscode-text-area {
-                    display: flex !important;
-                    flex-direction: column;
-                    min-height: 0;
-                }
-                vscode-text-area::part(control) {
+                .hd-textarea.hd-description {
                     flex: 1;
                     min-height: 100px;
                     resize: vertical;
@@ -210,11 +153,6 @@ export const DASHBOARD_CSS = `
                     .react-flow__edge-path {
                         transition: none;
                     }
-                }
-
-                @keyframes dash-scroll {
-                    from { stroke-dashoffset: 24; }
-                    to   { stroke-dashoffset: 0; }
                 }
 
                 /* manages (blue) */
@@ -344,7 +282,4 @@ export const DASHBOARD_CSS = `
                 }
                 .react-flow__node.selected { outline: none; }
 
-                vscode-panel-tab { transition: opacity 0.2s var(--ease-smooth); }
-                vscode-panel-tab:hover { opacity: 0.8; }
-                vscode-badge { transition: opacity 0.2s var(--ease-smooth); }
 `;

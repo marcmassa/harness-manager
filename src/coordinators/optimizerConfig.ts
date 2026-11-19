@@ -6,7 +6,7 @@
 // R50's disabled report) makes all three unit-testable without a vscode mock,
 // the same separation the src/optimizer/ module maintains.
 
-import type { OptimizerConfig, OptimizerReport } from '../optimizer/types.js';
+import { DEFAULT_OPTIMIZER_CONFIG, type OptimizerConfig, type OptimizerReport } from '../optimizer/types.js';
 
 export const DISMISSED_FINDINGS_KEY = 'harness-dashboard.dismissedOptimizerFindings';
 export const OPTIMIZER_DIFF_SCHEME = 'harness-optimizer';
@@ -24,22 +24,24 @@ export interface ConfigReader {
  * setting for it would be a knob nobody tunes independently.
  */
 export function readOptimizerConfig(config: ConfigReader): OptimizerConfig {
-    const subagentBudget = config.get<number>('optimizer.tokenBudget.subagent', 2500);
+    // Fallbacks come from the one documented default (FEAT-047: not written twice).
+    const d = DEFAULT_OPTIMIZER_CONFIG;
+    const subagentBudget = config.get<number>('optimizer.tokenBudget.subagent', d.tokenBudget.subagent);
     return {
-        enabled: config.get<boolean>('optimizer.enabled', true),
+        enabled: config.get<boolean>('optimizer.enabled', d.enabled),
         tokenBudget: {
-            skill: config.get<number>('optimizer.tokenBudget.skill', 1500),
+            skill: config.get<number>('optimizer.tokenBudget.skill', d.tokenBudget.skill),
             subagent: subagentBudget,
             agent: subagentBudget,
-            steering: config.get<number>('optimizer.tokenBudget.steering', 1500),
-            agentRollup: config.get<number>('optimizer.tokenBudget.agentRollup', 12000),
+            steering: config.get<number>('optimizer.tokenBudget.steering', d.tokenBudget.steering),
+            agentRollup: config.get<number>('optimizer.tokenBudget.agentRollup', d.tokenBudget.agentRollup),
         },
-        budgetMedianMultiple: config.get<number>('optimizer.budgetMedianMultiple', 2.5),
-        overlapThreshold: config.get<number>('optimizer.overlapThreshold', 0.8),
-        disabledRules: config.get<string[]>('optimizer.disabledRules', []),
+        budgetMedianMultiple: config.get<number>('optimizer.budgetMedianMultiple', d.budgetMedianMultiple),
+        overlapThreshold: config.get<number>('optimizer.overlapThreshold', d.overlapThreshold),
+        disabledRules: config.get<string[]>('optimizer.disabledRules', d.disabledRules),
         assistedFixes: {
-            enabled: config.get<boolean>('optimizer.assistedFixes.enabled', true),
-            mode: config.get<'both' | 'ai-only' | 'delegate-only'>('optimizer.assistedFixes.mode', 'both'),
+            enabled: config.get<boolean>('optimizer.assistedFixes.enabled', d.assistedFixes.enabled),
+            mode: config.get<'both' | 'ai-only' | 'delegate-only'>('optimizer.assistedFixes.mode', d.assistedFixes.mode),
         },
     };
 }

@@ -3,6 +3,7 @@ import { MDViewer } from './components/MDViewer.js';
 import type { MarkdownFileContent } from '../types.js';
 import { SPACE } from './styles.js';
 import { AiAssistBar } from './AiAssistBar.js';
+import { AiIconButton } from './components/AiIconButton.js';
 import { StatusBadge, type FeatureEntry } from './FeatureList.js';
 
 type SpecFile = 'requirements' | 'design' | 'tasks';
@@ -227,52 +228,20 @@ export const SpecEditor = ({ feature, vscode, taskCounts, aiCapabilities }: Spec
                                 }}
                             />
                             <div style={{ position: 'absolute', top: '4px', right: '4px', display: 'flex', gap: '2px' }}>
-                                <button
-                                    type="button"
-                                    title="Generate content with AI"
+                                <AiIconButton kind="generate" title="Generate content with AI" disabled={editGenerating}
                                     onClick={() => {
                                         if (editGenerating) return;
                                         setAiLoading(true); setSaveResult(null);
                                         vscode.postMessage?.({ type: 'generateWithAI', featureName: feature.name, file: activeTab });
                                     }}
-                                    style={{
-                                        width: '20px', height: '20px', padding: 0, border: 'none', borderRadius: '3px',
-                                        background: editGenerating ? 'var(--vscode-button-secondaryBackground, rgba(128,128,128,0.3))' : 'var(--vscode-button-background)',
-                                        color: 'var(--vscode-button-foreground)', cursor: editGenerating ? 'default' : 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        opacity: editGenerating ? 0.5 : 0.7, transition: 'opacity 0.15s ease',
-                                    }}
-                                    onMouseEnter={(e) => { if (!editGenerating) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                                >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
-                                        <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
-                                    </svg>
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Refine content with AI"
-                                    disabled={!editState.content.trim() || editGenerating}
+                                />
+                                <AiIconButton kind="refine" title="Refine content with AI" disabled={!editState.content.trim() || editGenerating}
                                     onClick={() => {
                                         if (!editState.content.trim() || editGenerating) return;
                                         setEditGenerating(true);
                                         vscode.postMessage?.({ type: 'generateFeatureDescription', target: 'editContent', mode: 'refine', title: feature.title, currentDescription: editState.content.trim() });
                                     }}
-                                    style={{
-                                        width: '20px', height: '20px', padding: 0, border: 'none', borderRadius: '3px',
-                                        background: !editState.content.trim() || editGenerating ? 'var(--vscode-button-secondaryBackground, rgba(128,128,128,0.3))' : 'var(--vscode-button-background)',
-                                        color: 'var(--vscode-button-foreground)', cursor: !editState.content.trim() || editGenerating ? 'default' : 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        opacity: !editState.content.trim() || editGenerating ? 0.3 : 0.7, transition: 'opacity 0.15s ease',
-                                    }}
-                                    onMouseEnter={(e) => { if (editState.content.trim() && !editGenerating) (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
-                                >
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                                    </svg>
-                                </button>
+                                />
                             </div>
                         </div>
                         <div style={{

@@ -1,27 +1,34 @@
 import * as React from 'react';
 import {
-    ReactFlow, 
-    Background, 
-    Controls, 
-    useNodesState, 
+    ReactFlow,
+    Background,
+    Controls,
+    useNodesState,
     useEdgesState,
-    addEdge,
-    Connection,
     Edge,
     useReactFlow,
-    MarkerType,
     SelectionMode,
     NodeChange,
 } from '@xyflow/react';
 import { CustomNode } from './components/CustomNode.js';
 import { DiscoveredNode } from './components/DiscoveredNode.js';
 import type { HarnessFlowNode } from './nodeTypes.js';
-import { LayerLegend } from './components/LayerLegend.js';
 import { EdgeContextMenu } from './components/EdgeContextMenu.js';
 import { getLayoutedElementsByProvider, type ProviderGroup } from './layoutUtils.js';
-import type { EdgeLabel } from '../types.js';
 import { HarnessGraph } from '../types.js';
 import { ManualPositionMap, isValidNodePosition, mergeLayoutedNodesWithManualPositions } from './nodePositionUtils.js';
+import { edgeConfigs, defaultEdgeCfg, toFlowEdge } from './whiteboardEdgeStyles.js';
+import { useWhiteboardGraphData } from './useWhiteboardGraphData.js';
+import { useLinkGestures } from './useLinkGestures.js';
+import { useEdgeActions } from './useEdgeActions.js';
+import { WhiteboardToolbar } from './WhiteboardToolbar.js';
+import { ProviderAreaOverlay, WhiteboardLegendBar } from './ProviderOverlays.js';
+import { NodeContextMenu, type NodeContextMenuState } from './NodeContextMenu.js';
+import { SuggestionDialog, IdoneityDialog, type SuggestionDialogState, type IdoneityDialogState } from './WhiteboardDialogs.js';
+
+// FEAT-037 T6: edgeConfigs / EDGE_TYPE_ROUTING live in whiteboardEdgeStyles.ts
+// (FEAT-048 split) and stay re-exported here for existing importers.
+export { edgeConfigs, EDGE_TYPE_ROUTING } from './whiteboardEdgeStyles.js';
 
 const nodeTypes = {
     agent: CustomNode,
@@ -35,114 +42,6 @@ const nodeTypes = {
     'discovered-tool': DiscoveredNode,
     'discovered-resource': DiscoveredNode,
     'cli-install': DiscoveredNode,
-};
-
-// ===== EDGE VISUAL STYLES — maximum contrast & visibility =====
-// FEAT-037 T6: exported for the per-edge-type parity assertions in
-// reactFlow12Migration.test.ts (same precedent as EDGE_TYPE_ROUTING).
-export const edgeConfigs: Record<string, { style: React.CSSProperties; animated: boolean; markerEnd: any }> = {
-    'manages': {
-        style: { 
-            stroke: '#4a7dff',
-            strokeWidth: 3.5, 
-            strokeLinecap: 'round',
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 22, height: 16, color: '#4a7dff' },
-    },
-    'uses': {
-        style: { 
-            stroke: '#2aa198',
-            strokeWidth: 3, 
-            strokeDasharray: '10,6',
-            strokeLinecap: 'round',
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 14, color: '#2aa198' },
-    },
-    'executing': {
-        style: { 
-            stroke: '#e86f4a',
-            strokeWidth: 4,
-            strokeLinecap: 'round',
-        },
-        animated: true,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 24, height: 18, color: '#e86f4a' },
-    },
-    // Progressive Disclosure — Stage 1: skill scanned but NOT yet linked to any subagent
-    // Muted dotted line represents "available for activation"
-    'discovered': {
-        style: { 
-            stroke: '#6c6c8a',
-            strokeWidth: 2,
-            strokeDasharray: '4,4',
-            strokeLinecap: 'round',
-            opacity: 0.55,
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 10, color: '#6c6c8a' },
-    },
-    // FEAT-010: Semantic Skill Discovery — TF-IDF suggested relationship
-    // Dashed amber/gold line indicates "description match found, not yet confirmed"
-    'suggested': {
-        style: { 
-            stroke: '#d4a84a',
-            strokeWidth: 2.5,
-            strokeDasharray: '8,4',
-            strokeLinecap: 'round',
-            opacity: 0.7,
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 12, color: '#d4a84a' },
-    },
-    'governs': {
-        style: {
-            stroke: '#d4a84a',
-            strokeWidth: 3,
-            strokeLinecap: 'round',
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 22, height: 16, color: '#d4a84a' },
-    },
-    'triggers': {
-        style: {
-            stroke: '#6c6c8a',
-            strokeWidth: 2.5,
-            strokeDasharray: '8,6',
-            strokeLinecap: 'round',
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 14, color: '#6c6c8a' },
-    },
-    // Phase 5 — Whiteboard Layer Visualization: inferred relationship edges
-    'inferred': {
-        style: {
-            stroke: '#88cc33',
-            strokeWidth: 1.5,
-            strokeDasharray: '3,3',
-            strokeLinecap: 'round',
-            opacity: 0.5,
-        },
-        animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 8, color: '#88cc33' },
-    },
-};
-
-const defaultEdgeCfg = {
-    style: { stroke: '#888', strokeWidth: 2.5, strokeLinecap: 'round' as const },
-    animated: false,
-    markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 10, color: '#888' },
-};
-
-export const EDGE_TYPE_ROUTING: Record<string, string> = {
-    manages: 'smoothstep',
-    uses: 'default',
-    executing: 'default',
-    discovered: 'straight',
-    suggested: 'smoothstep',
-    governs: 'smoothstep',
-    triggers: 'smoothstep',
-    inferred: 'default',
 };
 
 interface Props {
@@ -165,20 +64,10 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
     const [nodes, setNodes, onNodesChange] = useNodesState<HarnessFlowNode>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const manualPositionsRef = React.useRef<ManualPositionMap>({});
-    const [highlightEdgeId, setHighlightEdgeId] = React.useState<string | null>(null);
     const [hoveredEdgeId, setHoveredEdgeId] = React.useState<string | null>(null);
-    const [pendingLinkSourceId, setPendingLinkSourceId] = React.useState<string | null>(null);
-    const [dragLinkSourceId, setDragLinkSourceId] = React.useState<string | null>(null);
-    const [dragLinkHoverTargetId, setDragLinkHoverTargetId] = React.useState<string | null>(null);
     const previousNodeSignatureRef = React.useRef<string>('');
     const hasInitialFitRef = React.useRef(false);
-    const edgesRef = React.useRef<Edge[]>([]);
-    const dragLinkSourceRef = React.useRef<string | null>(null);
-    const pendingEdgeCreationKeysRef = React.useRef<Set<string>>(new Set());
     const { fitView } = useReactFlow();
-
-    // FEAT-033 Phase 2: Gear menu open state
-    const [gearMenuOpen, setGearMenuOpen] = React.useState(false);
 
     // Edge context menu state
     const [contextMenuEdge, setContextMenuEdge] = React.useState<Edge | null>(null);
@@ -186,152 +75,25 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
     const [selectedEdgeId, setSelectedEdgeId] = React.useState<string | null>(null);
 
     // Node context menu state (R6: "Show skill suggestions")
-    const [nodeContextMenu, setNodeContextMenu] = React.useState<{ node: any; position: { x: number; y: number } } | null>(null);
-    const [suggestionDialog, setSuggestionDialog] = React.useState<{ subagentId: string; suggestions: { skillId: string; score: number; idoneity?: number }[] } | null>(null);
+    const [nodeContextMenu, setNodeContextMenu] = React.useState<NodeContextMenuState | null>(null);
+    const [suggestionDialog, setSuggestionDialog] = React.useState<SuggestionDialogState | null>(null);
 
     // FEAT-011: Idoneity dialog state (R7)
-    const [idoneityDialog, setIdoneityDialog] = React.useState<{ subagentId: string; skills: { skillId: string; score: number }[] } | null>(null);
+    const [idoneityDialog, setIdoneityDialog] = React.useState<IdoneityDialogState | null>(null);
 
     // Provider groups (layout by provider + area overlay + nav dropdown)
     const [providerGroups, setProviderGroups] = React.useState<ProviderGroup[]>([]);
     const [focusedProvider, setFocusedProvider] = React.useState<string | null>(null);
     const [viewport, setViewport] = React.useState({ x: 0, y: 0, zoom: 1 });
 
-    // Compute which skills are explicitly linked (uses) per node
-    const connectedSkills = React.useMemo(() => {
-        const map: Record<string, Set<string>> = {};
-        for (const edge of graph.edges) {
-            if (edge.label === 'uses' && edge.source) {
-                if (!map[edge.source]) map[edge.source] = new Set();
-                map[edge.source].add(edge.target);
-            }
-        }
-        return map;
-    }, [graph.edges]);
+    const {
+        connectedSkills, allSkills, allOwners, connectedOwners,
+        getCanonicalEdgeForPair, isValidUsesLinkPair,
+        idoneityData, suggestedCounts, mergedGraph,
+    } = useWhiteboardGraphData(graph, discoveredNodes);
 
-    const allSkills = React.useMemo(() => 
-        graph.nodes.filter(n => n.type === 'skill'),
-    [graph.nodes]);
-    const allOwners = React.useMemo(
-        () => graph.nodes.filter((n) => n.type === 'agent' || n.type === 'subagent'),
-        [graph.nodes]
-    );
-    const nodeTypeById = React.useMemo(
-        () => new Map(graph.nodes.map((node) => [node.id, node.type])),
-        [graph.nodes]
-    );
-    const connectedOwners = React.useMemo(() => {
-        const map: Record<string, Set<string>> = {};
-        for (const edge of graph.edges) {
-            if (edge.label !== 'uses') continue;
-            const sourceType = nodeTypeById.get(edge.source);
-            const targetType = nodeTypeById.get(edge.target);
-            if ((sourceType === 'agent' || sourceType === 'subagent') && targetType === 'skill') {
-                if (!map[edge.target]) map[edge.target] = new Set();
-                map[edge.target].add(edge.source);
-            }
-        }
-        return map;
-    }, [graph.edges, nodeTypeById]);
-    const getCanonicalEdgeForPair = React.useCallback((sourceId: string, targetId: string): { sourceId: string; targetId: string; label: string } | null => {
-        if (!sourceId || !targetId || sourceId === targetId) return null;
-        const sType = nodeTypeById.get(sourceId);
-        const tType = nodeTypeById.get(targetId);
-        if (!sType || !tType) return null;
-
-        const sIsOwner = sType === 'agent' || sType === 'subagent';
-        const tIsOwner = tType === 'agent' || tType === 'subagent';
-
-        // agent/subagent ↔ skill → "uses" (canonical: owner → skill)
-        if (sIsOwner && tType === 'skill') return { sourceId, targetId, label: 'uses' };
-        if (sType === 'skill' && tIsOwner) return { sourceId: targetId, targetId: sourceId, label: 'uses' };
-
-        // agent ↔ subagent → "manages" (canonical: agent → subagent)
-        if (sType === 'agent' && tType === 'subagent') return { sourceId, targetId, label: 'manages' };
-        if (sType === 'subagent' && tType === 'agent') return { sourceId: targetId, targetId: sourceId, label: 'manages' };
-
-        // agent/subagent ↔ steering → "governs" (canonical: steering → owner)
-        if (sType === 'steering' && tIsOwner) return { sourceId, targetId, label: 'governs' };
-        if (sIsOwner && tType === 'steering') return { sourceId: targetId, targetId: sourceId, label: 'governs' };
-
-        // agent/subagent ↔ hook → "triggers" (canonical: hook → owner)
-        if (sType === 'hook' && tIsOwner) return { sourceId, targetId, label: 'triggers' };
-        if (sIsOwner && tType === 'hook') return { sourceId: targetId, targetId: sourceId, label: 'triggers' };
-
-        return null;
-    }, [nodeTypeById]);
-
-    // Keep old name as alias so pill/drag code still compiles without touching every callsite
-    const getCanonicalUsesLinkPair = getCanonicalEdgeForPair;
-
-    const isValidNodePair = React.useCallback((sourceId: string, targetId: string): boolean => {
-        return getCanonicalEdgeForPair(sourceId, targetId) !== null;
-    }, [getCanonicalEdgeForPair]);
-
-    // Alias for code that hasn't been renamed yet
-    const isValidUsesLinkPair = isValidNodePair;
-
-    // FEAT-011: Idoneity score → edge style thresholds (R5)
-    const IDONEITY_STYLES = {
-        high: { strokeWidth: 4, opacity: 1.0, threshold: 0.7 },
-        medium: { strokeWidth: 3, opacity: 0.75, threshold: 0.4 },
-        low: { strokeWidth: 2, opacity: 0.5, threshold: 0 },
-    };
-
-    /** Apply idoneity-modulated styling to a uses edge config (R5) */
-    function applyIdoneityStyle(cfg: { style: React.CSSProperties; animated: boolean; markerEnd: any }, idoneity: number): { style: React.CSSProperties; animated: boolean; markerEnd: any } {
-        if (idoneity <= 0) return cfg;
-        const level = idoneity >= IDONEITY_STYLES.high.threshold ? IDONEITY_STYLES.high
-            : idoneity >= IDONEITY_STYLES.medium.threshold ? IDONEITY_STYLES.medium
-            : IDONEITY_STYLES.low;
-        return {
-            ...cfg,
-            style: {
-                ...cfg.style,
-                strokeWidth: level.strokeWidth,
-                opacity: level.opacity,
-            },
-        };
-    }
-
-    // FEAT-011: Pre-compute idoneity data for rendering (R7)
-    const idoneityData = React.useMemo(() => {
-        const bySubagent: Record<string, { skillId: string; score: number }[]> = {};
-        const bySkill: Record<string, { bestOwner: string; score: number; mismatch: boolean; mismatchBestOwner?: string }> = {};
-        for (const node of graph.nodes) {
-            if (node.type === 'subagent') {
-                // Skills with idoneity score ≥ 0.1 are collected from uses edges metadata
-                const skills: { skillId: string; score: number }[] = [];
-                for (const edge of graph.edges) {
-                    if (edge.source === node.id && edge.label === 'uses' && edge.metadata?.idoneity && edge.metadata.idoneity >= 0.1) {
-                        skills.push({ skillId: edge.target, score: edge.metadata.idoneity as number });
-                    }
-                }
-                skills.sort((a, b) => b.score - a.score);
-                bySubagent[node.id] = skills;
-            }
-            if (node.type === 'skill') {
-                bySkill[node.id] = {
-                    bestOwner: node.metadata?._bestOwner || '',
-                    score: node.metadata?._bestOwnerScore || 0,
-                    mismatch: node.metadata?._mismatch === true,
-                    mismatchBestOwner: node.metadata?._mismatchBestOwner || undefined,
-                };
-            }
-        }
-        return { bySubagent, bySkill };
-    }, [graph.nodes, graph.edges]);
-
-    // FEAT-010: Count suggested edges per node (for 💡 badge)
-    const suggestedCounts = React.useMemo(() => {
-        const counts: Record<string, number> = {};
-        for (const edge of graph.edges) {
-            if (edge.label === 'suggested' && edge.source) {
-                counts[edge.source] = (counts[edge.source] || 0) + 1;
-            }
-        }
-        return counts;
-    }, [graph.edges]);
+    const { handleDeleteEdge, handleChangeLabel, handleDismissSuggestion, handleAcceptSuggestion, handleToggleConnection } =
+        useEdgeActions({ setEdges, setContextMenuEdge, setSelectedEdgeId });
 
     // Delete key listener for selected edges
     React.useEffect(() => {
@@ -347,115 +109,13 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         return () => document.removeEventListener('keydown', handler);
     }, [selectedEdgeId, edges]);
 
-    React.useEffect(() => {
-        edgesRef.current = edges;
-    }, [edges]);
-    React.useEffect(() => {
-        dragLinkSourceRef.current = dragLinkSourceId;
-    }, [dragLinkSourceId]);
-
-    const triggerEdgeCreationFeedback = React.useCallback((edgeId: string) => {
-        setHighlightEdgeId(edgeId);
-        window.setTimeout(() => {
-            setHighlightEdgeId((current) => current === edgeId ? null : current);
-        }, 1200);
-    }, []);
-
-    const createUsesEdge = React.useCallback((sourceId?: string | null, targetId?: string | null) => {
-        if (!sourceId || !targetId || sourceId === targetId) return;
-        const canonicalPair = getCanonicalEdgeForPair(sourceId, targetId);
-        if (!canonicalPair) return;
-
-        const { sourceId: canonicalSourceId, targetId: canonicalTargetId, label } = canonicalPair;
-        const edgeKey = `${canonicalSourceId}::${canonicalTargetId}::${label}`;
-
-        if (pendingEdgeCreationKeysRef.current.has(edgeKey)) return;
-
-        const alreadyExists = edgesRef.current.some((edge) => {
-            const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
-            return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind === label;
-        });
-        if (alreadyExists) return;
-        pendingEdgeCreationKeysRef.current.add(edgeKey);
-        window.setTimeout(() => pendingEdgeCreationKeysRef.current.delete(edgeKey), 400);
-
-        const cfg = edgeConfigs[label] || defaultEdgeCfg;
-        const edgeId = `edge-${canonicalSourceId}-${canonicalTargetId}-${Date.now()}`;
-        const newEdge: Edge = {
-            id: edgeId,
-            source: canonicalSourceId,
-            target: canonicalTargetId,
-            label,
-            type: EDGE_TYPE_ROUTING[label] ?? 'default',
-            className: `harness-edge harness-edge--${label}`,
-            style: cfg.style,
-            animated: cfg.animated,
-            markerEnd: cfg.markerEnd,
-            data: { originalLabel: label },
-            labelStyle: {
-                fontSize: '11px',
-                fontWeight: 600,
-                color: cfg.style.stroke as string,
-                background: 'var(--vscode-editor-background)',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                border: `1px solid ${cfg.style.stroke as string}`,
-            },
-            labelBgPadding: [10, 5] as [number, number],
-            labelBgBorderRadius: 4,
-            labelBgStyle: { fill: 'var(--vscode-editor-background)', fillOpacity: 0.95 },
-        };
-        setEdges((eds) => {
-            const existsInState = eds.some((edge) => {
-                const edgeKind = String((edge.data as any)?.originalLabel || edge.label || '').toLowerCase();
-                return edge.source === canonicalSourceId && edge.target === canonicalTargetId && edgeKind === label;
-            });
-            return existsInState ? eds : addEdge(newEdge, eds);
-        });
-        triggerEdgeCreationFeedback(edgeId);
-
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode?.postMessage) {
-            vscode.postMessage({ type: 'createEdge', source: canonicalSourceId, target: canonicalTargetId, label });
-        }
-    }, [setEdges, triggerEdgeCreationFeedback, getCanonicalEdgeForPair]);
-
-    const handleSourcePillClick = React.useCallback((sourceId: string) => {
-        setPendingLinkSourceId((current) => current === sourceId ? null : sourceId);
-    }, []);
-
-    const handleTargetPillClick = React.useCallback((targetId: string) => {
-        setPendingLinkSourceId((sourceId) => {
-            if (!sourceId || sourceId === targetId) return sourceId;
-            createUsesEdge(sourceId, targetId);
-            return null;
-        });
-    }, [createUsesEdge]);
-
-    const handleDragLinkHoverChange = React.useCallback((targetId: string, isHovering: boolean) => {
-        const sourceId = dragLinkSourceRef.current;
-        if (!sourceId) {
-            if (!isHovering) setDragLinkHoverTargetId((current) => current === targetId ? null : current);
-            return;
-        }
-        if (sourceId === targetId || !isValidUsesLinkPair(sourceId, targetId)) {
-            setDragLinkHoverTargetId((current) => current === targetId ? null : current);
-            return;
-        }
-        setDragLinkHoverTargetId((current) => {
-            if (isHovering) return targetId;
-            return current === targetId ? null : current;
-        });
-    }, [isValidUsesLinkPair]);
-
-    const handleDragLinkDropOnNode = React.useCallback((targetId: string) => {
-        const sourceId = dragLinkSourceRef.current;
-        if (!sourceId || sourceId === targetId) return;
-        if (!isValidUsesLinkPair(sourceId, targetId)) return;
-        createUsesEdge(sourceId, targetId);
-        setDragLinkHoverTargetId(null);
-        setDragLinkSourceId(null);
-    }, [createUsesEdge, isValidUsesLinkPair]);
+    const {
+        highlightEdgeId, pendingLinkSourceId, setPendingLinkSourceId,
+        dragLinkSourceId, setDragLinkSourceId, dragLinkHoverTargetId, setDragLinkHoverTargetId,
+        createUsesEdge, handleSourcePillClick, handleTargetPillClick,
+        handleDragLinkHoverChange, handleDragLinkDropOnNode,
+        onConnect, onConnectStart, onConnectEnd,
+    } = useLinkGestures({ edges, setEdges, getCanonicalEdgeForPair, isValidUsesLinkPair });
 
     const handleNodesChange = React.useCallback((changes: NodeChange<HarnessFlowNode>[]) => {
         onNodesChange(changes);
@@ -486,23 +146,6 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
             y: node.position.y,
         };
     }, []);
-
-    // Merge discovered nodes into the base graph
-    const mergedGraph = React.useMemo(() => {
-        if (!discoveredNodes || (discoveredNodes.nodes.length === 0 && discoveredNodes.edges.length === 0)) {
-            return graph;
-        }
-        const existingNodeIds = new Set(graph.nodes.map(n => n.id));
-        const existingEdgeKeys = new Set(graph.edges.map(e => `${e.source}::${e.target}::${e.label || ''}`));
-
-        const newNodes = discoveredNodes.nodes.filter(n => !existingNodeIds.has(n.id));
-        const newEdges = discoveredNodes.edges.filter(e => !existingEdgeKeys.has(`${e.source}::${e.target}::${e.label || ''}`));
-
-        return {
-            nodes: [...graph.nodes, ...newNodes],
-            edges: [...graph.edges, ...newEdges],
-        };
-    }, [graph, discoveredNodes]);
 
     React.useEffect(() => {
         if (!mergedGraph) return;
@@ -559,65 +202,7 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
             };
         });
 
-        const initialEdges = graph.edges.map(e => {
-            const label = e.label || '';
-            const cfg = edgeConfigs[label] || defaultEdgeCfg;
-
-            // FEAT-011: Apply idoneity-modulated styling for uses edges (R5)
-            let effectiveCfg = cfg;
-            if (label === 'uses' && e.metadata?.idoneity !== undefined) {
-                effectiveCfg = applyIdoneityStyle(cfg, e.metadata.idoneity as number);
-            }
-
-            // T13 (R5): Disabled edge style
-            const isMismatchEdge = label === 'uses' && e.metadata?._mismatch === true;
-            const isDisabled = label === 'uses' && e.metadata?.disabled === true;
-            const edgeStyle = isDisabled
-                ? { stroke: '#6c6c8a', strokeWidth: 2, strokeDasharray: '4,4', strokeLinecap: 'round' as const, opacity: 0.45 }
-                : isMismatchEdge
-                ? { ...effectiveCfg.style, stroke: '#e86f4a', strokeDasharray: '6,3', opacity: 1 }
-                : effectiveCfg.style;
-
-            // Show score in label for suggested edges (FEAT-010 R7)
-            const displayLabel = isDisabled
-                ? `⏸ ${label}`
-                : label === 'suggested'
-                ? ''
-                : label === 'uses' && e.metadata?.idoneity !== undefined
-                    ? `uses (${e.metadata.idoneity})`
-                    : label;
-
-            return {
-                id: e.id,
-                source: e.source,
-                target: e.target,
-                label: displayLabel,
-                type: EDGE_TYPE_ROUTING[label] ?? 'default',
-                className: `harness-edge harness-edge--${label}`,
-                style: edgeStyle,
-                animated: isMismatchEdge && !isDisabled ? true : effectiveCfg.animated,
-                markerEnd: isMismatchEdge && !isDisabled
-                    ? { type: MarkerType.ArrowClosed, width: 20, height: 14, color: '#e86f4a' }
-                    : effectiveCfg.markerEnd,
-                data: { metadata: e.metadata, originalLabel: label },
-                labelStyle: { 
-                    fontSize: '11px', 
-                    fontWeight: 600,
-                    color: isDisabled ? '#6c6c8a' : isMismatchEdge ? '#e86f4a' : (cfg.style.stroke as string),
-                    background: 'var(--vscode-editor-background)',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    border: isMismatchEdge
-                        ? '1px solid #e86f4a'
-                        : isDisabled
-                        ? '1px solid #6c6c8a'
-                        : `1px solid ${effectiveCfg.style.stroke as string}`,
-                },
-                labelBgPadding: [10, 5] as [number, number],
-                labelBgBorderRadius: 4,
-                labelBgStyle: { fill: 'var(--vscode-editor-background)', fillOpacity: 0.95 },
-            };
-        });
+        const initialEdges = graph.edges.map(e => toFlowEdge(e));
 
         const { nodes: layoutedNodes, edges: layoutedEdges, groups: providerGroups } = getLayoutedElementsByProvider(
             initialNodes,
@@ -685,146 +270,12 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
         })));
     }, [pendingLinkSourceId, dragLinkSourceId, dragLinkHoverTargetId, setNodes, isValidUsesLinkPair]);
 
-    const onConnect = React.useCallback(
-        (params: Edge | Connection) => {
-            createUsesEdge(params.source, params.target);
-            setPendingLinkSourceId(null);
-            setDragLinkSourceId(null);
-            setDragLinkHoverTargetId(null);
-        },
-        [createUsesEdge]
-    );
-
-    const onConnectStart = React.useCallback((_: MouseEvent | TouchEvent, params: any) => {
-        // capture from any handle type — ReactFlow normalizes direction in onConnect
-        const sourceId = params?.nodeId ?? null;
-        setPendingLinkSourceId(null);
-        setDragLinkSourceId(sourceId);
-        setDragLinkHoverTargetId(null);
-    }, []);
-
-    const onConnectEnd = React.useCallback(() => {
-        window.setTimeout(() => {
-            setDragLinkSourceId(null);
-            setDragLinkHoverTargetId(null);
-        }, 0);
-    }, []);
-
     // Edge click handler — show context menu
     const onEdgeClick = React.useCallback((event: React.MouseEvent, edge: Edge) => {
         event.stopPropagation();
         setContextMenuEdge(edge);
         setContextMenuPos({ x: event.clientX, y: event.clientY });
         setSelectedEdgeId(edge.id);
-    }, []);
-
-    // Edge deletion handler (R1, R8)
-    const handleDeleteEdge = React.useCallback((edge: Edge) => {
-        // Delegate to extension for confirmation + persistence (R8)
-        // Use originalLabel from data to avoid sending display label (e.g. "uses (0.87)") — see FEAT-011
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode && vscode.postMessage) {
-            vscode.postMessage({ 
-                type: 'confirmAndDeleteEdge', 
-                source: edge.source, 
-                target: edge.target, 
-                label: (edge.data as any)?.originalLabel || edge.label || 'uses',
-                edgeId: edge.id,
-            });
-        }
-        setContextMenuEdge(null);
-        setSelectedEdgeId(null);
-    }, []);
-
-    // Edge label change handler (R9)
-    const handleChangeLabel = React.useCallback((edge: Edge, newLabel: EdgeLabel) => {
-        const cfg = edgeConfigs[newLabel] || defaultEdgeCfg;
-        setEdges((eds) => eds.map(e => {
-            if (e.id === edge.id) {
-                return {
-                    ...e,
-                    label: newLabel,
-                    style: cfg.style,
-                    animated: cfg.animated,
-                    markerEnd: cfg.markerEnd,
-                    type: EDGE_TYPE_ROUTING[newLabel] ?? 'default',
-                    className: `harness-edge harness-edge--${newLabel}`,
-                    labelStyle: {
-                        ...e.labelStyle,
-                        color: cfg.style.stroke,
-                        border: `1px solid ${cfg.style.stroke}`,
-                    } as any,
-                };
-            }
-            return e;
-        }));
-        
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode && vscode.postMessage) {
-            vscode.postMessage({ 
-                type: 'updateEdgeLabel', 
-                source: edge.source, 
-                target: edge.target, 
-                label: newLabel,
-            });
-        }
-        setContextMenuEdge(null);
-    }, [setEdges]);
-
-    // Dismiss suggestion handler: remove suggested edge from state + persist (T10 R1, R8)
-    const handleDismissSuggestion = React.useCallback((source: string, target: string) => {
-        // R8: use originalLabel so the filter works even when label is the display string
-        setEdges((eds) => eds.filter(e =>
-            !(e.source === source && e.target === target && (e.data as any)?.originalLabel === 'suggested')
-        ));
-        // R1: persist dismissed pair so it doesn't re-appear after parse
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode?.postMessage) {
-            vscode.postMessage({ type: 'dismissSuggestion', subagentId: source, skillId: target });
-        }
-    }, [setEdges]);
-
-    // Accept suggestion handler (R5): convert suggested → uses + persist
-    const handleAcceptSuggestion = React.useCallback((edge: Edge) => {
-        const cfg = edgeConfigs['uses'] || defaultEdgeCfg;
-        setEdges((eds) => eds.map(e => {
-            if (e.id === edge.id) {
-                return {
-                    ...e,
-                    label: 'uses',
-                    type: EDGE_TYPE_ROUTING['uses'],
-                    className: 'harness-edge harness-edge--uses',
-                    style: cfg.style,
-                    animated: cfg.animated,
-                    markerEnd: cfg.markerEnd,
-                    labelStyle: {
-                        ...e.labelStyle,
-                        color: cfg.style.stroke,
-                        border: `1px solid ${cfg.style.stroke as string}`,
-                    } as any,
-                };
-            }
-            return e;
-        }));
-
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode && vscode.postMessage) {
-            vscode.postMessage({
-                type: 'acceptSuggestion',
-                subagentId: edge.source,
-                skillId: edge.target,
-            });
-        }
-        setContextMenuEdge(null);
-    }, [setEdges]);
-
-    // T12 (R4, R6): Toggle disabled state of a uses edge
-    const handleToggleConnection = React.useCallback((edge: Edge, disable: boolean) => {
-        const vscode = (window as any).__harness_vscode_api;
-        if (vscode?.postMessage) {
-            vscode.postMessage({ type: 'toggleSkillConnection', source: edge.source, target: edge.target, disabled: disable });
-        }
-        setContextMenuEdge(null);
     }, []);
 
     // T7 (R9): Hover z-index tracking
@@ -928,193 +379,20 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
                 React Flow 11.11.4, the pre-FEAT-037 runtime, and useStore
                 (which also crashed). The overlay is flow-version-agnostic. */}
             {providerGroups.length > 0 && (
-                <svg
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        pointerEvents: 'none',
-                        zIndex: 0,
-                    }}
-                >
-                    <g transform={`translate(${viewport.x}, ${viewport.y}) scale(${viewport.zoom})`}>
-                        {providerGroups.map((g) => {
-                            const focused = focusedProvider === null || focusedProvider === g.id;
-                            return (
-                                <g key={g.id} opacity={focused ? 1 : 0.3}>
-                                    <rect
-                                        x={g.x}
-                                        y={g.y}
-                                        width={g.width}
-                                        height={g.height}
-                                        rx={14}
-                                        ry={14}
-                                        fill={g.tint}
-                                        stroke={g.border}
-                                        strokeWidth={1.5}
-                                        strokeDasharray="6,4"
-                                    />
-                                    <text
-                                        x={g.x + 14}
-                                        y={g.y + 28}
-                                        fill={g.border}
-                                        fontSize={13}
-                                        fontWeight={700}
-                                        letterSpacing="1.2"
-                                    >
-                                        {g.label.toUpperCase()} · {g.count}
-                                    </text>
-                                </g>
-                            );
-                        })}
-                    </g>
-                </svg>
+                <ProviderAreaOverlay providerGroups={providerGroups} viewport={viewport} focusedProvider={focusedProvider} />
             )}
 
             {/* FEAT-033 Phase 2 — Architecture Studio toolbar (top-left) */}
-            <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 25, display: 'flex', gap: 6, alignItems: 'center' }}>
-                {onCreateNode && (
-                    <button
-                        onClick={onCreateNode}
-                        title="New Node (Agent Builder Wizard)"
-                        style={toolbarBtnStyle}
-                    >
-                        + New
-                    </button>
-                )}
-                {onOpenTemplates && (
-                    <button
-                        onClick={onOpenTemplates}
-                        title="Architecture Templates"
-                        style={toolbarBtnSecondaryStyle}
-                    >
-                        ⊞ Templates
-                    </button>
-                )}
-                {/* Gear menu */}
-                <div style={{ position: 'relative' }}>
-                    <button
-                        onClick={() => setGearMenuOpen(o => !o)}
-                        title="Whiteboard actions"
-                        style={toolbarBtnSecondaryStyle}
-                    >
-                        ⚙
-                    </button>
-                    {gearMenuOpen && (
-                        <>
-                            {/* Click-outside overlay */}
-                            <div
-                                style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-                                onClick={() => setGearMenuOpen(false)}
-                            />
-                            <div style={{
-                                position: 'absolute', top: '110%', left: 0, zIndex: 9999,
-                                background: 'var(--vscode-dropdown-background)',
-                                border: '1px solid var(--vscode-dropdown-border)',
-                                borderRadius: 8,
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-                                minWidth: 220,
-                                padding: '4px 0',
-                                animation: 'pickerFadeIn 0.14s ease-out',
-                            }}>
-                                {[
-                                    { label: 'Scaffold missing files', cmd: 'harness-dashboard.scaffoldMissing' },
-                                    { label: 'Sync from filesystem', cmd: 'harness-dashboard.syncFromFilesystem' },
-                                ].map(item => (
-                                    <button
-                                        key={item.cmd}
-                                        onClick={() => {
-                                            const vscode = (window as any).__harness_vscode_api;
-                                            if (vscode?.postMessage) {
-                                                vscode.postMessage({ type: 'executeVSCodeCommand', command: item.cmd });
-                                            }
-                                            setGearMenuOpen(false);
-                                        }}
-                                        style={{
-                                            display: 'block', width: '100%', textAlign: 'left',
-                                            padding: '8px 14px', fontSize: '0.84em',
-                                            background: 'transparent', border: 'none', cursor: 'pointer',
-                                            color: 'var(--vscode-dropdown-foreground)', fontFamily: 'inherit',
-                                        }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                                    >
-                                        {item.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
+            <WhiteboardToolbar onCreateNode={onCreateNode} onOpenTemplates={onOpenTemplates} />
 
             {/* Phase 5 — Layer Legend + Provider navigation bar (top-right) */}
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 12,
-                    right: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    zIndex: 25,
-                }}
-            >
-                <LayerLegend />
-
-                {providerGroups.length > 1 && (
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            background: 'var(--vscode-editorWidget-background)',
-                            border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
-                            borderRadius: 8,
-                            padding: '4px 8px',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-                            fontSize: '0.75em',
-                        }}
-                    >
-                        <span style={{ opacity: 0.65, fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '0.85em' }}>
-                            Provider
-                        </span>
-                        <select
-                            value={focusedProvider ?? '__all__'}
-                            onChange={(e) => {
-                                const v = e.target.value;
-                                setFocusedProvider(v === '__all__' ? null : v);
-                                if (v === '__all__') {
-                                    fitView({ padding: 0.2, duration: 400 });
-                                } else {
-                                    const nodeIds = nodes
-                                        .filter((n: any) => (n.data as any)?.metadata?._framework === v)
-                                        .map((n: any) => n.id);
-                                    if (nodeIds.length > 0) {
-                                        fitView({ nodes: nodeIds.map((id: string) => ({ id })), padding: 0.25, duration: 400 });
-                                    }
-                                }
-                            }}
-                            style={{
-                                background: 'var(--vscode-dropdown-background)',
-                                color: 'var(--vscode-dropdown-foreground)',
-                                border: '1px solid var(--vscode-dropdown-border)',
-                                borderRadius: 4,
-                                padding: '2px 6px',
-                                fontSize: '1em',
-                            }}
-                        >
-                            <option value="__all__">All ({providerGroups.reduce((acc, g) => acc + g.count, 0)})</option>
-                            {providerGroups.map((g) => (
-                                <option key={g.id} value={g.id}>
-                                    {g.label} ({g.count})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-            </div>
+            <WhiteboardLegendBar
+                providerGroups={providerGroups}
+                focusedProvider={focusedProvider}
+                setFocusedProvider={setFocusedProvider}
+                nodes={nodes}
+                fitView={fitView}
+            />
 
             {/* Edge Context Menu (R1, R9, R5) */}
             {contextMenuEdge && (
@@ -1132,483 +410,31 @@ export const WhiteboardCanvas = ({ graph, onNodeSelect, selectedNodeId, discover
 
             {/* T14 (R12): Node context menu — click-outside overlay closes the menu */}
             {nodeContextMenu && (
-                <>
-                    <div
-                        style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-                        onClick={() => setNodeContextMenu(null)}
-                    />
-                    <div style={{
-                        position: 'fixed',
-                        left: `${nodeContextMenu.position.x}px`,
-                        top: `${nodeContextMenu.position.y}px`,
-                        background: 'var(--vscode-dropdown-background)',
-                        border: '1px solid var(--vscode-dropdown-border)',
-                        borderRadius: '8px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                        zIndex: 9999,
-                        minWidth: '200px',
-                        padding: '4px 0',
-                        animation: 'pickerFadeIn 0.15s ease-out',
-                    }}>
-                    <div style={{
-                        padding: '4px 16px 8px',
-                        fontSize: '0.65em',
-                        textTransform: 'uppercase',
-                        opacity: 0.5,
-                        letterSpacing: '1px',
-                        fontWeight: 700,
-                        borderBottom: '1px solid var(--vscode-dropdown-border)',
-                    }}>
-                        {nodeContextMenu.node.label} ({nodeContextMenu.node.type})
-                    </div>
-
-                    {(() => {
-                        const node = nodeContextMenu.node;
-                        const nodeId = node.id;
-                        const nodeType = node.type;
-
-                        if (nodeType === 'skill') {
-                            // === SKILL NODE: Show best owner + mismatch info + re-assignment (R4, R8)
-                            const skillInfo = idoneityData.bySkill[nodeId];
-                            const hasBestOwner = skillInfo && skillInfo.bestOwner;
-                            return (
-                                <>
-                                    {hasBestOwner && (
-                                        <div style={{
-                                            padding: '8px 16px',
-                                            fontSize: '0.8em',
-                                            borderBottom: '1px solid var(--vscode-dropdown-border)',
-                                            lineHeight: 1.6,
-                                        }}>
-                                            <div style={{ opacity: 0.6, fontSize: '0.75em' }}>Best semantic owner</div>
-                                            <div style={{ fontWeight: 600, color: '#2aa198' }}>
-                                                → {skillInfo.bestOwner} <span style={{ fontWeight: 400, opacity: 0.6 }}>({skillInfo.score})</span>
-                                            </div>
-                                            {skillInfo.mismatch && (
-                                                <div style={{ color: '#e86f4a', fontSize: '0.85em', marginTop: '4px' }}>
-                                                    ⚠️ Currently owned by different subagent
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {skillInfo?.mismatch && skillInfo.mismatchBestOwner && (
-                                        <button
-                                            style={{
-                                                padding: '8px 16px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.85em',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                transition: 'background 0.12s ease',
-                                                border: 'none',
-                                                background: 'transparent',
-                                                color: '#e86f4a',
-                                                width: '100%',
-                                                textAlign: 'left',
-                                                fontFamily: 'inherit',
-                                                fontWeight: 600,
-                                            }}
-                                            onClick={() => {
-                                                // Trigger re-assignment: move uses edge to bestOwner
-                                                const vscode = (window as any).__harness_vscode_api;
-                                                if (vscode && vscode.postMessage) {
-                                                    vscode.postMessage({
-                                                        type: 'reassignSkill',
-                                                        skillId: nodeId,
-                                                        newOwner: skillInfo.mismatchBestOwner,
-                                                    });
-                                                }
-                                                setNodeContextMenu(null);
-                                            }}
-                                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'; }}
-                                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                                        >
-                                            <span>🔄</span>
-                                            Suggest as subagent of {skillInfo.mismatchBestOwner}
-                                        </button>
-                                    )}
-                                    {!hasBestOwner && (
-                                        <div style={{ padding: '8px 16px', fontSize: '0.8em', opacity: 0.5 }}>
-                                            No best owner (missing description)
-                                        </div>
-                                    )}
-                                </>
-                            );
-                        }
-
-                        // === SUBAGENT / AGENT NODE: Show suggestions + idoneous skills (R6, R7)
-                        const suggestedEdges = graph.edges.filter(
-                            e => e.source === nodeId && e.label === 'suggested'
-                        );
-                        const idoneousSkills = idoneityData.bySubagent[nodeId] || [];
-                        const items: { label: string; icon: string; onClick: () => void }[] = [];
-
-                        // Suggestion option (FEAT-010)
-                        if (suggestedEdges.length > 0) {
-                            items.push({
-                                icon: '💡',
-                                label: `Show skill suggestions (${suggestedEdges.length})`,
-                                onClick: () => {
-                                    setSuggestionDialog({
-                                        subagentId: nodeId,
-                                        suggestions: suggestedEdges.map(e => ({
-                                            skillId: e.target,
-                                            score: (e.metadata?.score as number) || 0,
-                                            idoneity: e.metadata?.idoneity as number | undefined,
-                                        })),
-                                    });
-                                    setNodeContextMenu(null);
-                                },
-                            });
-                        }
-
-                        // Idoneous skills option (FEAT-011 R7)
-                        if (idoneousSkills.length > 0) {
-                            items.push({
-                                icon: '🎯',
-                                label: `Show idoneous skills (${idoneousSkills.length})`,
-                                onClick: () => {
-                                    setIdoneityDialog({ subagentId: nodeId, skills: idoneousSkills });
-                                    setNodeContextMenu(null);
-                                },
-                            });
-                        }
-
-                        if (items.length === 0) {
-                            return (
-                                <div style={{ padding: '8px 16px', fontSize: '0.8em', opacity: 0.5 }}>
-                                    No suggestions available
-                                </div>
-                            );
-                        }
-
-                        return items.map((item, idx) => (
-                            <button key={idx}
-                                style={{
-                                    padding: '8px 16px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85em',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    transition: 'background 0.12s ease',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: 'var(--vscode-dropdown-foreground)',
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    fontFamily: 'inherit',
-                                }}
-                                onClick={item.onClick}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-list-hoverBackground)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                            >
-                                <span>{item.icon}</span>
-                                {item.label}
-                            </button>
-                        ));
-                    })()}
-                </div>
-                </>
+                <NodeContextMenu
+                    nodeContextMenu={nodeContextMenu}
+                    setNodeContextMenu={setNodeContextMenu}
+                    idoneityData={idoneityData}
+                    graph={graph}
+                    setSuggestionDialog={setSuggestionDialog}
+                    setIdoneityDialog={setIdoneityDialog}
+                />
             )}
 
             {/* Suggestion Dialog (R6) */}
             {suggestionDialog && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                }} onClick={() => setSuggestionDialog(null)}>
-                    <div style={{
-                        background: 'var(--vscode-editor-background)',
-                        border: '1px solid var(--vscode-panel-border)',
-                        borderRadius: '12px',
-                        padding: '20px 24px',
-                        minWidth: '320px',
-                        maxHeight: '60vh',
-                        overflow: 'auto',
-                        boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{
-                            fontSize: '1.1em',
-                            fontWeight: 700,
-                            marginBottom: '12px',
-                        }}>
-                            💡 Skill Suggestions for "{suggestionDialog.subagentId}"
-                        </div>
-                        <div style={{
-                            fontSize: '0.75em',
-                            opacity: 0.5,
-                            marginBottom: '16px',
-                        }}>
-                            Based on semantic similarity (TF-IDF + idoneity). Click <strong>Accept</strong> to create a uses relationship, or <strong>Dismiss</strong> to remove the suggestion.
-                        </div>
-                        {suggestionDialog.suggestions.length === 0 && (
-                                <div style={{ padding: '16px', textAlign: 'center', opacity: 0.5, fontSize: '0.85em' }}>
-                                    All suggestions dismissed. Close this dialog to continue.
-                                </div>
-                            )}
-                            {suggestionDialog.suggestions.map(s => {
-                            const idoneityColor = s.idoneity && s.idoneity >= 0.7 ? '#2aa198' : s.idoneity && s.idoneity >= 0.4 ? '#d4a84a' : undefined;
-                            return (
-                            <div key={s.skillId} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '10px 12px',
-                                marginBottom: '8px',
-                                background: 'var(--vscode-dropdown-background)',
-                                borderRadius: '8px',
-                                border: '1px solid var(--vscode-dropdown-border)',
-                            }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: '0.9em' }}>{s.skillId}</div>
-                                    <div style={{ fontSize: '0.75em', display: 'flex', gap: '12px', marginTop: '2px' }}>
-                                        <span style={{ opacity: 0.6 }}>TF-IDF: {s.score.toFixed(2)}</span>
-                                        {s.idoneity !== undefined && (
-                                            <span style={{ opacity: 0.8, color: idoneityColor }}>
-                                                Idoneity: {s.idoneity.toFixed(2)}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                    <button style={{
-                                        background: 'transparent',
-                                        color: 'var(--vscode-errorForeground, #e86f4a)',
-                                        border: '1px solid var(--vscode-errorForeground, #e86f4a)',
-                                        borderRadius: '6px',
-                                        padding: '5px 10px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75em',
-                                        fontWeight: 500,
-                                    }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDismissSuggestion(suggestionDialog.subagentId, s.skillId);
-                                            // Remove from dialog state — auto-close if last suggestion dismissed
-                                            const remaining = suggestionDialog.suggestions.filter(x => x.skillId !== s.skillId);
-                                            if (remaining.length === 0) {
-                                                setSuggestionDialog(null);
-                                            } else {
-                                                setSuggestionDialog(prev => {
-                                                    if (!prev) return null;
-                                                    return { ...prev, suggestions: remaining };
-                                                });
-                                            }
-                                        }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--vscode-errorForeground)'; e.currentTarget.style.color = '#fff'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--vscode-errorForeground, #e86f4a)'; }}
-                                    >
-                                        ✕ Dismiss
-                                    </button>
-                                    <button style={{
-                                        background: '#2aa198',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '5px 14px',
-                                        cursor: 'pointer',
-                                        fontSize: '0.8em',
-                                        fontWeight: 600,
-                                    }}
-                                        onClick={() => {
-                                            // T11 (R9): use originalLabel to find edge regardless of display label
-                                            const edge = edges.find(
-                                                e => e.source === suggestionDialog.subagentId &&
-                                                    e.target === s.skillId &&
-                                                    (e.data as any)?.originalLabel === 'suggested'
-                                            );
-                                            if (edge) handleAcceptSuggestion(edge);
-                                            setSuggestionDialog(null);
-                                        }}
-                                    >
-                                        Accept
-                                    </button>
-                                </div>
-                            </div>
-                            );
-                        })}
-                        <button style={{
-                            width: '100%',
-                            padding: '8px',
-                            marginTop: '8px',
-                            background: 'transparent',
-                            border: '1px solid var(--vscode-panel-border)',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            color: 'var(--vscode-dropdown-foreground)',
-                            fontSize: '0.8em',
-                        }}
-                            onClick={() => setSuggestionDialog(null)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
+                <SuggestionDialog
+                    suggestionDialog={suggestionDialog}
+                    setSuggestionDialog={setSuggestionDialog}
+                    edges={edges}
+                    handleDismissSuggestion={handleDismissSuggestion}
+                    handleAcceptSuggestion={handleAcceptSuggestion}
+                />
             )}
 
             {/* FEAT-011: Idoneity Dialog (R7) */}
             {idoneityDialog && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                }} onClick={() => setIdoneityDialog(null)}>
-                    <div style={{
-                        background: 'var(--vscode-editor-background)',
-                        border: '1px solid var(--vscode-panel-border)',
-                        borderRadius: '12px',
-                        padding: '20px 24px',
-                        minWidth: '320px',
-                        maxHeight: '60vh',
-                        overflow: 'auto',
-                        boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{
-                            fontSize: '1.1em',
-                            fontWeight: 700,
-                            marginBottom: '12px',
-                        }}>
-                            🎯 Idoneous Skills for "{idoneityDialog.subagentId}"
-                        </div>
-                        <div style={{
-                            fontSize: '0.75em',
-                            opacity: 0.5,
-                            marginBottom: '16px',
-                        }}>
-                            Skills ranked by composite idoneity score (bidirectional TF-IDF). Higher score = better semantic fit.
-                        </div>
-                        {idoneityDialog.skills.map(s => {
-                            const barWidth = Math.round(s.score * 100);
-                            const barColor = s.score >= 0.7 ? '#2aa198' : s.score >= 0.4 ? '#d4a84a' : '#6c6c8a';
-                            // Check if a uses edge already exists (to disable Activate button)
-                            const hasUsesEdge = edges.some(e =>
-                                e.source === idoneityDialog.subagentId &&
-                                e.target === s.skillId &&
-                                e.label === 'uses'
-                            );
-                            return (
-                                <div key={s.skillId} style={{
-                                    padding: '10px 12px',
-                                    marginBottom: '8px',
-                                    background: 'var(--vscode-dropdown-background)',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--vscode-dropdown-border)',
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.9em' }}>{s.skillId}</div>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                            <div style={{ fontSize: '0.75em', opacity: 0.6, fontFamily: 'monospace' }}>{s.score.toFixed(2)}</div>
-                                            {!hasUsesEdge && (
-                                                <button style={{
-                                                    background: '#2aa198',
-                                                    color: '#fff',
-                                                    border: 'none',
-                                                    borderRadius: '6px',
-                                                    padding: '4px 12px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '0.7em',
-                                                    fontWeight: 600,
-                                                }}
-                                                    onClick={() => {
-                                                        // Create uses edge from subagent to this skill
-                                                        const vscode = (window as any).__harness_vscode_api;
-                                                        if (vscode && vscode.postMessage) {
-                                                            vscode.postMessage({
-                                                                type: 'acceptSuggestion',
-                                                                subagentId: idoneityDialog.subagentId,
-                                                                skillId: s.skillId,
-                                                            });
-                                                        }
-                                                        setIdoneityDialog(null);
-                                                    }}
-                                                >
-                                                    + Activate
-                                                </button>
-                                            )}
-                                            {hasUsesEdge && (
-                                                <span style={{ fontSize: '0.7em', opacity: 0.4 }}>✓ linked</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        height: '4px',
-                                        background: 'var(--vscode-dropdown-border)',
-                                        borderRadius: '2px',
-                                        overflow: 'hidden',
-                                    }}>
-                                        <div style={{
-                                            width: `${barWidth}%`,
-                                            height: '100%',
-                                            background: barColor,
-                                            borderRadius: '2px',
-                                            transition: 'width 0.5s ease',
-                                        }} />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <button style={{
-                            width: '100%',
-                            padding: '8px',
-                            marginTop: '8px',
-                            background: 'transparent',
-                            border: '1px solid var(--vscode-panel-border)',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            color: 'var(--vscode-dropdown-foreground)',
-                            fontSize: '0.8em',
-                        }}
-                            onClick={() => setIdoneityDialog(null)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
+                <IdoneityDialog idoneityDialog={idoneityDialog} setIdoneityDialog={setIdoneityDialog} edges={edges} />
             )}
         </div>
     );
-};
-
-// ── FEAT-033 Phase 2: Shared toolbar button styles ────────────────────────────
-// Primary: same vivid color as vscode-button (consistent with header action buttons)
-const toolbarBtnStyle: React.CSSProperties = {
-    padding: '5px 13px',
-    fontSize: '0.78em',
-    fontWeight: 600,
-    background: 'var(--vscode-button-background)',
-    border: 'none',
-    borderRadius: 7,
-    cursor: 'pointer',
-    color: 'var(--vscode-button-foreground)',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
-};
-
-// Secondary: neutral widget color for ancillary actions
-const toolbarBtnSecondaryStyle: React.CSSProperties = {
-    padding: '5px 10px',
-    fontSize: '0.78em',
-    fontWeight: 600,
-    background: 'var(--vscode-editorWidget-background)',
-    border: '1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border))',
-    borderRadius: 7,
-    cursor: 'pointer',
-    color: 'var(--vscode-foreground)',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
 };

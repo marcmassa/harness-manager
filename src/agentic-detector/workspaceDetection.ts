@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { EXCLUDED_GLOB_PATTERNS } from './signalScanner.js';
 import type { CLIInstall, MethodologyInfo } from './types.js';
-import type { SupplyChainFsDeps } from '../supply-chain/scanner.js';
 
 /**
  * Known CLI definitions for Layer-1 detection.
@@ -100,31 +99,5 @@ export async function detectMethodology(root: vscode.Uri): Promise<MethodologyIn
     configFile: null,
     isActive: false,
     layer: 3,
-  };
-}
-
-/**
- * FEAT-036: Filesystem adapter for the supply-chain scanner, wired to
- * `vscode.workspace.fs`. Absent or unreadable files resolve to `null` —
- * the scanner's degradation matrix handles them (no throws).
- */
-export function supplyChainDeps(root: vscode.Uri): SupplyChainFsDeps {
-  return {
-    async readFile(relPath: string): Promise<string | null> {
-      try {
-        const bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(root, relPath));
-        return Buffer.from(bytes).toString('utf8');
-      } catch {
-        return null;
-      }
-    },
-    async exists(relPath: string): Promise<boolean> {
-      try {
-        await vscode.workspace.fs.stat(vscode.Uri.joinPath(root, relPath));
-        return true;
-      } catch {
-        return false;
-      }
-    },
   };
 }

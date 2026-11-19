@@ -81,6 +81,11 @@ export class OperationGate {
         return { request, decision: await this.authorize(request) };
     }
 
+    /** FEAT-048 R7: `describe` for every node, keyed by id (the webview's ownership map). */
+    public describeAll(nodes: readonly HarnessNode[]): Record<string, ResourceOwnership> {
+        return Object.fromEntries(nodes.map(node => [node.id, this.describe(node)]));
+    }
+
     /** What the Dashboard shows for a selected resource (R3). Synchronous: uses the last runner check. */
     public describe(node: HarnessNode): ResourceOwnership {
         const providerId = node.source?.providerId ?? (node.metadata._framework as string | undefined);

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Button, SyncedTextArea } from './controls.js';
 import { SourceOwnershipSection, canPerform } from './components/SourceOwnershipSection.js';
 import { SPACE } from './styles.js';
 import { vscode } from './vscodeApi.js';
@@ -29,12 +30,15 @@ export const NodeDescriptionTab = ({ ctx }: { ctx: DashboardContext }) => {
                                         Mission / Prompt
                                     </div>
                                 </div>
-                                <vscode-text-area 
+                                <SyncedTextArea
+                                    key={selectedNode.id}
+                                    className="hd-description"
+                                    aria-label="Mission / Prompt"
                                     rows={4}
-                                    readonly={!canPerform(ownership[selectedNode.id], 'editing.updateMetadata') || undefined}
-                                    value={selectedNode.data.metadata.description || selectedNode.data.metadata.body || ''} 
+                                    readOnly={!canPerform(ownership[selectedNode.id], 'editing.updateMetadata')}
+                                    value={selectedNode.data.metadata.description || selectedNode.data.metadata.body || ''}
                                     style={{ width: '100%', flex: 1 }}
-                                    onInput={(e: any) => {
+                                    onChange={(e) => {
                                         if (!canPerform(ownership[selectedNode.id], 'editing.updateMetadata')) return;
                                         vscode.postMessage({ 
                                             type: 'updateMetadata', 
@@ -62,7 +66,7 @@ export const NodeDescriptionTab = ({ ctx }: { ctx: DashboardContext }) => {
                                                 ? '📍 This subagent exists on disk but is not registered in agentic.json'
                                                 : '📡 This skill was discovered but not yet assigned to any subagent'}
                                         </div>
-                                        <vscode-button onClick={() => {
+                                        <Button onClick={() => {
                                             if (selectedNode.type === 'subagent') {
                                                 // Activate orphan subagent: create entry in agentic.json
                                                 vscode.postMessage({
@@ -84,7 +88,7 @@ export const NodeDescriptionTab = ({ ctx }: { ctx: DashboardContext }) => {
                                             }
                                         }}>
                                             Activate
-                                        </vscode-button>
+                                        </Button>
                                     </div>
                                 )}
 

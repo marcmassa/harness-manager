@@ -5,6 +5,9 @@ import type * as vscode from 'vscode';
 export type CustomUsesEdge = { source: string; target: string };
 export type CustomEdge = { source: string; target: string; label: string };
 
+/** FEAT-048 R7: every workspace-state key for view-local whiteboard state, defined once. */
+export const DISMISSED_SUGGESTIONS_KEY = 'harness-dashboard.dismissedSuggestions';
+export const DISABLED_CONNECTIONS_KEY = 'harness-dashboard.disabledConnections';
 export const CUSTOM_USES_EDGES_KEY = 'harness-dashboard.customUsesEdges';
 export const CUSTOM_EDGES_KEY = 'harness-dashboard.customEdges';
 

@@ -12,12 +12,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [0.9.0] — 2026-11-19
+
+> **Bring Your Own Harness.** Every capability reads, evaluates and prices the harness a workspace already has, built-in format or declared profile, without assuming a framework. 1024 unit tests and 19 Extension Host runs pass; the VSIX is 346,545 bytes.
+
+### Added
+
+- **Source ownership and profiles** (FEAT-041): each resource keeps its provider, native identity and path; one host decision (`OperationGate`) governs every visible and executable operation by owner capability. Custom layouts are declared as **harness profile v1** in `.harness-dashboard/config.json`; other extensions register providers through the read-only **companion API v1** returned by `activate()`.
+- **Context cost** (FEAT-044): per-session token cost per provider from owner-declared load modes (baseline, skill catalog, on demand), unknown modes listed but never priced as zero, optional money estimates from a user price table (`harness-dashboard.cost.prices`, nothing fetched), a local ledger of the Dashboard's own model usage, and an on-request comparison with git HEAD. Informational cost findings K01–K03 never affect scores.
+- **Native views presentation** (FEAT-046): Sources and Findings show type icons from one vocabulary shared with whiteboard badges (person, robot, lightning bolt, steering wheel, hook, flag…), an **Open Dashboard** entry, per-resource type · load mode · tokens · score, per-provider session cost, and findings coloured like the Problems view, with escaped, untrusted Markdown tooltips.
 
 ### Changed
 
+- **Advisory** (FEAT-042): findings come from attributed evidence and are qualified by owner (`<rule>@<provider>`); maturity follows capabilities rather than detected frameworks; earlier dismissals migrate once.
+- **Optimizer** (FEAT-043): each component is evaluated only against rules its format supports; components nothing could evaluate show coverage instead of a score; fixes and delegation follow the owner's operations.
 - **Startup and Activity Bar** (FEAT-045): activation registers only (51–55 ms measured in the Extension Host); the first scan waits until a Harness view or the Dashboard is shown, and changes while nothing is visible only mark results stale. The Activity Bar container, now "Harness", holds native **Sources** and **Findings** tree views with welcome content for no folder, a running scan and a workspace without a detected harness. The sidebar webview is gone: the Dashboard is one editor panel, restored after a reload on its last tab, whose tabs load on first display. A five-step walkthrough covers the Dashboard, sources, profiles, findings and context cost. **Re-scan Agentic Architecture** leaves the Command Palette; use **Refresh**.
+- **Smaller package** (FEAT-047): the VSIX drops from 390 KB to 334 KB. The deprecated `@vscode/webview-ui-toolkit` gives way to native controls styled from the editor theme, and the icon is palettised. The **Specs Manager** tab appears only when a provider supplies feature or spec data.
+- **Internal quality** (FEAT-048): one definition for duplicated adapter, rule, webview and test helpers; every git call goes through the guarded runner (`core.fsmonitor` disabled, no shell); `check.sh` now fails when unit tests fail.
 - Releases 0.1.0–0.8.0 move from this file to [docs/changelog](https://github.com/marcmassa/harness-manager/blob/main/docs/changelog/README.md).
+
+### Removed
+
+- **Supply-chain audit** (FEAT-036, FEAT-047): the **Run npm Audit** command, the supply-chain Advisory suggestions and their section. It checked a workspace's npm dependencies rather than its agent harness; run `npm audit` directly instead. Dismissals of those suggestions are ignored.
 
 ## [0.8.2] — 2026-11-08
 

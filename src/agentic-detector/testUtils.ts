@@ -10,7 +10,6 @@ import type {
   Suggestion,
   GraphContext,
 } from './types.js';
-import type { SupplyChainReport } from '../supply-chain/types.js';
 import { classify } from './maturityClassifier.js';
 
 export interface MakeProfileOptions {
@@ -20,8 +19,6 @@ export interface MakeProfileOptions {
   harnessPresent?: boolean;
   sddActive?: boolean;
   graphContext?: GraphContext;
-  /** FEAT-036: attach a supply-chain report to the profile. */
-  supplyChain?: SupplyChainReport;
 }
 
 const ALL_CATEGORIES: SignalCategory[] = [
@@ -127,6 +124,5 @@ export function makeProfile(opts: MakeProfileOptions = {}): AgenticProfile {
     dismissedSuggestionIds: [],
     acknowledgedNodeIds: [],
     graphContext: opts.graphContext,
-    supplyChain: opts.supplyChain,
   };
 }

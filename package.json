@@ -2,7 +2,7 @@
   "name": "harness-dashboard-vscode",
   "displayName": "Harness Dashboard",
   "description": "See, check and price the AI agent harness you already have: agents, skills, rules and their relationships, in any supported format or your own layout.",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "publisher": "marcmassacapo",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -50,7 +50,7 @@
         "command": "harness-dashboard.openDashboard",
         "title": "Open Dashboard",
         "category": "Harness Dashboard",
-        "icon": "$(window)"
+        "icon": { "light": "dist/icons/dashboard-light.svg", "dark": "dist/icons/dashboard-dark.svg" }
       },
       {
         "command": "harness-dashboard.refresh",
@@ -78,11 +78,6 @@
       {
         "command": "harness-dashboard.optimizeComponents",
         "title": "Optimize Components",
-        "category": "Harness Dashboard"
-      },
-      {
-        "command": "harness-dashboard.runSupplyChainAudit",
-        "title": "Run npm Audit (Supply Chain)",
         "category": "Harness Dashboard"
       },
       {
@@ -298,8 +293,7 @@
         { "command": "harness-dashboard.openLocalConfig", "when": "workspaceFolderCount > 0" },
         { "command": "harness-dashboard.scaffoldMissing", "when": "workspaceFolderCount > 0" },
         { "command": "harness-dashboard.syncFromFilesystem", "when": "workspaceFolderCount > 0" },
-        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" },
-        { "command": "harness-dashboard.runSupplyChainAudit", "when": "workspaceFolderCount > 0" }
+        { "command": "harness-dashboard.optimizeComponents", "when": "workspaceFolderCount > 0" }
       ],
       "view/title": [
         {
@@ -309,7 +303,7 @@
         },
         {
           "command": "harness-dashboard.openDashboard",
-          "when": "view == harness-dashboard.sources",
+          "when": "view == harness-dashboard.sources || view == harness-dashboard.findings",
           "group": "navigation@2"
         },
         {
@@ -419,7 +413,6 @@
     "vsce:prepublish": "npm run build"
   },
   "devDependencies": {
-    "@types/dagre": "^0.7.54",
     "@types/mocha": "^10.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -428,19 +421,12 @@
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "^4.1.1",
     "canvas": "^3.2.3",
-    "dagre": "^0.8.5",
     "esbuild": "^0.28.1",
     "mocha": "^12.0.3",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   },
-  "dependencies": {
-    "@vscode/webview-ui-toolkit": "^1.2.2",
-    "@xyflow/react": "^12.12.1",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "yaml": "^2.9.1"
-  },
+  "dependencies": { "@xyflow/react": "^12.12.1", "react": "^19.3.1", "react-dom": "^19.3.1", "yaml": "^2.9.1" },
   "overrides": {
     "serialize-javascript": ">=7.0.5",
     "form-data": "4.0.6",

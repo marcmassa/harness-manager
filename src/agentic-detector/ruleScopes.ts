@@ -1,7 +1,7 @@
 // FEAT-042 T1 — classification of every Advisory rule (R2, R5).
 // `shared`: the same finding for every layout, from shared evidence.
 // `provider`: about one provider's own format; shown with that provider.
-// `optional`: an integration outside harness structure (supply chain).
+// `optional`: an integration outside harness structure.
 // `evidence` names the inputs a rule needs, so a missing input reads as
 // "unavailable" rather than as a defect of the workspace (R4).
 
@@ -56,7 +56,7 @@ export const RULE_CLASSIFICATION: Readonly<Record<string, RuleClassification>> =
     'sprint-complete': shared('a feature registry whose features are all done'),
 };
 
-/** Supply-chain rules (FEAT-036) are package-based and form one optional family. */
+/** An unclassified rule is treated as an optional integration. */
 export function classifyRule(ruleId: string): RuleClassification {
-    return RULE_CLASSIFICATION[ruleId] ?? { scope: { kind: 'optional' }, evidence: 'package manifests and lockfiles' };
+    return RULE_CLASSIFICATION[ruleId] ?? { scope: { kind: 'optional' }, evidence: 'workspace files' };
 }

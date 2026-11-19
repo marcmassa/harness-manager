@@ -7,6 +7,8 @@ import { SkeletonLoading, harnessActionBtnStyle, FrameworkBadge, MaturityBadge, 
 import { vscode } from './vscodeApi.js';
 import { NodeDetailPanel } from './NodeDetailPanel.js';
 import { DASHBOARD_CSS } from './dashboardStyles.js';
+import { CONTROLS_CSS } from './controls.js';
+import { availableTabs, resolveTab } from './tabs.js';
 import { useDashboardState } from './useDashboardState.js';
 import { useDashboardActions } from './useDashboardActions.js';
 
@@ -14,9 +16,17 @@ export const App = () => {
     const s = useDashboardState();
     const a = useDashboardActions(s);
     const ctx = { ...s, ...a };
-    const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, isAuditRunning, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunSupplyChainAudit, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList, ownership } = ctx;
+    const { data, selectedNode, activeTab, setActiveTab, startWizard, setStartWizard, timelineTargetFeature, advisoryProfile, isAdvisoryScanning, architectureSummary, actionStates, optimizerReport, isOptimizerScanning, optimizerEnabled, assistedEnabled, assistedMode, hasTerminalAgent, chatHostName, aiCapabilities, aiModels, selectedAiModel, assistStates, discoveredNodes, runningNodeIds, runAdapters, runPanelNodeId, setRunPanelNodeId, runPanelNode, selectedAdapterId, setSelectedAdapterId, noCliDetected, wizardOpen, setWizardOpen, wizardInitialType, wizardAiCapabilities, setWizardAiCapabilities, lmModels, templatePanelOpen, setTemplatePanelOpen, templates, applyingTemplate, filteredGraph, detectedFrameworks, shouldShowEmptyState, handleNodeSelect, handleDismissSuggestion, handleRescan, optimizerScoresByNodeId, handleAiRefine, handleHandoffToChat, handleDelegate, handleSelectAiModel, handleOptimizerRescan, handleApplyQuickFix, handleDismissFinding, handleRestoreFindings, handleOpenFindingFile, handleExecuteAction, handleApplyHarnessSDD, handleRunNode, handleRunAgent, handleOpenWizard, handleWizardCreated, handleOpenTemplates, handleApplyTemplate, lastRunByNodeId, featureList, ownership } = ctx;
     // FEAT-045 R19: a tab mounts (and its chunk loads) on first display.
     const visited = useVisitedTabs(activeTab);
+    // FEAT-047 R5: an unavailable tab (restored, requested, or gone after a rescan) shows the whiteboard.
+    // "Generate spec" opens the tab even before the first feature exists; leaving it ends the request.
+    const [specsRequested, setSpecsRequested] = React.useState(false);
+    React.useEffect(() => { if (activeTab !== 'timeline') setSpecsRequested(false); }, [activeTab]);
+    React.useEffect(() => {
+        const shown = resolveTab(activeTab, data, specsRequested);
+        if (shown !== activeTab) setActiveTab(shown);
+    }, [activeTab, data, specsRequested, setActiveTab]);
 
     if (!data || !filteredGraph) {
         return <SkeletonLoading />;
@@ -68,7 +78,7 @@ export const App = () => {
                 </div>
                 
                 <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid var(--vscode-panel-border)', marginTop: SPACE.xs }}>
-                    {(['whiteboard', 'timeline', 'advisory', 'optimizer'] as const).map(tab => {
+                    {availableTabs(data, specsRequested).map(tab => {
                         const label = tab === 'timeline' ? 'Specs Manager'
                             : tab === 'advisory' ? 'Advisory'
                             : tab === 'optimizer' ? 'Optimizer'
@@ -205,7 +215,7 @@ export const App = () => {
                 minHeight: 0,
                 animation: activeTab === 'advisory' ? 'fadeIn 0.22s ease-out' : 'none',
             }}>
-                <TabBoundary tab="advisory" visited={visited}><AdvisoryTab profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} onRunSupplyChainAudit={handleRunSupplyChainAudit} isAuditRunning={isAuditRunning} /></TabBoundary>
+                <TabBoundary tab="advisory" visited={visited}><AdvisoryTab profile={advisoryProfile} onDismissSuggestion={handleDismissSuggestion} onApplyHarnessSDD={handleApplyHarnessSDD} onRescan={handleRescan} isScanning={isAdvisoryScanning} onExecuteAction={handleExecuteAction} actionStates={actionStates} /></TabBoundary>
             </section>
 
             {/* FEAT-034: Component Optimizer */}
@@ -259,6 +269,7 @@ export const App = () => {
                     onCreated={handleWizardCreated}
                     onGenerateSpec={() => {
                         setWizardOpen(false);
+                        setSpecsRequested(true);
                         setActiveTab('timeline');
                         setStartWizard(n => n + 1);
                     }}
@@ -303,7 +314,7 @@ export const App = () => {
                 Expand
             </button>}
 
-            <style>{DASHBOARD_CSS}</style>
+            <style>{DASHBOARD_CSS + CONTROLS_CSS}</style>
         </div>
     );
 };

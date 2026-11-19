@@ -12,26 +12,8 @@ import { HarnessDashboardProvider } from '../../HarnessDashboardProvider.js';
 import { OperationGate, type ResourceOwnership } from '../../operations/operationGate.js';
 import { RunAdapterRegistry } from '../../run/runAdapterRegistry.js';
 import type { RunAdapter } from '../../run/types.js';
-
-async function snapshot(root: string): Promise<Record<string, string>> {
-    const out: Record<string, string> = {};
-    for (const entry of await nodeFs.readdir(root, { recursive: true, withFileTypes: true })) {
-        if (!entry.isFile()) continue;
-        const file = path.join(entry.parentPath, entry.name);
-        out[path.relative(root, file)] = await nodeFs.readFile(file, 'utf8');
-    }
-    return out;
-}
-
-function fakeContext(): vscode.ExtensionContext {
-    const state = new Map<string, unknown>();
-    const workspaceState = {
-        get: (key: string, fallback?: unknown) => (state.has(key) ? state.get(key) : fallback),
-        update: async (key: string, value: unknown) => { state.set(key, value); },
-        keys: () => [...state.keys()],
-    };
-    return { workspaceState, subscriptions: [] } as unknown as vscode.ExtensionContext;
-}
+import { snapshot, fakeContext } from './fixtures.js';
+import { CUSTOM_USES_EDGES_KEY } from '../../coordinators/viewRelations.js';
 
 export async function run(): Promise<void> {
     const root = vscode.workspace.workspaceFolders![0].uri;
@@ -97,7 +79,7 @@ export async function run(): Promise<void> {
 
         // Mixed or foreign links stay view data: allowed, but nothing is written.
         assert.equal((await dispatch({ type: 'createEdge', source: 'claude-code::reviewer', target: 'claude-code::writer', label: 'uses' })).length, 0);
-        const stored = context.workspaceState.get<Array<{ source: string; target: string }>>('harness-dashboard.customUsesEdges', []);
+        const stored = context.workspaceState.get<Array<{ source: string; target: string }>>(CUSTOM_USES_EDGES_KEY, []);
         assert.deepEqual(stored, [{ source: 'claude-code::reviewer', target: 'claude-code::writer' }]);
         assert.equal((await dispatch({ type: 'deleteEdge', source: 'claude-code::reviewer', target: 'claude-code::writer', label: 'uses' })).length, 0);
 

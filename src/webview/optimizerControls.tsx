@@ -1,24 +1,11 @@
 // Optimizer panel controls: button styles, filter chips and the radar legend.
 import * as React from 'react';
 import type { OptimizerDimension } from '../optimizer/types.js';
+import { BUTTON_BASE } from './styles.js';
 import { SPACE, TIER_COLORS, DIMENSION_LABEL, DIMENSION_DETAIL, RADAR_AXES, tierOf } from './optimizerParts.js';
 
 /** Shared button geometry, so every role reads as the same control family. */
-export const btnBase: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    padding: '5px 12px',
-    minHeight: '26px',
-    fontSize: '0.88em',
-    fontWeight: 600,
-    borderRadius: 6,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    letterSpacing: '0.2px',
-    whiteSpace: 'nowrap',
-    lineHeight: 1,
-};
+export const btnBase: React.CSSProperties = BUTTON_BASE;
 
 /** Primary action — the quick fix. The only button that changes files. */
 export const btnPrimary: React.CSSProperties = {

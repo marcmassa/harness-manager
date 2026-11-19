@@ -1,88 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const ROOT = '/workspace';
-const mockFiles = new Map<string, string>();
-const configurationStore = new Map<string, string>();
-
-const normalize = (input: string) => input.replace(/\\/g, '/').replace(/\/+/g, '/');
-const toUri = (path: string) => {
-    const normalized = normalize(path);
-    return { fsPath: normalized, path: normalized };
-};
-
-function seedWorkspace(files: Record<string, string>): void {
-    mockFiles.clear();
-    for (const [filePath, content] of Object.entries(files)) {
-        const absolute = filePath.startsWith('/') ? filePath : `${ROOT}/${filePath}`;
-        mockFiles.set(normalize(absolute), content);
-    }
-}
-
-/**
- * In VS Code's API, `FileType.File === 1` and
- * `FileType.Directory === 2`. The mock returns `2` for
- * directory paths (paths that have at least one child in the
- * mockFiles map) and `1` for leaf files.
- */
-function statType(uri: { fsPath?: string; path?: string }): number {
-    const key = normalize(uri.fsPath ?? uri.path ?? '');
-    if (!mockFiles.has(key)) throw new Error(`ENOENT: ${key}`);
-    for (const filePath of mockFiles.keys()) {
-        if (filePath !== key && filePath.startsWith(`${key}/`)) {
-            return 2; // has at least one child → directory
-        }
-    }
-    return 1; // leaf → file
-}
+import { ROOT, mockConfiguration, seedWorkspace } from '../test/vscodeMock.js';
 
 const appendLine = vi.fn();
 const log = { appendLine } as unknown as { appendLine: (message: string) => void };
 
-vi.mock('vscode', () => {
-    class RelativePattern {
-        constructor(
-            public readonly baseUri: { fsPath: string; path: string },
-            public readonly pattern: string
-        ) {}
-    }
-
-    const workspace = {
-        fs: {
-            readFile: vi.fn(async (uri: { fsPath?: string; path?: string }) => {
-                const key = normalize(uri.fsPath ?? uri.path ?? '');
-                const value = mockFiles.get(key);
-                if (value === undefined) throw new Error(`ENOENT: ${key}`);
-                return Buffer.from(value, 'utf8');
-            }),
-            stat: vi.fn(async (uri: { fsPath?: string; path?: string }) => ({
-                type: statType(uri),
-            })),
-        },
-        findFiles: vi.fn(async () => []),
-        asRelativePath: vi.fn(() => ''),
-        onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
-        getConfiguration: vi.fn((_section: string) => ({
-            get: (key: string, fallback: unknown) => {
-                return configurationStore.has(key) ? configurationStore.get(key) : fallback;
-            },
-        })),
-    };
-
-    const Uri = {
-        file: (path: string) => toUri(path),
-        joinPath: (base: { fsPath?: string; path?: string }, ...parts: string[]) => {
-            const basePath = normalize(base.fsPath ?? base.path ?? '');
-            const joined = normalize([basePath, ...parts].join('/'));
-            return toUri(joined);
-        },
-    };
-
-    return {
-        Uri,
-        RelativePattern,
-        workspace,
-    };
-});
+vi.mock('vscode', async () => (await import('../test/vscodeMock.js')).createVscodeMock());
 
 import * as vscode from 'vscode';
 import { ConfigurationRegistry, initConfigurationRegistry } from './ConfigurationRegistry.js';
@@ -92,7 +15,7 @@ const rootUri = () => vscode.Uri.file(ROOT);
 describe('ConfigurationRegistry (R8)', () => {
     beforeEach(() => {
         seedWorkspace({});
-        configurationStore.clear();
+        mockConfiguration.clear();
         appendLine.mockClear();
         ConfigurationRegistry.resetInstance();
     });
@@ -104,7 +27,7 @@ describe('ConfigurationRegistry (R8)', () => {
         expect(registry.getPathFor('kiro')).toBe('.kiro');
 
         // Override the setting in a fresh registry so the cache is empty.
-        configurationStore.set('adapters.kiro.path', '.custom-kiro');
+        mockConfiguration.set('adapters.kiro.path', '.custom-kiro');
         ConfigurationRegistry.resetInstance();
 
         const registry2 = initConfigurationRegistry();
@@ -117,18 +40,18 @@ describe('ConfigurationRegistry (R8)', () => {
 
         // Even if a setting is "present", the registry ignores it
         // because the adapter opted out — no surface registered.
-        configurationStore.set('adapters.harness-sdd.path', '.custom-agents');
+        mockConfiguration.set('adapters.harness-sdd.path', '.custom-agents');
         expect(registry.getPathFor('harness-sdd')).toBe(''); // FALLBACK sentinel
     });
 
     it('(c) falls back to the default when the setting is an empty string', () => {
-        configurationStore.set('adapters.kiro.path', '');
+        mockConfiguration.set('adapters.kiro.path', '');
         const registry = initConfigurationRegistry();
         expect(registry.getPathFor('kiro')).toBe('.kiro');
     });
 
     it('(d) emits a warning and falls back to the default when the configured path does not exist', async () => {
-        configurationStore.set('adapters.kiro.path', '.nonexistent-kiro');
+        mockConfiguration.set('adapters.kiro.path', '.nonexistent-kiro');
         const registry = initConfigurationRegistry(log);
         const resolved = await registry.resolvePath('kiro', rootUri());
 
@@ -145,7 +68,7 @@ describe('ConfigurationRegistry (R8)', () => {
         // the registry to use it. The resolver must reject it as
         // a non-directory and fall back to the default.
         seedWorkspace({ '.kiro-as-file': 'this is a file, not a directory' });
-        configurationStore.set('adapters.kiro.path', '.kiro-as-file');
+        mockConfiguration.set('adapters.kiro.path', '.kiro-as-file');
         const registry = initConfigurationRegistry(log);
         const resolved = await registry.resolvePath('kiro', rootUri());
 

@@ -5,6 +5,8 @@ import { frameworkLabel } from '../frameworks.js';
 import { ConfigurationRegistry } from './ConfigurationRegistry.js';
 import { IAgentAdapter } from './IAgentAdapter.js';
 import {
+    appendDiscovery,
+    bodyMetadata,
     createEmptyResult,
     fileExists,
     findFiles,
@@ -15,8 +17,7 @@ import {
     workspaceName,
     withFrameworkMetadata,
 } from './adapterUtils.js';
-import { discover } from '../discovery/hooksAndSteering.js';
-import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
+import { HarnessConfig } from '../config/harnessConfig.js';
 
 export class WindsurfAdapter implements IAgentAdapter {
     private static readonly CONFIG_KEY = 'windsurf';
@@ -74,8 +75,7 @@ export class WindsurfAdapter implements IAgentAdapter {
                         description: rcContent
                             ? rcContent.split(/\r?\n/).find((line) => line.trim().length > 0) || 'Windsurf workspace'
                             : 'Windsurf workspace',
-                        body: rcContent ? rcContent.slice(0, 500) : '',
-                        _fullBody: rcContent ?? '',
+                        ...bodyMetadata(rcContent ?? ''),
                     },
                 },
                 adapterId,
@@ -108,8 +108,7 @@ export class WindsurfAdapter implements IAgentAdapter {
                         metadata: {
                             ...data,
                             description: String(data.description ?? body.split(/\r?\n/).find(Boolean) ?? ''),
-                            body: body.slice(0, 500),
-                            _fullBody: body,
+                            ...bodyMetadata(body),
                             _discovery: 'windsurf-heuristic',
                         },
                     },
@@ -130,23 +129,7 @@ export class WindsurfAdapter implements IAgentAdapter {
         // FEAT-026 T7: append hook/steering nodes discovered under
         // `.windsurf/hooks/`, `.windsurf/steering/`, and (when
         // enabled) the project root.
-        const localConfig = this._harnessConfig
-            ? await this._harnessConfig.read(root)
-            : EMPTY_HARNESS_CONFIG;
-        const subagentIds = result.graph.nodes
-            .filter((n) => n.type === 'subagent')
-            .map((n) => n.id);
-        const discovery = await discover(
-            adapterId,
-            root,
-            localConfig,
-            this._isAdapterDiscoveryEnabled(),
-            this._isRootDiscoveryEnabled(),
-            rootNodeId,
-            subagentIds,
-        );
-        result.graph.nodes.push(...discovery.nodes);
-        result.graph.edges.push(...discovery.edges);
+        await appendDiscovery(result, adapterId, WindsurfAdapter.CONFIG_KEY, root, rootNodeId, this._harnessConfig);
 
         return result;
     }
@@ -159,21 +142,4 @@ export class WindsurfAdapter implements IAgentAdapter {
         this._harnessConfig = config;
     }
 
-    private _isAdapterDiscoveryEnabled(): boolean {
-        return this._getBool(`adapters.${WindsurfAdapter.CONFIG_KEY}.discovery`, true);
-    }
-
-    private _isRootDiscoveryEnabled(): boolean {
-        return this._getBool('discovery.root', true);
-    }
-
-    private _getBool(key: string, fallback: boolean): boolean {
-        try {
-            return vscode.workspace
-                .getConfiguration('harness-dashboard')
-                .get<boolean>(key, fallback);
-        } catch {
-            return fallback;
-        }
-    }
 }

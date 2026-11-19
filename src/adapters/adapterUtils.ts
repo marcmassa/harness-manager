@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { HarnessNode, ParserResult } from '../types.js';
+import { discover } from '../discovery/hooksAndSteering.js';
+import { EMPTY_HARNESS_CONFIG, HarnessConfig } from '../config/harnessConfig.js';
 
 export function createEmptyResult(): ParserResult {
     return {
@@ -127,6 +129,100 @@ export function applyFrameworkMetadata(result: ParserResult, frameworkId: string
         withFrameworkMetadata(node, frameworkId, frameworkLabel, node.metadata?._filePath as string | undefined)
     );
     return result;
+}
+
+/** Characters of a file body shown as the node preview (R4). */
+export const BODY_PREVIEW_CHARS = 500;
+
+export function bodyMetadata(text: string): { body: string; _fullBody: string } {
+    return { body: text.slice(0, BODY_PREVIEW_CHARS), _fullBody: text };
+}
+
+export interface RootAgentLabels {
+    /** Fallback for `extractMarkdownTitle` when the file has no `# ` heading. */
+    title: string;
+    /** Appended to the workspace name when the file is absent. */
+    workspaceSuffix: string;
+    /** Description when the file is absent. */
+    description: string;
+}
+
+/**
+ * The `<adapterId>::root` agent node built from an instructions file
+ * (CLAUDE.md, copilot-instructions.md, GEMINI.md). `text` is null when
+ * the file is absent: the node then has no source file.
+ */
+export function rootAgentNode(
+    root: vscode.Uri,
+    adapterId: string,
+    adapterLabel: string,
+    text: string | null,
+    filePath: string,
+    labels: RootAgentLabels,
+): HarnessNode {
+    return withFrameworkMetadata(
+        {
+            id: `${adapterId}::root`,
+            type: 'agent',
+            label: text
+                ? extractMarkdownTitle(text, labels.title)
+                : `${workspaceName(root)} ${labels.workspaceSuffix}`,
+            metadata: {
+                description: text ? text.split(/\r?\n/).slice(0, 6).join(' ').trim() : labels.description,
+                ...bodyMetadata(text ?? ''),
+            },
+        },
+        adapterId,
+        adapterLabel,
+        text ? filePath : undefined
+    );
+}
+
+function settingEnabled(key: string): boolean {
+    try {
+        return vscode.workspace.getConfiguration('harness-dashboard').get<boolean>(key, true);
+    } catch {
+        return true;
+    }
+}
+
+/** FEAT-026 kill switches: per-adapter discovery (R9) and project-root discovery (R10). Default true. */
+export function discoveryFlags(configKey: string): { adapter: boolean; root: boolean } {
+    return {
+        adapter: settingEnabled(`adapters.${configKey}.discovery`),
+        root: settingEnabled('discovery.root'),
+    };
+}
+
+/**
+ * FEAT-026 T7: append the hook/steering nodes discovered under the
+ * adapter's folder and (when enabled) the project root. Honours the
+ * local config overrides/extras and the kill switches.
+ */
+export async function appendDiscovery(
+    result: ParserResult,
+    adapterId: string,
+    configKey: string,
+    root: vscode.Uri,
+    rootNodeId: string,
+    harnessConfig?: HarnessConfig,
+): Promise<void> {
+    const localConfig = harnessConfig ? await harnessConfig.read(root) : EMPTY_HARNESS_CONFIG;
+    const subagentIds = result.graph.nodes
+        .filter((n) => n.type === 'subagent')
+        .map((n) => n.id);
+    const flags = discoveryFlags(configKey);
+    const discovery = await discover(
+        adapterId,
+        root,
+        localConfig,
+        flags.adapter,
+        flags.root,
+        rootNodeId,
+        subagentIds,
+    );
+    result.graph.nodes.push(...discovery.nodes);
+    result.graph.edges.push(...discovery.edges);
 }
 
 export function parseSimpleToml(content: string): Record<string, unknown> {

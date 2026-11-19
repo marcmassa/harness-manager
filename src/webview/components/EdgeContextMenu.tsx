@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { Edge } from '@xyflow/react';
 import type { EdgeLabel } from '../../types.js';
+import { CONTEXT_MENU } from '../styles.js';
 
 interface EdgeContextMenuProps {
     edge: Edge | null;
@@ -72,34 +73,14 @@ export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcc
     const isMismatchEdge = isUses && edgeData?.metadata?._mismatch === true && !isDisabled;
 
     const menuStyle: React.CSSProperties = {
+        ...CONTEXT_MENU.menu,
         position: 'fixed',
         left: `${clampedX}px`,
         top: `${clampedY}px`,
-        background: 'var(--vscode-dropdown-background)',
-        border: '1px solid var(--vscode-dropdown-border)',
-        borderRadius: '8px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        zIndex: 9999,
         minWidth: '180px',
-        padding: '4px 0',
-        animation: 'pickerFadeIn 0.15s ease-out',
     };
 
-    const itemStyle: React.CSSProperties = {
-        padding: '8px 16px',
-        cursor: 'pointer',
-        fontSize: '0.85em',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        transition: 'background 0.12s ease',
-        border: 'none',
-        background: 'transparent',
-        color: 'var(--vscode-dropdown-foreground)',
-        width: '100%',
-        textAlign: 'left',
-        fontFamily: 'inherit',
-    };
+    const itemStyle = CONTEXT_MENU.item;
 
     const dividerStyle: React.CSSProperties = {
         height: '1px',
@@ -120,15 +101,7 @@ export const EdgeContextMenu = ({ edge, position, onDelete, onChangeLabel, onAcc
     return (
         <div ref={menuRef} style={menuStyle}>
             {/* Header */}
-            <div style={{
-                padding: '4px 16px 8px',
-                fontSize: '0.65em',
-                textTransform: 'uppercase',
-                opacity: 0.5,
-                letterSpacing: '1px',
-                fontWeight: 700,
-                borderBottom: '1px solid var(--vscode-dropdown-border)',
-            }}>
+            <div style={CONTEXT_MENU.header}>
                 {isSuggested ? 'Suggested Relationship' : 'Edge Actions'}
             </div>
 

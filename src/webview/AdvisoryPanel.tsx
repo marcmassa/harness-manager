@@ -1,8 +1,8 @@
 import * as React from 'react';
+import { Button, Spinner } from './controls.js';
 import type { AgenticProfile } from '../agentic-detector/types.js';
-import { SPACE, formatTime, SignalBar, ActionButtonState } from './advisoryParts.js';
+import { SPACE, formatTime, SignalBar, ActionButtonState, IconRefresh } from './advisoryParts.js';
 import { SuggestionCard } from './SuggestionCard.js';
-import { IconRefresh, SupplyChainSection } from './SupplyChainSection.js';
 import { ArchitectureSections } from './AdvisorySections.js';
 
 export type { ActionButtonState } from './advisoryParts.js';
@@ -20,18 +20,11 @@ interface AdvisoryPanelProps {
     onExecuteAction?: (suggestionId: string, actionId: string) => void;
     /** Per-action button states keyed by `"${suggestionId}::${actionId}"` (FEAT-032). */
     actionStates?: Record<string, ActionButtonState>;
-    /**
-     * FEAT-036 R6/R12: user-triggered `npm audit`. The panel NEVER runs it
-     * automatically — this callback only posts the runSupplyChainAudit message.
-     */
-    onRunSupplyChainAudit?: () => void;
-    /** FEAT-036: true while a user-triggered audit is in flight. */
-    isAuditRunning?: boolean;
 }
 
 const STALE_THRESHOLD_MS = 120_000;
 
-export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning, onExecuteAction, actionStates, onRunSupplyChainAudit, isAuditRunning }: AdvisoryPanelProps) => {
+export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD, onRescan, isScanning, onExecuteAction, actionStates }: AdvisoryPanelProps) => {
     // Optimistic local dismissal tracker
     const [dismissedLocally, setDismissedLocally] = React.useState<Set<string>>(new Set());
     // Stale scan notice (FEAT-031 T19)
@@ -76,7 +69,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     color: 'var(--vscode-descriptionForeground)',
                 }}
             >
-                <vscode-progress-ring />
+                <Spinner label="Scanning" />
                 <span style={{ fontSize: '0.85em', opacity: 0.7, textAlign: 'center', maxWidth: '280px' }}>
                     Run a scan to detect agentic architecture in this workspace.
                 </span>
@@ -104,7 +97,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
     if (isScanning && profile === null) {
         return (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, padding: SPACE.lg, color: 'var(--vscode-descriptionForeground)' }}>
-                <vscode-progress-ring />
+                <Spinner label="Scanning" />
                 <span style={{ fontSize: '0.85em', opacity: 0.7 }}>Scanning architecture…</span>
             </div>
         );
@@ -124,10 +117,6 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
 
     const nextLevel = profile.maturity.nextLevel;
     const maturityColor = profile.maturity.color || '#888';
-
-    // FEAT-036 R12: supply-chain report (undefined on non-Node workspaces
-    // and pre-scanner profiles) — section hidden when absent or empty.
-    const supplyChain = profile.supplyChain;
 
     // ===== Section header factory =====
 
@@ -173,7 +162,7 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                     Agentic Architecture
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {isScanning && <vscode-progress-ring style={{ width: '14px', height: '14px' }} />}
+                    {isScanning && <Spinner label="Scanning" size="small" />}
                     <span
                         style={{ fontSize: '0.7em', opacity: 0.45, whiteSpace: 'nowrap' }}
                         title={profile ? `Last scanned: ${new Date(profile.scanTimestamp).toLocaleString()}` : undefined}
@@ -317,9 +306,9 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                 {onApplyHarnessSDD && profile.maturity.level !== 'L5'
                     && !(profile.sources ?? []).some(s => s.providerId === 'harness-sdd') && (
                     <div style={{ marginTop: SPACE.xs }}>
-                        <vscode-button appearance="secondary" onClick={onApplyHarnessSDD}>
+                        <Button appearance="secondary" onClick={onApplyHarnessSDD}>
                             Adopt Harness SDD (optional)
-                        </vscode-button>
+                        </Button>
                     </div>
                 )}
             </div>
@@ -338,18 +327,6 @@ export const AdvisoryPanel = ({ profile, onDismissSuggestion, onApplyHarnessSDD,
                             />
                         ))}
                     </div>
-                </>
-            )}
-
-            {/* ===== 5.5 Supply Chain (FEAT-036 R12) ===== */}
-            {supplyChain && (supplyChain.hasPackageJson || supplyChain.audit.state !== 'not-run') && (
-                <>
-                    {sectionHeader('Supply Chain')}
-                    <SupplyChainSection
-                        report={supplyChain}
-                        onRunAudit={onRunSupplyChainAudit}
-                        isAuditRunning={isAuditRunning}
-                    />
                 </>
             )}
 
