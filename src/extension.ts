@@ -70,7 +70,8 @@ export function activate(context: vscode.ExtensionContext): HarnessDashboardApiV
                 provider.adoptPanel(panel, (state as { tab?: string } | undefined)?.tab);
             },
         }),
-        vscode.commands.registerCommand('harness-dashboard.openDashboard', () => provider.openFullWindowPanel()),
+        // FEAT-046 R5: the tree entries open it on a tab (Findings → Advisory).
+        vscode.commands.registerCommand('harness-dashboard.openDashboard', (tab?: string) => provider.openFullWindowPanel(typeof tab === 'string' ? tab : undefined)),
     );
 
     // FEAT-026 T3: open or create the local config file

@@ -7,7 +7,7 @@
   - Test that the generated SVG equals `svgFor()`.
   - _(R1, R2, R3)_
 - [x] **T2** — Render the whiteboard type badge from `typeIcons.ts` in `CustomNode.tsx`. Test that each type's badge uses the same paths as its tree icon and that no type keeps its old emoji or glyph. _(R3)_
-- [ ] **T3** — Extend `treeModels.ts` with structured resource, provider and finding data, and the description and Markdown tooltip builders.
+- [x] **T3** — Extend `treeModels.ts` with structured resource, provider and finding data, and the description and Markdown tooltip builders.
   - Test the field order and that unknown parts are left out.
   - Test token formatting.
   - Test cost when evaluated and when not evaluated.
@@ -15,7 +15,7 @@
   - Test that no framework name appears unless a provider label supplies it.
   - Test the sort order.
   - _(R6, R7, R8, R9, R10, R11)_
-- [ ] **T4** — Render in `harnessTrees.ts`: Dashboard entry items, type and provider icons, severity icons with theme colours, `MarkdownString` tooltips. Add the Findings title action, and an optional tab argument for `openDashboard`.
+- [x] **T4** — Render in `harnessTrees.ts`: Dashboard entry items, type and provider icons, severity icons with theme colours, `MarkdownString` tooltips. Add the Findings title action, and an optional tab argument for `openDashboard`.
   - Test with the mocked host that the first item opens the Dashboard (on Advisory from Findings).
   - Test that the entry is absent when a view has no data.
   - Test the icon paths per type.

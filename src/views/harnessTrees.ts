@@ -1,4 +1,4 @@
-// FEAT-045 T3 — the Sources and Findings tree views (R1–R4, R7).
+// FEAT-045 T3, FEAT-046 T4 — the Sources and Findings tree views.
 // Selecting an item opens its native source; other operations are menu
 // actions (package.json). Visibility drives the scan scheduler.
 import * as vscode from 'vscode';
@@ -6,16 +6,31 @@ import type { DashboardData } from '../types.js';
 import type { ResourceOwnership } from '../operations/operationGate.js';
 import type { OptimizerReport } from '../optimizer/types.js';
 import type { AgenticProfile } from '../agentic-detector/types.js';
+import { iconForType, type TreeIconName } from '../shared/typeIcons.js';
 import { buildFindings, buildSources, errorCount, type FindingGroup, type ProviderGroup } from './treeModels.js';
+import { findingResourceDescription, findingTooltip, providerDescription, providerTooltip, resourceDescription, resourceTooltip } from './treeText.js';
+import { iconPath } from './treeIcons.js';
 
 export const SOURCES_VIEW_ID = 'harness-dashboard.sources';
 export const FINDINGS_VIEW_ID = 'harness-dashboard.findings';
 export const OPEN_SOURCE_COMMAND = 'harness-dashboard.openSource';
+export const OPEN_DASHBOARD_COMMAND = 'harness-dashboard.openDashboard';
 
-type Node = { kind: 'group' | 'resource' | 'finding'; item: vscode.TreeItem; children?: Node[] };
+type Node = { kind: 'dashboard' | 'group' | 'resource' | 'finding'; item: vscode.TreeItem; children?: Node[] };
 
-const SEVERITY_ICON: Record<string, string> = { error: 'error', warning: 'warning', info: 'info' };
-const TYPE_ICON: Record<string, string> = { agent: 'account', subagent: 'person', skill: 'tools', steering: 'compass', hook: 'zap' };
+/** R4: severity icons coloured like the Problems view. */
+const SEVERITY_ICON: Record<string, [string, string]> = {
+    error: ['error', 'problemsErrorIcon.foreground'],
+    warning: ['warning', 'problemsWarningIcon.foreground'],
+    info: ['info', 'problemsInfoIcon.foreground'],
+};
+
+/** R10: Markdown, never trusted, so no command link runs; theme icons only. */
+function tooltip(text: string): vscode.MarkdownString {
+    const m = new vscode.MarkdownString(text, true);
+    m.isTrusted = false;
+    return m;
+}
 
 function openCommand(sourceUri: string | undefined, line?: number): vscode.Command | undefined {
     return sourceUri ? { command: OPEN_SOURCE_COMMAND, title: 'Open source', arguments: [sourceUri, line] } : undefined;
@@ -31,50 +46,6 @@ class Tree implements vscode.TreeDataProvider<Node> {
     public getChildren(node?: Node): Node[] { return node ? node.children ?? [] : this.roots; }
 }
 
-function sourcesNodes(groups: ProviderGroup[]): Node[] {
-    return groups.map(g => {
-        const item = new vscode.TreeItem(g.label, vscode.TreeItemCollapsibleState.Expanded);
-        item.description = `${g.resources.length} resource${g.resources.length === 1 ? '' : 's'}`;
-        item.contextValue = 'provider';
-        return {
-            kind: 'group', item, children: g.resources.map(r => {
-                const res = new vscode.TreeItem(r.nativePath ?? r.label, vscode.TreeItemCollapsibleState.None);
-                res.description = [r.type, r.loadMode && r.loadMode !== 'unknown' ? r.loadMode : ''].filter(Boolean).join(' · ');
-                res.tooltip = r.tooltip;
-                res.iconPath = new vscode.ThemeIcon(TYPE_ICON[r.type] ?? 'file');
-                res.command = openCommand(r.sourceUri);
-                res.contextValue = 'resource';
-                return { kind: 'resource' as const, item: res };
-            }),
-        };
-    });
-}
-
-function findingNodes(groups: FindingGroup[]): Node[] {
-    return groups.map(g => {
-        const item = new vscode.TreeItem(g.label, vscode.TreeItemCollapsibleState.Expanded);
-        item.contextValue = 'owner';
-        return {
-            kind: 'group', item, children: g.resources.map(r => {
-                const res = new vscode.TreeItem(r.label, vscode.TreeItemCollapsibleState.Expanded);
-                res.description = `${r.findings.length}`;
-                res.contextValue = 'findingResource';
-                return {
-                    kind: 'group' as const, item: res, children: r.findings.map(f => {
-                        const fi = new vscode.TreeItem(f.label, vscode.TreeItemCollapsibleState.None);
-                        fi.tooltip = f.detail;
-                        fi.description = f.severity;
-                        fi.iconPath = new vscode.ThemeIcon(SEVERITY_ICON[f.severity] ?? 'info');
-                        fi.command = openCommand(f.sourceUri, f.line);
-                        fi.contextValue = 'finding';
-                        return { kind: 'finding' as const, item: fi };
-                    }),
-                };
-            }),
-        };
-    });
-}
-
 export interface HarnessViewsDeps {
     context: vscode.ExtensionContext;
     getData(): DashboardData | null;
@@ -87,10 +58,83 @@ export interface HarnessViewsDeps {
 
 export interface HarnessViews { refresh(): void }
 
+/** R5: the first item of a view with data — the Dashboard, on `tab` when given. */
+function dashboardEntry(icon: (name: TreeIconName) => vscode.TreeItem['iconPath'], tab?: string): Node {
+    const item = new vscode.TreeItem('Open Dashboard', vscode.TreeItemCollapsibleState.None);
+    item.iconPath = icon('dashboard');
+    item.description = tab === 'advisory' ? 'Advisory and Optimizer' : 'whiteboard, Advisory, Optimizer';
+    item.tooltip = 'Open the Harness Dashboard in an editor tab';
+    item.command = { command: OPEN_DASHBOARD_COMMAND, title: 'Open Dashboard', arguments: tab ? [tab] : [] };
+    item.contextValue = 'dashboard';
+    item.accessibilityInformation = { label: 'Open Dashboard' };
+    return { kind: 'dashboard', item };
+}
+
+export function sourcesNodes(groups: ProviderGroup[], icon: (name: TreeIconName) => vscode.TreeItem['iconPath']): Node[] {
+    if (groups.length === 0) return [];
+    return [dashboardEntry(icon), ...groups.map(g => {
+        const item = new vscode.TreeItem(g.label, vscode.TreeItemCollapsibleState.Expanded);
+        item.description = providerDescription(g);
+        item.tooltip = tooltip(providerTooltip(g));
+        item.iconPath = icon('provider');
+        item.contextValue = 'provider';
+        item.accessibilityInformation = { label: `Provider ${g.label}, ${item.description}` };
+        return {
+            kind: 'group' as const, item, children: g.resources.map(r => {
+                const res = new vscode.TreeItem(r.label, vscode.TreeItemCollapsibleState.None);
+                res.description = resourceDescription(r);
+                res.tooltip = tooltip(resourceTooltip(r));
+                res.iconPath = icon(iconForType(r.type));
+                res.command = openCommand(r.sourceUri);
+                res.contextValue = 'resource';
+                res.accessibilityInformation = { label: `${r.type} ${r.label}, ${res.description}` };
+                return { kind: 'resource' as const, item: res };
+            }),
+        };
+    })];
+}
+
+export function findingNodes(groups: FindingGroup[], icon: (name: TreeIconName) => vscode.TreeItem['iconPath']): Node[] {
+    if (groups.length === 0) return [];
+    return [dashboardEntry(icon, 'advisory'), ...groups.map(g => {
+        const item = new vscode.TreeItem(g.label, vscode.TreeItemCollapsibleState.Expanded);
+        item.iconPath = icon('provider');
+        item.contextValue = 'owner';
+        item.accessibilityInformation = { label: `Findings for ${g.label}` };
+        return {
+            kind: 'group' as const, item, children: g.resources.map(r => {
+                const res = new vscode.TreeItem(r.label, vscode.TreeItemCollapsibleState.Expanded);
+                res.description = findingResourceDescription(r);
+                res.iconPath = icon(iconForType(r.type ?? ''));
+                res.contextValue = 'findingResource';
+                res.accessibilityInformation = { label: `${r.type ?? 'resource'} ${r.label}, ${res.description}` };
+                return {
+                    kind: 'group' as const, item: res, children: r.findings.map(f => {
+                        const fi = new vscode.TreeItem(f.label, vscode.TreeItemCollapsibleState.None);
+                        fi.description = f.ruleId;
+                        fi.tooltip = tooltip(findingTooltip(f));
+                        const [codicon, colour] = SEVERITY_ICON[f.severity] ?? SEVERITY_ICON.info;
+                        fi.iconPath = new vscode.ThemeIcon(codicon, new vscode.ThemeColor(colour));
+                        fi.command = openCommand(f.sourceUri, f.line);
+                        fi.contextValue = 'finding';
+                        fi.accessibilityInformation = { label: `${f.severity} ${f.label}, rule ${f.ruleId}` };
+                        return { kind: 'finding' as const, item: fi };
+                    }),
+                };
+            }),
+        };
+    })];
+}
+
 export function registerHarnessViews(deps: HarnessViewsDeps): HarnessViews {
-    const sources = new Tree(() => sourcesNodes(buildSources(deps.getData(), deps.describe, deps.providerLabel)));
+    const icon = (name: TreeIconName) => iconPath(deps.context.extensionUri, name);
+    const lookup = (nodeId: string) => {
+        const node = deps.getData()?.graph.nodes.find(n => n.id === nodeId);
+        return node ? { name: node.label, type: node.type } : undefined;
+    };
+    const sources = new Tree(() => sourcesNodes(buildSources(deps.getData(), deps.describe, deps.providerLabel, deps.getReport()), icon));
     let findingGroups: FindingGroup[] = [];
-    const findings = new Tree(() => findingNodes(findingGroups = buildFindings(deps.getReport(), deps.getProfile(), deps.providerLabel)));
+    const findings = new Tree(() => findingNodes(findingGroups = buildFindings(deps.getReport(), deps.getProfile(), deps.providerLabel, lookup), icon));
     const sourcesView = vscode.window.createTreeView(SOURCES_VIEW_ID, { treeDataProvider: sources });
     const findingsView = vscode.window.createTreeView(FINDINGS_VIEW_ID, { treeDataProvider: findings });
     for (const [id, view] of [[SOURCES_VIEW_ID, sourcesView], [FINDINGS_VIEW_ID, findingsView]] as const) {

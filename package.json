@@ -50,7 +50,7 @@
         "command": "harness-dashboard.openDashboard",
         "title": "Open Dashboard",
         "category": "Harness Dashboard",
-        "icon": "$(window)"
+        "icon": { "light": "dist/icons/dashboard-light.svg", "dark": "dist/icons/dashboard-dark.svg" }
       },
       {
         "command": "harness-dashboard.refresh",
@@ -303,7 +303,7 @@
         },
         {
           "command": "harness-dashboard.openDashboard",
-          "when": "view == harness-dashboard.sources",
+          "when": "view == harness-dashboard.sources || view == harness-dashboard.findings",
           "group": "navigation@2"
         },
         {
