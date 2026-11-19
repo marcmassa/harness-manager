@@ -15,6 +15,8 @@ import { buildRefinePrompt, normalizeRefineResponse } from '../optimizer/aiRefin
 import { delegateFindings } from './optimizerDelegation.js';
 import { handoffToChat, requestRefine } from './optimizerRefine.js';
 import { buildCostSection } from '../cost/costSection.js';
+import { compareWithHead, readHeadVersions } from '../cost/baselineDiff.js';
+import { createGitRunner } from '../cost/gitRunner.js';
 import { previewAndWrite, type PreviewWriteOptions } from './optimizerWrite.js';
 import { detectChatHost } from '../chatHandoffHost.js';
 import type { RunAdapterRegistry } from '../run/runAdapterRegistry.js';
@@ -301,6 +303,15 @@ export class OptimizerCoordinator {
             case 'aiRefineFinding':
                 await this._aiRefine(msg, postMessage);
                 return true;
+
+            case 'compareCostWithHead': {
+                // FEAT-044 R13–R15: read-only; a failure degrades to "unavailable", never an error.
+                const paths = this._cachedSources.map(s => s.filePath).filter(Boolean);
+                const head = await readHeadVersions(paths, createGitRunner(this._workspaceRoot.fsPath))
+                    .catch(() => ({ available: false as const, reason: 'git could not be run in this workspace.' }));
+                postMessage({ type: 'costComparison', comparison: compareWithHead(this._cachedSources, head) });
+                return true;
+            }
 
             case 'handoffToChat':
                 await handoffToChat(msg, postMessage, {

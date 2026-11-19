@@ -3,10 +3,37 @@ import * as React from 'react';
 import type { CostSection as Cost } from '../cost/costSection.js';
 import { frameworkLabel } from '../frameworks.js';
 import { SPACE } from './optimizerParts.js';
+import { vscode } from './vscodeApi.js';
+import type { CostComparison } from '../cost/baselineDiff.js';
 
 const tok = (n: number) => `~${n.toLocaleString('en')} tok`;
 
+const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toLocaleString('en')} tok`;
+
+/** FEAT-044 R13, R14: the change per provider and resource since git HEAD. */
+export const HeadComparison = ({ comparison }: { comparison: CostComparison }) => (
+    !comparison.available
+        ? <div data-cost-comparison="unavailable">{`Comparison unavailable: ${comparison.reason}`}</div>
+        : <div data-cost-comparison="available">
+            {comparison.owners.map(o => (
+                <div key={o.owner}>{`${frameworkLabel(o.owner)} since HEAD: ${signed(o.delta)} per session (${o.sessionAtHead} → ${o.sessionNow})`}</div>
+            ))}
+            {comparison.resources.map(r => (
+                <div key={r.nodeId} style={{ color: 'var(--vscode-descriptionForeground)' }}>{`${r.filePath}: ${r.status}, ${signed(r.delta)}`}</div>
+            ))}
+            {comparison.owners.length === 0 && <div>No cost change since HEAD.</div>}
+        </div>
+);
+
 export const CostSection = ({ cost }: { cost?: Cost }) => {
+    const [comparison, setComparison] = React.useState<CostComparison | null>(null);
+    React.useEffect(() => {
+        const onMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'costComparison') setComparison(event.data.comparison as CostComparison);
+        };
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, []);
     if (!cost || cost.owners.length === 0) return null;
     return (
         <section aria-label="Context cost" data-cost-total={cost.sessionTotal} style={{ padding: `${SPACE.xs} ${SPACE.md}`, borderBottom: '1px solid var(--vscode-panel-border)', fontSize: '0.78em' }}>
@@ -29,6 +56,12 @@ export const CostSection = ({ cost }: { cost?: Cost }) => {
                     {`≈ ${m.perSession.toFixed(4)} per session on ${m.model} (estimate; prices as of ${m.priceDate}; calibration ×${m.factor}${m.calibrated ? '' : ', none configured'})`}
                 </div>
             ))}
+            <button type="button" onClick={() => vscode.postMessage?.({ type: 'compareCostWithHead' })}
+                title="Compare each provider's session cost with the files at git HEAD (read-only)"
+                style={{ marginTop: SPACE.xs, fontSize: '0.95em' }}>
+                Compare with HEAD
+            </button>
+            {comparison && <HeadComparison comparison={comparison} />}
         </section>
     );
 };
