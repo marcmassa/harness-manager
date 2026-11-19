@@ -135,6 +135,11 @@ export function decide(op: OperationId, targets: readonly string[] | 'workspace'
     }
     if (!info.capability) {
         if (op === 'agentRuns.delegate' && !pre.runnerAvailable) return deny('No agent CLI is installed for delegation.');
+        // FEAT-043 R7: a delegated agent edits files directly, so every target's owner must accept edits.
+        if (op === 'agentRuns.delegate') {
+            const readOnly = owners.filter(owner => !ctx.providerOperations(owner).has('editing.reviewedTextEdit'));
+            if (readOnly.length > 0) return deny(`${readOnly.map(ctx.providerLabel).join(', ')} resources cannot be edited, so they cannot be delegated.`);
+        }
         return { ok: true, mode: op === 'view.localRelation' ? 'view-local' : 'persist', owners };
     }
 
@@ -202,7 +207,9 @@ export function operationForMessage(msg: { type: string; [key: string]: unknown 
             return { op: 'editing.relabelEdge', targets: ids(msg.skillId, msg.newOwner) };
         case 'updateEdgeLabel':
             return { op: 'editing.relabelEdge', targets: ids(msg.source, msg.target) };
-        case 'applyQuickFix': case 'aiRefineFinding':
+        case 'applyQuickFix': case 'aiRefineFinding': case 'handoffToChat':
+            // FEAT-043 R6: a chat handoff exposes the source and invites an edit,
+            // so it needs the same current, owned target as a reviewed fix.
             return { op: 'editing.reviewedTextEdit', targets: ids(msg.nodeId) };
         case 'delegateFinding':
             // A rule-wide delegation names no node: the coordinator decides again
