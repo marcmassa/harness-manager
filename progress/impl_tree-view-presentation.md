@@ -98,3 +98,16 @@ Extension Host: all 19 runs pass.
 | R12 | Measured by deleting `extension/dist/icons/*` from the packaged VSIX: 7,506 B, within 8 KB. The package gate passes under 400,000 B. |
 
 **Pending, by hand:** a look at the Sources and Findings views in light, dark and high-contrast themes. This is left for the maintainer, because an agent cannot view the running sidebar here. The icons were checked on a rendered contact sheet.
+
+## Pre-review (agent) — findings and fixes
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | `formatTokens` chose its form before rounding: 999.6 gave `~1000 tok`, 9,960 gave `~10.0k tok`, and NaN gave `~NaNk`. | It rounds first and guards non-finite values (`~? tok`). treeText.test.ts covers the edges. |
+| 2 | Tooltips enabled theme icons, so `$(…)` in a file name could render as an icon. | `MarkdownString(text, false)`. |
+| 3 | In watch mode `dist/icons` was not regenerated. | An `onEnd` plugin regenerates it in watch mode. |
+| 4 | The VSIX gate did not require the icons. | The gate requires four icon files. |
+| 5 | An unused `EASE_SMOOTH` import and an orphaned comment in `CustomNode.tsx`. | Removed. The ⚡ → ▶ on the last-run badge is intended: ⚡ now means skill. |
+| 6 | Reported: the Findings badge lags one refresh. | **Not a defect.** `Tree.refresh()` runs `build()` synchronously, so the groups were current. The groups are now computed explicitly in `refresh()` for clarity, and harnessTrees.test.ts counts errors on the first refresh. |
+
+Verified: 985 unit tests; build; package gate 345,151 B, which now requires the icons.

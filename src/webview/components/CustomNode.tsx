@@ -6,7 +6,7 @@ import { NodeBadges } from './NodeBadges.js';
 import { FeatureNode, RoundNodeButton } from './nodeParts.js';
 import { NodeLinkPicker, type SkillOption } from './NodeLinkPicker.js';
 import { FRAMEWORK_ACCENT_BY_ID } from '../../frameworks.js';
-import { SPACE, EASE_SMOOTH, NODE_STYLES, HANDLE_ACCENT, HANDLE_PILL_BASE, HIDDEN_HANDLE_STYLE, activeNodeShadow } from '../styles.js';
+import { SPACE, NODE_STYLES, HANDLE_ACCENT, HANDLE_PILL_BASE, HIDDEN_HANDLE_STYLE, activeNodeShadow } from '../styles.js';
 
 
 // FEAT-034 R45: tier → chip colour. Must stay identical to TIER_COLORS in
@@ -21,9 +21,6 @@ const TIER_CHIP_COLORS: Record<string, string> = {
     D: '#ec835a', // serious
     F: '#d03b3b', // critical
 };
-
-// FEAT-033: Format a Unix timestamp as a relative time string (R15)
-
 
 export const CustomNode = ({ id, data, type, selected }: HarnessNodeProps) => {
     const [showSkillPicker, setShowSkillPicker] = React.useState(false);

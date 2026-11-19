@@ -53,6 +53,8 @@ async function main() {
   await writeTreeIcons();
 
   const extensionCtx = await esbuild.context({
+    // FEAT-046: in watch mode, regenerate dist/icons when the icon module changes.
+    plugins: watch ? [{ name: "tree-icons", setup(build) { build.onEnd(() => writeTreeIcons()); } }] : [],
     entryPoints: ["src/extension.ts"],
     bundle: true,
     format: "cjs",
