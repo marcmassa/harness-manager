@@ -89,7 +89,7 @@ The diff is +151 −314 without the new test file.
 
 ## T7 — Honest project check
 
-`check.sh` piped `npm test` and `npm run build` into `tail` and judged `tail`'s exit status, so both always passed. A test failure was also only a warning. Both steps now capture their output and use the command's own status. A failing build or test run marks the check failed, shows the tail of the output and reports the failing count.
+`check.sh` reported a failing unit-test run as a warning only, so the check passed. The script already runs with `set -uo pipefail`, so piping into `tail` did not hide exit statuses. That was a wrong diagnosis in the first draft of this note and in the T7 commit message, corrected by the pre-review. The test step now fails the check and reports the failing count. The build step keeps its behaviour, but its output is now printed only when it fails.
 
 Check: a scratch copy of the repository with one deliberately failing test (not committed) printed `❌ npm test: 1 test(s) failed` and exited 1. The real repository passes.
 
@@ -137,3 +137,15 @@ Still duplicated, outside the brief: AskHostButton's primary and secondary style
 | Requirement | Verification |
 |---|---|
 | R8 | The table above. Existing assertions are unchanged, except tests that read moved source files or that now run on the shared mock. |
+
+## Pre-review (agent) — findings and fixes
+
+The review found no behaviour regression. The splits were checked against 9874546 with `diff -w`. Dependency arrays, effect order and refs are unchanged. The gear-menu state now lives in the always-mounted toolbar. The AI buttons keep their disabled behaviour and opacities. The adapter roots keep the same ids, labels and bodies. The `adapterUtils` ↔ `hooksAndSteering` cycle uses no export at module top level.
+
+| # | Finding | Action |
+|---|---|---|
+| 1 | The `check.sh` comment and the T7 note said the pipe hid exit statuses; `set -uo pipefail` already prevented that. | Comment, progress note and backlog entry corrected. The real change was a test failure warning instead of failing. |
+| 2 | The shared mock is looser than some old ones: directories are derived from seeded files, `Uri.toString()` returns `file://…`, and `Uri.parse('file:///x')` doubled the scheme. | `Uri.parse` strips `file://`. The others were checked: no test now passes vacuously, and no production path under test depended on the stricter behaviour. |
+| 3 | `useEdgeActions` callbacks omit the injected setters from their dependency arrays. | Not changed. The setters are stable React state setters, and `reactFlow12Migration.test.ts` pins those arrays verbatim, so changing them would break R8. |
+
+Verified: 1024 unit tests; build; `check.sh`, which caught the dependency-array mismatch above while trying fix 3.

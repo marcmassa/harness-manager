@@ -134,7 +134,7 @@ export function createVscodeMock() {
   const Uri = {
     file: (fsPath: string) => toUri(fsPath),
     joinPath: (base: UriLike, ...parts: string[]) => toUri([keyOf(base), ...parts].join('/')),
-    parse: (str: string) => toUri(str),
+    parse: (str: string) => toUri(str.replace(/^file:\/\//, '')),
   };
 
   return {
