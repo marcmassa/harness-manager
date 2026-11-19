@@ -656,7 +656,7 @@
       "name": "shared-abstractions",
       "title": "Shared abstractions for duplicated code",
       "type": "refactor",
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "priority": "P2",
       "agent": "typescript-implementer",
@@ -668,7 +668,8 @@
         "reviewer": "maintainer (conversation)",
         "evidence_ref": "2026-11-19, maintainer reply “adelante” to FEAT-048 shared-abstractions presented at spec_ready",
         "assurance": "declared-unmanaged-no-roles"
-      }
+      },
+      "blocked_from": "in_progress"
     }
   ]
 }
