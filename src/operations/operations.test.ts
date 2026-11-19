@@ -113,6 +113,7 @@ describe('operationForMessage (R4)', () => {
             [{ type: 'acceptSuggestion', subagentId: 'a', skillId: 'b' }, { op: 'editing.linkSkill', targets: ['a', 'b'] }],
             [{ type: 'saveSpecFile' }, { op: 'editing.lifecycle', targets: 'workspace' }],
             [{ type: 'applyQuickFix', nodeId: 'n' }, { op: 'editing.reviewedTextEdit', targets: ['n'] }],
+            [{ type: 'handoffToChat', nodeId: 'n' }, { op: 'editing.reviewedTextEdit', targets: ['n'] }],
             [{ type: 'delegateFinding', ruleId: 'OPT-S04' }, { op: 'agentRuns.delegate', targets: 'workspace' }],
             [{ type: 'runAgent', nodeId: 'n', adapterId: 'claude-code' }, { op: 'agentRuns.launch', targets: ['n'], runnerId: 'claude-code' }],
             [{ type: 'applyHarnessSDD' }, { op: 'adoption.scaffold', targets: 'workspace', format: 'harness-sdd' }],
@@ -120,7 +121,7 @@ describe('operationForMessage (R4)', () => {
             [{ type: 'runSupplyChainAudit' }, { op: 'workspace.audit', targets: 'workspace' }],
         ];
         for (const [msg, expected] of cases) expect(operationForMessage(msg as never)).toEqual(expected);
-        for (const type of ['ready', 'getMarkdownContent', 'generateSpecDraft', 'handoffToChat', 'dismissSuggestion']) {
+        for (const type of ['ready', 'getMarkdownContent', 'generateSpecDraft', 'dismissSuggestion']) {
             expect(operationForMessage({ type })).toBeNull();
         }
         expect(operationForMessage({ type: 'runAgent', nodeId: 'n', adapterId: 'generic' })).toBeNull();

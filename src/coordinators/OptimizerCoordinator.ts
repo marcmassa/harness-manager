@@ -13,6 +13,7 @@ import { computeFix } from '../optimizer/quickFix.js';
 import { buildRefinePrompt, normalizeRefineResponse } from '../optimizer/aiRefine.js';
 import { delegateFindings } from './optimizerDelegation.js';
 import { handoffToChat, requestRefine } from './optimizerRefine.js';
+import { previewAndWrite, type PreviewWriteOptions } from './optimizerWrite.js';
 import { detectChatHost } from '../chatHandoffHost.js';
 import type { RunAdapterRegistry } from '../run/runAdapterRegistry.js';
 import { OptimizerDiffProvider } from '../optimizer/optimizerDiffProvider.js';
@@ -313,7 +314,8 @@ export class OptimizerCoordinator {
     private async _applyQuickFix(msg: WebviewMessage, postMessage: PostMessageFn): Promise<void> {
         const nodeId = msg.nodeId as string;
         const ruleId = msg.ruleId as string;
-        const fix = msg.fix as QuickFix | undefined;
+        // FEAT-043 R5: the fix comes from the host's own current finding, never from the message.
+        const fix = this._cachedReport?.findings.find(f => f.ruleId === ruleId && f.nodeId === nodeId)?.fix;
 
         const source = this._cachedSources.find(s => s.nodeId === nodeId);
         if (!source || !fix) {
@@ -342,77 +344,17 @@ export class OptimizerCoordinator {
         });
     }
 
-    /**
-     * FEAT-035 T11 — the shared tail of every write path: stage → diff → modal
-     * → write → rescan → clear.
-     *
-     * Extracted so the deterministic fixes and AI Refine cannot drift apart.
-     * They must not: this function is the single place that enforces FEAT-034
-     * R32, that nothing reaches disk before the user confirms.
-     */
-    private async _previewAndWrite(opts: {
-        source: ComponentSource;
-        ruleId: string;
-        content: string;
-        extraFile?: { relPath: string; content: string };
-        title: string;
-        prompt: string;
-        /** Which message type the webview is listening for on this path. */
-        resultType: 'quickFixResult' | 'aiRefineResult';
-        /** Non-blocking notices shown in the modal before the user decides (R11). */
-        warnings?: string[];
-        provider?: string;
-        postMessage: PostMessageFn;
-    }): Promise<void> {
-        const { source, ruleId, content, extraFile, title, prompt, resultType, warnings, provider, postMessage } = opts;
-        let virtualUri: vscode.Uri | undefined;
-
-        try {
-            virtualUri = vscode.Uri.parse(`${OPTIMIZER_DIFF_SCHEME}:/${source.nodeId}/${ruleId}.md`);
-            this.diffProvider.stage(virtualUri, content);
-
-            const fileUri = vscode.Uri.joinPath(this._workspaceRoot, ...source.filePath.split('/'));
-            await vscode.commands.executeCommand('vscode.diff', fileUri, virtualUri, title);
-
-            const detail = [
-                ...(warnings ?? []),
-                'The proposed content is shown in the diff editor. Nothing has been written yet.',
-            ].join('\n\n');
-
-            const choice = await vscode.window.showInformationMessage(
-                prompt,
-                { modal: true, detail },
-                'Apply',
-            );
-
-            if (choice !== 'Apply') {
-                postMessage({ type: resultType, ok: false, reason: 'cancelled', ruleId, nodeId: source.nodeId });
-                return;
-            }
-
-            // FEAT-041 T3 (R4): ownership may have changed while the modal was open.
-            const again = await this._authorize?.({ type: 'applyQuickFix', nodeId: source.nodeId });
-            if (again && !again.ok) {
-                postMessage({ type: resultType, ok: false, reason: again.reason, ruleId, nodeId: source.nodeId });
-                return;
-            }
-
-            await this._writer.writeFileAtPath(source.filePath, content);
-            // extract-to-references is the only fix that produces a second file;
-            // writing the trimmed component without it would lose the content.
-            if (extraFile) {
-                await this._writer.writeFileAtPath(extraFile.relPath, extraFile.content);
-            }
-
-            this._scheduleScan?.();
-            postMessage({ type: resultType, ok: true, ruleId, nodeId: source.nodeId, provider });
-        } catch (e: unknown) {
-            const reason = e instanceof Error ? e.message : String(e);
-            this._log.error(`[Optimizer] ${resultType} ${ruleId} on ${source.nodeId} failed: ${reason}`);
-            postMessage({ type: resultType, ok: false, reason, ruleId, nodeId: source.nodeId });
-        } finally {
-            if (virtualUri) this.diffProvider.clear(virtualUri);
-        }
+    /** FEAT-035 T11 / FEAT-043 R5 — the shared write path, in optimizerWrite.ts. */
+    private _previewAndWrite(opts: PreviewWriteOptions): Promise<void> {
+        return previewAndWrite(opts, {
+            diffProvider: this.diffProvider,
+            workspaceRoot: this._workspaceRoot,
+            writer: this._writer,
+            readFile: rel => this._readFile(rel),
+            authorize: this._authorize,
+            scheduleScan: this._scheduleScan,
+            log: this._log,
+        });
     }
 
     // ── FEAT-035 — AI Refine (R5–R13) ───────────────────────────────────────
