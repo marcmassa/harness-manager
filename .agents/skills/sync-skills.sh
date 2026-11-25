@@ -12,7 +12,6 @@
 # The current skills are replaced only after the download has been validated.
 set -euo pipefail
 
-DEFAULT_URL="<skills registry URL>"
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 SKILLS_DIR="$ROOT_DIR/.agents/skills"
 MANIFEST="$ROOT_DIR/.agents/agentic.json"
@@ -31,7 +30,7 @@ PY
 }
 
 URL="${SKILLS_REGISTRY_URL:-$(setting url)}"
-URL="${URL:-$DEFAULT_URL}"
+[ -n "$URL" ] || fail "no skills registry configured: set skills.registry.url in .agents/agentic.json or SKILLS_REGISTRY_URL"
 REF="${SKILLS_REGISTRY_REF:-$(setting ref)}"
 if [ -n "$REF" ] && ! [[ "$REF" =~ ^[0-9a-f]{40}$ ]]; then
     fail "the registry ref must be a full 40-character commit id, not a branch or tag"
