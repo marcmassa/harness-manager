@@ -1,8 +1,9 @@
 # Skills
 
-This directory contains the agent **skills** (capabilities). To keep the template
-agnostic, skills are managed centrally in the
-[Agent Skills Registry](<skills registry URL>).
+This directory contains the agent **skills** (capabilities). Skills can be written
+here directly, or synced from a git registry the project declares in
+`.agents/agentic.json` (`"skills": {"registry": {"url": "<git url>", "ref": "<commit>"}}`).
+The template ships no default registry.
 
 ## How to obtain/update skills
 

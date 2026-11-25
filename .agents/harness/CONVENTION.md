@@ -9,7 +9,7 @@ uses the harness consistently.
 
 1. **Classify the task first.** Use `ROUTING.md` to determine which agent(s) to use.
 2. **Harness First.** The Harness SDD is the single operating framework. Parallel workflows that do not respect the traceability of `feature_list.json` and `progress/` are not allowed.
-3. **Skills Registry.** This template is agnostic. Technical knowledge lives in the [Agent Skills Registry](<skills registry URL>). It is mandatory to sync skills before starting technical tasks.
+3. **Skills.** Project skills live in `.agents/skills/`. If the project declares a registry (`skills.registry` in `.agents/agentic.json`), sync it with `./.agents/skills/sync-skills.sh` before technical work.
 4. **Steering and Hooks.** Use `steering/` files to customize agent behavior per role. Use `hooks/` scripts to inject automation at SDD lifecycle points (`on_spec_created`, `on_feature_done`, etc.). Declare both in `agentic.json`.
 5. **Read the context, cheaply.** Follow `AGENTS.md` and run `./.agents/bootstrap.sh brief` before starting; it replaces reading `feature_list.json` and `progress/` in full. Check `.agents/skills/` for any relevant skills.
 6. **One feature at a time.** `check.sh` will reject more than one `in_progress`.
